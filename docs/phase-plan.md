@@ -7,6 +7,12 @@
 - Worker-only API surface: `/health`, `/v1/meta`, `POST /v1/lookup`; no deployment.
 - Obvious `DEMO_DATA_ONLY` invented records, deterministic lookup and audit-facing metadata.
 
+## Phase 0.5 — synthetic intake preparation (implemented, synthetic-only)
+
+- Isolated Node-only `@nhi-cv/source-intake` package and tests for a synthetic manifest, raw-byte SHA-256, provenance, injected test authority and RA review state.
+- Every result remains in logical quarantine, including mechanically `VERIFIED` synthetic evidence; nothing may be published or used by downstream lookup.
+- No database, API route, user interface, deployment, official-data parser or file persistence is introduced by this phase.
+
 ## Phase 1 — governed source intake (blocked)
 
 Requires original Master Project Prompt v3.2, official source datasets, source ownership, update cadence, retention policy, and RA-approved interpretation procedure.

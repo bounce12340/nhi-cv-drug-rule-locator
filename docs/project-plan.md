@@ -9,6 +9,7 @@
 | Gate | Required evidence | Status |
 | --- | --- | --- |
 | Phase 0 foundation | Demo-only core, app, API, tests, security documents; native runtime remains unverified | Completed locally — see `docs/phase-0-build-report.md` |
+| Phase 0.5 synthetic intake preparation | Node-only synthetic manifest/hash/provenance/RA-state gate and tests; all outcomes remain logically quarantined with no publishing or downstream lookup | Framework implemented — `SYNTHETIC_TEST_ONLY`; does not release the Source intake, Verified dataset, or Production release gates |
 | Source intake | Original v3.2 prompt, official source files, provenance and RA approval | BLOCKED |
 | Verified dataset | Dual review, effective-date/version handling, reconciliation | BLOCKED |
 | Clinical workflow review | Explicit non-eligibility UX and privacy review | BLOCKED |
