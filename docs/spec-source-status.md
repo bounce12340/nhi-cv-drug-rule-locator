@@ -6,6 +6,12 @@ The original **Master Project Prompt v3.2 export file has not been synchronized 
 
 Phase 0 is built only from the user-confirmed scope and verifiable summary supplied for this build: a pnpm monorepo, Expo SDK 57 client, Cloudflare Worker API, deterministic lookup safeguards, privacy prohibition and explicit demo-only data boundary.
 
+## Phase 0.5 preparation-only capability
+
+The isolated Node package `@nhi-cv/source-intake` provides a logical integrity and quarantine gate for `SYNTHETIC_TEST_ONLY` test material only. It checks a fixed manifest schema, a SHA-256 calculated from raw bytes, synthetic source reference and retrieval metadata, an explicitly injected synthetic test authority, and an optional RA review record.
+
+Even when complete synthetic evidence is mechanically marked `VERIFIED`, the result remains logically quarantined: it is not publishable and is not available to downstream lookup. This preparation capability is not a formal source import, does not accept official source material, and does not establish an approved dataset.
+
 ## Consequence
 
 Formal regulatory import and any production release are **BLOCKED** until all of the following are supplied and approved:
