@@ -1,0 +1,24 @@
+{
+  "name": "nhi-cv-drug-rule-locator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Demo-only NHI cardiovascular and lipid medication rule locator foundation.",
+  "packageManager": "pnpm@10.30.1",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "export:web": "pnpm --filter @nhi-cv/clinician export:web",
+    "worker:types": "pnpm --filter @nhi-cv/api types:check",
+    "worker:dry-run": "pnpm --filter @nhi-cv/api deploy:dry-run"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17"
+  }
+}
