@@ -23,10 +23,11 @@ State any blocked platform checks and why.
 ## Commit-level merge gate
 
 - Exact head commit SHA: `<!-- paste SHA -->`
-- [ ] Terra completed the build for this SHA.
-- [ ] Sol independently accepted this exact SHA as **PASS**; the builder did not self-accept.
+- Dispatched scope and acceptance criteria (set by Claude Fable 5 at dispatch): <!-- summary or link -->
+- [ ] Codex GPT-5.6 Sol (xhigh reasoning) completed the build for this SHA within the dispatched scope.
+- [ ] Claude Fable 5 independently accepted this exact SHA as **PASS** against the dispatched acceptance criteria; the builder did not self-accept, and the acceptor is not the builder of this SHA.
 - [ ] All required GitHub CI checks succeeded for this exact SHA: typecheck, test, Expo Web export, Worker types, and Worker dry-run.
-- [ ] This head SHA has not changed since Sol acceptance and CI completed.
+- [ ] This head SHA has not changed since acceptance and CI completed.
 - [ ] Gate result is **PASS**. **FAIL** or **BLOCKED** means this PR must not merge.
 
-Only a PASS for the exact head SHA, with all required CI successful, may be merged to `main`. A new commit, amend, rebase, or any other head SHA change invalidates earlier acceptance and requires fresh Sol acceptance and CI. After an authorized agent submits and merges a passing PR, report the resulting merge commit SHA.
+Only a PASS for the exact head SHA, with all required CI successful, may be merged to `main`. A new commit, amend, rebase, or any other head SHA change invalidates earlier acceptance and requires fresh acceptance and CI. If a head SHA was built by Claude Fable 5 itself, acceptance for that SHA must come from the user or another designated independent acceptor. After an authorized agent submits and merges a passing PR, report the resulting merge commit SHA.
