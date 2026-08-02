@@ -17,6 +17,7 @@
 - 新增 `docs/phase1-intake-runbook.md`（草案 v0.1）：官方類資料 governed intake 六階段程序（來源登錄、intake 能力建置、驗證與雙重覆核、RA 逐案核准與 RDL-005 窄幅解除、版本化入庫、變更管理），含解釋程序與 `INTAKE-APPROVE`／`INTERPRET` 核准語式；不含任何收件 payload，RDL-005 維持 BLOCKED。
 - Runbook 經 RA 核定升版 v1.0；新增 `docs/source-register/`（Stage 1 來源登錄）：5/6 檔完成出處宣告與派發方雜湊複驗（全 MATCH），v3.2 prompt 因提供者表明需更新而標記 PROVENANCE_INCOMPLETE 待新版重收。
 - source-intake 新增 `OFFICIAL_CANDIDATE` 官方類候選通道（schema `source-intake/v2`，TC-20260802-02 由 Codex GPT-5.6 Sol 建置）：runbook §3 出處欄位、交叉分類 fail-closed、`INTAKE-APPROVE` 語式逐字驗證、`governedStorageEligible` 欄位；一切 outcome 維持 QUARANTINED 且永不釋出 payload。
+- 收件兩份原始官方附件 PDF（附件1 異動明細表 10 頁、附件2 給付規定修訂對照表 13 頁；hash-only，payload 不入 repo），Stage 3 之 CSV 母本比對解除封鎖；新增 governed 儲存驗證模組（storage-manifest/v1，TC-20260802-03 由 Codex GPT-5.6 Sol 建置）。
 
 ## [0.1.0] - 2026-08-01
 

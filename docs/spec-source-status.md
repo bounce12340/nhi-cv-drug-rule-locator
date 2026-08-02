@@ -12,6 +12,8 @@ The original **Master Project Prompt v3.2** was received on 2026-08-02 as an in-
 | `price_change_seed_20260901.csv` | `a480f90d9dd8d9d3eefaf9d206d94898a1184dc62f3e927041fcac7e2f6c6f1f` | 7,650 | 57 data rows + header |
 | `statin_table2_only_list.csv` (supplementary receipt 2026-08-02) | `b258acb48e68db096f74cb53abe89a96a6d2929701c7da89370484c00d2e8388` | 7,651 | 116 data rows + header |
 | `README.md` (companion software spec v1.0) | `7e86f6562175b64818b1f6c378d18aac7e7292254b87a8b2e9a869fd98b88d89` | 9,719 | 169 lines |
+| 附件1 PDF:全民健康保險藥品已收載項目異動明細表 (supplementary receipt 2026-08-02; upload filename transcoded, original filename to be declared) | `fafaae478dc8e188674c3585d65ef7d480c767fee8f5daa7b8b05458f6b6fe81` | 190,579 | 10 pages |
+| 附件2 PDF:「藥品給付規定」修訂對照表 第2節 心臟血管及腎臟藥物 (supplementary receipt 2026-08-02; upload filename transcoded, original filename to be declared) | `6389a5f654e0cb755d006f04ed47eca6ada9f867873f43c5088f79db6bb6c1c2` | 325,429 | 13 pages |
 
 Consistency observations (analysis only; no content imported):
 
@@ -31,9 +33,9 @@ All five files are official-looking material supplied mid-session. Under RDL-005
 ## Still missing before Phase 1 intake can be considered
 
 1. ~~`statin_table2_only_list.csv` (declared 116 records in v3.2 §6)~~ — received 2026-08-02 as a supplementary receipt (see table above); like every received file it stays out of the repository pending governed intake.
-2. The complete official text of 表二 (the announcement reportedly prints 「以下略」; the companion spec commits to a later delivery).
-3. The complete official text of 表一 (the companion spec §4.2 directs verbatim capture from the announcement attachment; no attachment file was supplied).
-4. The official announcement and attachments themselves (健保審字第 1150671962 號) as raw source documents.
+2. The complete official text of 表二 (the announcement reportedly prints 「以下略」) — whether 附件2 (received 2026-08-02) contains it is to be confirmed during Stage 3 review.
+3. The complete official text of 表一 — whether 附件2 (received 2026-08-02) contains it is to be confirmed during Stage 3 review.
+4. ~~The official announcement and attachments themselves as raw source documents~~ — the two attachment PDFs (附件1 異動明細表, 附件2 修訂對照表) were received 2026-08-02 (see table above); the announcement letter 本文 itself is still not received.
 5. Per-file provenance: origin channel, retrieval date and custodian for every received file.
 6. Requester confirmation that the received prompt bytes are the authentic v3.2 original — **on 2026-08-02 the owner stated the received v3.2 requires an update**; the received bytes are NOT confirmed as authoritative, and a superseding version will be re-received (new hash, new register entry) when supplied. See docs/source-register/master-project-prompt-v3.2.md.
 7. ~~A designated regulatory authority (RA)~~ — RA designated 2026-08-02 (RDL-009); an RA-approved interpretation procedure is still missing.
