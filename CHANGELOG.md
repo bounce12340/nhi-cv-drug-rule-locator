@@ -23,6 +23,8 @@
 - Stage 3 驗證（TC-20260802-04 由 Codex GPT-5.6 Sol 建置）：新增 scripts/stage3-verify.mjs 與統計式驗證報告（僅計數與列號，無任何代碼/名稱/價格）。
 - **首次 INTAKE-APPROVE（RDL-012）**：RA 以固定語式核准資料集 `nhi-lipid-2026-09-01-r1`（四個 hash 鎖定 CSV、摘要 01a4df7…），payload 進入 `data/governed/` 並附 storage-manifest；governance-scan 排除清單依 runbook §7 擴充至該目錄；RDL-005 其餘一切維持 BLOCKED。
 - 新增 governed 儲存 CI 持續驗證測試（TC-20260802-05 由 Codex GPT-5.6 Sol 建置）：每次 CI 以 storage 模組機器驗證 data/governed/ 之 manifest、語式、逐檔雜湊與目錄純淨性。
+- 補記 RDL-013（governed 資料集保存政策：永久保留、只疊加不刪除；runbook §8/R4 定案）。
+- §30 規劃產物第一批（主模型撰寫，依 ADR-001）：#35 Phase Acceptance Report 模板、#27 效能預算（含 TTFCA）、#26 無障礙驗收標準、#29 資料流圖（現況＋目標態）。
 
 ## [0.1.0] - 2026-08-01
 
