@@ -14,3 +14,4 @@
 | companion-spec-readme | PROVENANCE_DECLARED(專案自撰文件,性質已釐清) |
 | attachment-1-price-change-detail(附件1 PDF) | PROVENANCE_DECLARED(2026-08-02 收件;Stage 3 比對基準) |
 | attachment-2-rule-revision-table(附件2 PDF) | PROVENANCE_DECLARED(2026-08-02 收件;Stage 3 比對基準) |
+| announcement-webpage-capture(公告本文擷取) | PROVENANCE_DECLARED(2026-08-02 收件;缺件 #4 結案) |

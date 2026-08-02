@@ -9,7 +9,7 @@ This document measures the gap between the Phase 1 gate (docs/phase-plan.md) and
 | Phase 1 gate requirement | Status | Notes |
 | --- | --- | --- |
 | Original Master Project Prompt v3.2 | RECEIVED, AUTHENTICITY CONFIRMED | 3,187 lines; byte-identical independent re-delivery to the dispatcher session verified 2026-08-02, and the RA ruled the version authoritative (earlier update statement withdrawn) — docs/source-register/master-project-prompt-v3.2.md |
-| Official source datasets | PARTIAL | 4 of 4 declared CSVs received out-of-repo; the two raw attachment PDFs (附件1 異動明細表 10pp, 附件2 修訂對照表 13pp) received 2026-08-02 — Stage 3 cross-checking of the CSVs against their declared parents is now unblocked; still missing: the announcement letter 本文, and confirmation whether 表一/表二 full texts are contained in 附件2 |
+| Official source datasets | PARTIAL | 4/4 CSVs verified and in governed storage (RDL-012); both attachment PDFs and the announcement webpage capture hash-recorded (raw sources complete) — remaining: 舊版表二完整條文 (needed for the v3.2 §9.6 procedure; owner to supply) and confirmation that 附件2 does not contain the full 表一/表二 texts (initial label-count signal says it does not) |
 | Source ownership | MISSING | No custodian or origin channel declared for any received file |
 | Update cadence | MISSING | Not defined |
 | Retention policy | MISSING | Not defined |

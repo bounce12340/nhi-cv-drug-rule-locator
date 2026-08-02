@@ -29,16 +29,16 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 23 | Requirement-to-Test Matrix | PARTIAL | docs/test-matrix.md covers demo-core invariants; v3.2-wide matrix TODO |
 | 24 | Cross-platform Feature Parity Matrix | TODO | — |
 | 25 | Web／iOS／Android Wireframes | TODO | — |
-| 26 | WCAG 2.2 AA 與 Native Accessibility 驗收標準 | TODO | — |
-| 27 | Web、Native 與 TTFCA Performance Budget | TODO | Restate v3.2 §2.6/§19 targets as testable budgets |
+| 26 | WCAG 2.2 AA 與 Native Accessibility 驗收標準 | DONE | docs/accessibility-criteria.md(工具選型待確認) |
+| 27 | Web、Native 與 TTFCA Performance Budget | DONE | docs/performance-budget.md(native 數值目標待 PoC 後訂定) |
 | 28 | Threat Model | PARTIAL | docs/threat-model.md covers Phase 0 surface; expand for auth/data phases |
-| 29 | Data Flow Diagram | TODO | — |
+| 29 | Data Flow Diagram | DONE | docs/data-flow-diagram.md(現況+目標態;目標態節點標【待人工確認】) |
 | 30 | Processor Register 草稿 | TODO | — |
 | 31 | Data Retention Schedule 草稿 | TODO | — |
 | 32 | Database Schema、Search Index 與 Migration Plan | TODO | Structure-only drafts permitted; authoritative fields wait for governed intake (RDL-005) |
 | 33 | Drug Lookup／Price Comparison API Specification | TODO | Structure-only drafts permitted; same gate as #32 |
 | 34 | Backup／Restore／Web Rollback／Mobile Rollback Plan | TODO | — |
-| 35 | Phase Acceptance Report Template | TODO | docs/acceptance/ to be created |
+| 35 | Phase Acceptance Report Template | DONE | docs/acceptance/phase-acceptance-report-template.md(v3.2 §26 全欄位) |
 | 36 | Production Release Gate | BLOCKED | Production release itself is blocked by RDL-005 and later-phase reviews |
 
 Working rule: artifacts are authored without importing any received payload (RDL-007); every assumed-but-undecided point is marked 待人工確認 in the artifact itself.
