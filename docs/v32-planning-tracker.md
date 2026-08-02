@@ -1,0 +1,44 @@
+# v3.2 §30 planning-artifact tracker
+
+Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 requires from the main model before formal feature code. Updated 2026-08-02. Statuses: DONE (exists and current), PARTIAL (started; gaps listed), TODO (not started), BLOCKED (cannot proceed in this environment or before a listed gate).
+
+| # | §30 artifact | Status | Location / blocker |
+| --- | --- | --- | --- |
+| 1 | 專案 Scope 與 Non-goals | DONE | docs/scope-and-non-goals.md |
+| 2 | Regulatory Source Inventory | PARTIAL | docs/spec-source-status.md — receipt inventory by hash; origin channel, retrieval dates and custodian per file still missing |
+| 3 | CSV 與資料完整性報告 | PARTIAL | docs/phase1-readiness.md — counts/hash consistency only; field-level validation happens at governed intake, not before |
+| 4 | 法規及法律有效版本矩陣 | BLOCKED | Requires official texts and RA-designated effective-version confirmation |
+| 5 | 尚待 RA／法律／個資確認事項 | DONE (living list) | docs/phase1-readiness.md (P0 blockers) + docs/spec-source-status.md (missing sources) |
+| 6 | Data Residency ADR | TODO | — |
+| 7 | Cloudflare Architecture ADR | PARTIAL | docs/architecture.md documents the Phase 0 Worker baseline; formal ADR with D1/R2/KV/Queues evaluation TODO |
+| 8 | Cross-platform Mobile ADR | PARTIAL | Expo is the de-facto Phase 0 choice; formal ADR incl. alternatives comparison TODO |
+| 9 | Mobile Framework PoC Report | BLOCKED | iOS/Android device or simulator runs are unavailable in this environment (no Xcode, no adb) |
+| 10 | Clinical Workflow／Human Factors Map | TODO | — |
+| 11 | Price Comparison Semantics ADR | TODO | — |
+| 12 | Authentication 與 Native Secure Storage ADR | TODO | — |
+| 13 | Analytics／Logging Privacy ADR | PARTIAL | docs/privacy-data-inventory.md covers current no-PII posture; formal ADR TODO |
+| 14 | App Store／Google Play Compliance Matrix | TODO | — |
+| 15 | API Version Compatibility 與 Mobile Release Strategy | TODO | — |
+| 16 | GitHub Repository 與 Ruleset 設計 | PARTIAL | CONTRIBUTING.md + CI exist; branch-protection/ruleset formalization TODO |
+| 17 | Monorepo 與 Shared Contract 設計 | PARTIAL | docs/architecture.md; reconciliation with the v3.2 §17.9 suggested layout TODO |
+| 18 | Phase Branch Strategy | TODO | Reconcile v3.2 §21.3 (main / phase/* / agent/*) with current working-branch practice |
+| 19 | Milestones 及 Issues | TODO | — |
+| 20 | Subagent Task Contracts | TODO | Template needed before first Phase 1 dispatch |
+| 21 | Model Routing ADR | DONE | docs/adr/ADR-001-model-routing.md (requester consent 2026-08-02) |
+| 22 | Agent Execution Manifest 與 Attestation Schema | PARTIAL | ADR-001 lists required fields; machine-readable schema TODO |
+| 23 | Requirement-to-Test Matrix | PARTIAL | docs/test-matrix.md covers demo-core invariants; v3.2-wide matrix TODO |
+| 24 | Cross-platform Feature Parity Matrix | TODO | — |
+| 25 | Web／iOS／Android Wireframes | TODO | — |
+| 26 | WCAG 2.2 AA 與 Native Accessibility 驗收標準 | TODO | — |
+| 27 | Web、Native 與 TTFCA Performance Budget | TODO | Restate v3.2 §2.6/§19 targets as testable budgets |
+| 28 | Threat Model | PARTIAL | docs/threat-model.md covers Phase 0 surface; expand for auth/data phases |
+| 29 | Data Flow Diagram | TODO | — |
+| 30 | Processor Register 草稿 | TODO | — |
+| 31 | Data Retention Schedule 草稿 | TODO | — |
+| 32 | Database Schema、Search Index 與 Migration Plan | TODO | Structure-only drafts permitted; authoritative fields wait for governed intake (RDL-005) |
+| 33 | Drug Lookup／Price Comparison API Specification | TODO | Structure-only drafts permitted; same gate as #32 |
+| 34 | Backup／Restore／Web Rollback／Mobile Rollback Plan | TODO | — |
+| 35 | Phase Acceptance Report Template | TODO | docs/acceptance/ to be created |
+| 36 | Production Release Gate | BLOCKED | Production release itself is blocked by RDL-005 and later-phase reviews |
+
+Working rule: artifacts are authored without importing any received payload (RDL-007); every assumed-but-undecided point is marked 待人工確認 in the artifact itself.
