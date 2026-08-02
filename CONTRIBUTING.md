@@ -16,8 +16,11 @@
 
 ## Commit 級合併治理
 
-1. Terra 負責建置；Sol 必須針對待合併的精確 head commit SHA 做獨立驗收。建置者不得自行宣告最終 PASS。
-2. 只有該精確 head SHA 的 Sol 驗收為 PASS，且所有必要 GitHub CI（`typecheck`、`test`、Expo Web export、Worker types、Worker dry-run）皆成功，才可合併至 `main`。
-3. PASS 只對記錄的 head SHA 有效。任何新增 commit、amend、rebase 或其他 head SHA 變更，都會使先前驗收失效，必須重新執行 Sol 驗收與必要 CI。
-4. Sol 驗收為 FAIL 或 BLOCKED 時，不得合併。
-5. 對已符合前述條件的 commit，使用者預先授權代理提交 GitHub PR 並合併至 `main`，不需逐次再次確認；合併後必須回報產生的 merge commit SHA。
+角色分工：**Claude Fable 5** 負責派發工作、於派發時設定驗收標準、並執行驗收；**Codex GPT-5.6 Sol（xhigh reasoning）** 負責依派工範圍與驗收標準進行編寫與建置。
+
+1. Fable 5 派發每項工作時，須一併記錄工作範圍與可檢核的驗收標準；Sol 依派工內容建置，不得自行擴大範圍。
+2. Fable 5 必須針對待合併的精確 head commit SHA、依派發時設定的驗收標準做獨立驗收。建置者不得自行宣告最終 PASS；任何情況下，驗收者不得同時是該 head SHA 的實際建置者。若某 head SHA 係由 Fable 5 親自建置，該 SHA 的驗收須由使用者或另行指定的獨立驗收者執行。
+3. 只有該精確 head SHA 的驗收為 PASS，且所有必要 GitHub CI（`typecheck`、`test`、Expo Web export、Worker types、Worker dry-run）皆成功，才可合併至 `main`。
+4. PASS 只對記錄的 head SHA 有效。任何新增 commit、amend、rebase 或其他 head SHA 變更，都會使先前驗收失效，必須重新執行驗收與必要 CI。
+5. 驗收為 FAIL 或 BLOCKED 時，不得合併。
+6. 對已符合前述條件的 commit，使用者預先授權代理提交 GitHub PR 並合併至 `main`，不需逐次再次確認；合併後必須回報產生的 merge commit SHA。
