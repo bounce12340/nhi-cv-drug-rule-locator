@@ -13,7 +13,7 @@ This document measures the gap between the Phase 1 gate (docs/phase-plan.md) and
 | Source ownership | MISSING | No custodian or origin channel declared for any received file |
 | Update cadence | MISSING | Not defined |
 | Retention policy | MISSING | Not defined |
-| RA-approved interpretation procedure | PARTIAL | RA designated 2026-08-02 (RDL-009); the interpretation procedure itself is still undefined |
+| RA-approved interpretation procedure | PARTIAL | RA designated 2026-08-02 (RDL-009); the interpretation procedure is drafted in docs/phase1-intake-runbook.md §9 and awaits RA approval of that runbook |
 
 ## P0 blockers before any Phase 1 implementation
 

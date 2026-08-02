@@ -14,6 +14,7 @@
 - CONTRIBUTING 增補 v2.0 派工與驗收作業（派工單制、builder 沙箱與禁區、驗收 SOP、PASS 語式與併發防護、異常處理、RDL-010 effort 分級）。
 - CI 新增第六項 `governance-scan` 紅線掃描（`scripts/governance-scan.sh`）：自動攔查 PR 新增行中的健保代碼樣式、公告文號與非示範價格字樣，命中即紅燈供人工判讀。
 - 補記 RDL-010（effort 分級）與 RDL-011（Codex 認證儲存）；表二專用清單以 hash-only 補件收錄（吻合 v3.2 §6 宣告之 116 筆），Phase 1 資料缺口相應更新。
+- 新增 `docs/phase1-intake-runbook.md`（草案 v0.1）：官方類資料 governed intake 六階段程序（來源登錄、intake 能力建置、驗證與雙重覆核、RA 逐案核准與 RDL-005 窄幅解除、版本化入庫、變更管理），含解釋程序與 `INTAKE-APPROVE`／`INTERPRET` 核准語式；不含任何收件 payload，RDL-005 維持 BLOCKED。
 
 ## [0.1.0] - 2026-08-01
 
