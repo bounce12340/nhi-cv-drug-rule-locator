@@ -5,18 +5,18 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | # | §30 artifact | Status | Location / blocker |
 | --- | --- | --- | --- |
 | 1 | 專案 Scope 與 Non-goals | DONE | docs/scope-and-non-goals.md |
-| 2 | Regulatory Source Inventory | PARTIAL | docs/spec-source-status.md + docs/source-register/ — 5/6 檔已完成出處宣告與雜湊複驗(2026-08-02);v3.2 prompt 待更新版重新收件,CSV 原生性等待釐清事項於 Stage 3 處理 |
+| 2 | Regulatory Source Inventory | DONE (living) | docs/spec-source-status.md + docs/source-register/(9 筆)— 全部收件檔出處宣告+雜湊複驗完成;v3.2 真實性確認、公告本文擷取收件、CSV 原生性已釐清(整理轉出);唯一開放來源缺口:舊版表二全文 |
 | 3 | CSV 與資料完整性報告 | DONE | docs/stage3/stage3-verification-report.md — 雙重覆核 ACCEPTED(列數/空值/重複/格式/跨檔/母本 187/187);首個資料集已依 RDL-012 入 governed 儲存 |
 | 4 | 法規及法律有效版本矩陣 | BLOCKED | Requires official texts and RA-designated effective-version confirmation |
 | 5 | 尚待 RA／法律／個資確認事項 | DONE (living list) | docs/phase1-readiness.md (P0 blockers) + docs/spec-source-status.md (missing sources) |
-| 6 | Data Residency ADR | TODO | — |
-| 7 | Cloudflare Architecture ADR | PARTIAL | docs/architecture.md documents the Phase 0 Worker baseline; formal ADR with D1/R2/KV/Queues evaluation TODO |
+| 6 | Data Residency ADR | DONE | docs/adr/ADR-002-data-residency.md(PROPOSED;關鍵值待 RA/法務確認,Phase 2 前定案) |
+| 7 | Cloudflare Architecture ADR | DONE | docs/adr/ADR-003-cloudflare-architecture.md(基準核定;D1 production 採用待 §17.2 實測閘門) |
 | 8 | Cross-platform Mobile ADR | PARTIAL | Expo is the de-facto Phase 0 choice; formal ADR incl. alternatives comparison TODO |
 | 9 | Mobile Framework PoC Report | BLOCKED | iOS/Android device or simulator runs are unavailable in this environment (no Xcode, no adb) |
 | 10 | Clinical Workflow／Human Factors Map | TODO | — |
 | 11 | Price Comparison Semantics ADR | TODO | — |
 | 12 | Authentication 與 Native Secure Storage ADR | TODO | — |
-| 13 | Analytics／Logging Privacy ADR | PARTIAL | docs/privacy-data-inventory.md covers current no-PII posture; formal ADR TODO |
+| 13 | Analytics／Logging Privacy ADR | DONE | docs/adr/ADR-004-analytics-logging-privacy.md(生效;保存期間數值 Phase 5 前定案) |
 | 14 | App Store／Google Play Compliance Matrix | TODO | — |
 | 15 | API Version Compatibility 與 Mobile Release Strategy | TODO | — |
 | 16 | GitHub Repository 與 Ruleset 設計 | PARTIAL | CONTRIBUTING.md + CI(六項檢查)exist;branch protection/rulesets、CODEOWNERS、docs/runbooks/、docs/acceptance/ 未建(v3.2 §21.2/§21.4;見 docs/v32-alignment-review.md #3/#4) |
