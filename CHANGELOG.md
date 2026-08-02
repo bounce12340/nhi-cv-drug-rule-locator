@@ -15,6 +15,8 @@
 - CI 新增第六項 `governance-scan` 紅線掃描（`scripts/governance-scan.sh`）：自動攔查 PR 新增行中的健保代碼樣式、公告文號與非示範價格字樣，命中即紅燈供人工判讀。
 - 補記 RDL-010（effort 分級）與 RDL-011（Codex 認證儲存）；表二專用清單以 hash-only 補件收錄（吻合 v3.2 §6 宣告之 116 筆），Phase 1 資料缺口相應更新。
 - 新增 `docs/phase1-intake-runbook.md`（草案 v0.1）：官方類資料 governed intake 六階段程序（來源登錄、intake 能力建置、驗證與雙重覆核、RA 逐案核准與 RDL-005 窄幅解除、版本化入庫、變更管理），含解釋程序與 `INTAKE-APPROVE`／`INTERPRET` 核准語式；不含任何收件 payload，RDL-005 維持 BLOCKED。
+- Runbook 經 RA 核定升版 v1.0；新增 `docs/source-register/`（Stage 1 來源登錄）：5/6 檔完成出處宣告與派發方雜湊複驗（全 MATCH），v3.2 prompt 因提供者表明需更新而標記 PROVENANCE_INCOMPLETE 待新版重收。
+- source-intake 新增 `OFFICIAL_CANDIDATE` 官方類候選通道（schema `source-intake/v2`，TC-20260802-02 由 Codex GPT-5.6 Sol 建置）：runbook §3 出處欄位、交叉分類 fail-closed、`INTAKE-APPROVE` 語式逐字驗證、`governedStorageEligible` 欄位；一切 outcome 維持 QUARANTINED 且永不釋出 payload。
 
 ## [0.1.0] - 2026-08-01
 

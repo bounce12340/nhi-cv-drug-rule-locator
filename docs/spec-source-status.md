@@ -35,7 +35,7 @@ All five files are official-looking material supplied mid-session. Under RDL-005
 3. The complete official text of 表一 (the companion spec §4.2 directs verbatim capture from the announcement attachment; no attachment file was supplied).
 4. The official announcement and attachments themselves (健保審字第 1150671962 號) as raw source documents.
 5. Per-file provenance: origin channel, retrieval date and custodian for every received file.
-6. Requester confirmation that the received prompt bytes are the authentic v3.2 original.
+6. Requester confirmation that the received prompt bytes are the authentic v3.2 original — **on 2026-08-02 the owner stated the received v3.2 requires an update**; the received bytes are NOT confirmed as authoritative, and a superseding version will be re-received (new hash, new register entry) when supplied. See docs/source-register/master-project-prompt-v3.2.md.
 7. ~~A designated regulatory authority (RA)~~ — RA designated 2026-08-02 (RDL-009); an RA-approved interpretation procedure is still missing.
 8. Source ownership, update cadence and retention policy (phase-plan Phase 1 gate).
 
