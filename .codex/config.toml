@@ -1,0 +1,6 @@
+# Builder-agent configuration for this repository (see CONTRIBUTING.md merge governance):
+# implementation work dispatched to Codex runs as GPT-5.6 Sol at xhigh reasoning effort.
+# Authentication is NOT stored here — provide it via the execution environment
+# (OPENAI_API_KEY secret or a pre-provisioned ~/.codex/auth.json); never commit credentials.
+model = "gpt-5.6-sol"
+model_reasoning_effort = "xhigh"
