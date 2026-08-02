@@ -18,7 +18,7 @@
 ## 二、發現落差(需處理;標【R】者需 RA 裁決)
 
 1. **【R6|已裁決 2026-08-02】§21.3 三層分支模型**:RA 裁示——規劃/治理期(現階段)維持單一工作分支逐 PR 進 main 之現行模式(核准之階段性偏離);進入正式功能實作期(v3.2 Phase 1+ 編碼工作)時切換三層模型(`main`/`phase/*`/`agent/*`,每 Phase 單一 Squash Release PR)。切換時點由派發方於首個實作派工前提報確認。
-2. **【R7|已裁決 2026-08-02】§21.1 Repository Private**:RA 裁示採 Private;由 repo 擁有者於 GitHub 設定確認/調整(代理無此權限),完成後回報即符合 §21.1。
+2. **【R7|已結案 2026-08-02】§21.1 Repository Private**:RA 確認 repository 自始即為 Private——完全符合 §21.1,無偏離需記錄。
 3. **§21.2 必要檔案缺項**:`CODEOWNERS`、`docs/runbooks/`、`docs/acceptance/` 尚未建立(tracker #16/#35 涵蓋,列入後續派工)。
 4. **§21.4 main 保護**:branch protection/rulesets 尚未於 GitHub 設定(tracker #16)。
 5. **§21.5.4 attestation 欄位**:現行 task-contract/v1 缺 `prompt_or_task_contract_hash`;自 TC-20260802-04 起補記派工單雜湊,舊紀錄不追溯。名為 `terra-pro-build-attestation`/`sol-pro-acceptance` 的 GitHub Required Checks 尚未實作(tracker #22)。
