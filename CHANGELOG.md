@@ -18,6 +18,9 @@
 - Runbook 經 RA 核定升版 v1.0；新增 `docs/source-register/`（Stage 1 來源登錄）：5/6 檔完成出處宣告與派發方雜湊複驗（全 MATCH），v3.2 prompt 因提供者表明需更新而標記 PROVENANCE_INCOMPLETE 待新版重收。
 - source-intake 新增 `OFFICIAL_CANDIDATE` 官方類候選通道（schema `source-intake/v2`，TC-20260802-02 由 Codex GPT-5.6 Sol 建置）：runbook §3 出處欄位、交叉分類 fail-closed、`INTAKE-APPROVE` 語式逐字驗證、`governedStorageEligible` 欄位；一切 outcome 維持 QUARANTINED 且永不釋出 payload。
 - 收件兩份原始官方附件 PDF（附件1 異動明細表 10 頁、附件2 給付規定修訂對照表 13 頁；hash-only，payload 不入 repo），Stage 3 之 CSV 母本比對解除封鎖；新增 governed 儲存驗證模組（storage-manifest/v1，TC-20260802-03 由 Codex GPT-5.6 Sol 建置）。
+- INTERPRET-001 裁決：複方產品分類依 v3.2 §9.5 辦理，邊界案例結案（docs/interpretations/）。
+- v3.2 全文對齊審查（docs/v32-alignment-review.md）：確認 §21.5／§29／§30 已對齊；列出八項落差含兩項待 RA 裁決（R6 分支模型、R7 repo 可見性）；追蹤表 #16/#18/#22 備註同步。
+- Stage 3 驗證（TC-20260802-04 由 Codex GPT-5.6 Sol 建置）：新增 scripts/stage3-verify.mjs 與統計式驗證報告（僅計數與列號，無任何代碼/名稱/價格）。
 
 ## [0.1.0] - 2026-08-01
 

@@ -1,0 +1,38 @@
+{
+  "attestation_schema": "task-contract/v1",
+  "task_id": "TC-20260802-04",
+  "task_contract": "docs/task-contracts/TC-20260802-04.md",
+  "task_contract_sha256": "d55930064e31051f1876a45df1b893f3f037ff330035ad75ade8e398bac476a4",
+  "repo": "bounce12340/nhi-cv-drug-rule-locator",
+  "branch": "claude/init-yd1kqu",
+  "records": [
+    {
+      "role": "builder",
+      "tier": "Terra Pro (v3.2 §21.5)",
+      "provider": "OpenAI",
+      "model_display_name": "Codex GPT-5.6 Sol",
+      "model_id": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "run_id": "codex-session-019fc136-7646-7f30-ac4e-0d5e243cb822",
+      "head_sha": "4330cb3 (builder commit, authorship preserved; committed by dispatcher due to read-only .git in builder sandbox)",
+      "started_at": "UNAVAILABLE (not emitted by codex exec output; traceable via session id)",
+      "ended_at": "2026-08-02 (dispatcher session log; completion notification)",
+      "tokens_used": 139987,
+      "tool_permissions": "sandbox=workspace-write [workdir,/tmp]; network=off; allowed write paths per contract; read access to out-of-repo staged sources; no commit/push",
+      "result": "PASS with zero acceptance returns (an initial dispatch attempt hung on an unclosed stdin pipe before any work started — infrastructure incident, killed and re-dispatched, not counted as a return): 5/5 self-checked criteria met; verification recommendation ACCEPTED with 6/6 hashes, exact row counts 4/10/57/116, zero empties/duplicates, 187/187 parent-comparison hits"
+    },
+    {
+      "role": "dispatcher-acceptance (task-contract level, Stage 3 dual review)",
+      "tier": "Sol Pro (v3.2 §21.5)",
+      "provider": "Anthropic",
+      "model_display_name": "Claude Fable 5",
+      "model_id": "per ADR-001, the acceptance-side exact identifier is preserved in the session execution record linked below",
+      "run_id": "https://claude.ai/code/session_01QohqUPU5dYt5YV2ENrsQF7",
+      "head_sha": "4330cb3",
+      "started_at": "2026-08-02 (dispatcher session log)",
+      "ended_at": "2026-08-02 (dispatcher session log)",
+      "tool_permissions": "repository read/write on branch claude/init-yd1kqu; independent re-run of the verification script against the staged sources",
+      "result": "PASS at task-contract level with Stage 3 dual review completed: the dispatcher independently re-ran stage3-verify.mjs and corroborated every reported figure (hashes, row counts, zero intersections, 187/187 parent hits, label counts, ACCEPTED conclusion); committed report verified statistics-only with a clean red-line scan. Repository-level acceptance of the PR head SHA remains with the RA"
+    }
+  ]
+}
