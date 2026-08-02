@@ -22,6 +22,19 @@ EXCLUDES=(
 added_all="$(git diff "$BASE_REF"...HEAD -- . "${EXCLUDES[@]}" | grep -E '^\+' | grep -vE '^\+\+\+' || true)"
 added_code="$(git diff "$BASE_REF"...HEAD -- packages apps | grep -E '^\+' | grep -vE '^\+\+\+' || true)"
 
+# Local runs must also see files not yet committed: untracked files are
+# invisible to git diff, which would let a red line slip through pre-commit
+# checks (in CI, checkouts have everything committed, so this adds nothing).
+EXCLUDE_RE='^(docs/spec-source-status\.md|docs/regulatory-decision-log\.md|docs/phase1-readiness\.md|CHANGELOG\.md|\.github/workflows/ci\.yml|scripts/governance-scan\.sh)$'
+while IFS= read -r untracked; do
+  [ -f "$untracked" ] || continue
+  content="$(cat "$untracked" 2>/dev/null || true)"
+  added_all="${added_all}"$'\n'"${content}"
+  case "$untracked" in
+    packages/*|apps/*) added_code="${added_code}"$'\n'"${content}" ;;
+  esac
+done < <(git ls-files --others --exclude-standard | grep -vE "$EXCLUDE_RE" || true)
+
 fail=0
 
 # Set A (everywhere except designated files): NHI-code shape (two uppercase
