@@ -10,6 +10,9 @@ git fetch --quiet origin "${BASE_REF#origin/}" 2>/dev/null || true
 
 # Files whose whole purpose is hash-only receipt records / governance history,
 # plus this scanner and the workflow that carry the patterns themselves.
+# data/governed/ holds RA-approved, hash-locked payload (RDL-012 and successor
+# approvals); its integrity is enforced by storage-manifest verification, not
+# by this tripwire, and payload anywhere else still trips the scan.
 EXCLUDES=(
   ':(exclude)docs/spec-source-status.md'
   ':(exclude)docs/regulatory-decision-log.md'
@@ -17,6 +20,7 @@ EXCLUDES=(
   ':(exclude)CHANGELOG.md'
   ':(exclude).github/workflows/ci.yml'
   ':(exclude)scripts/governance-scan.sh'
+  ':(exclude)data/governed/**'
 )
 
 added_all="$(git diff "$BASE_REF"...HEAD -- . "${EXCLUDES[@]}" | grep -E '^\+' | grep -vE '^\+\+\+' || true)"
@@ -25,7 +29,7 @@ added_code="$(git diff "$BASE_REF"...HEAD -- packages apps | grep -E '^\+' | gre
 # Local runs must also see files not yet committed: untracked files are
 # invisible to git diff, which would let a red line slip through pre-commit
 # checks (in CI, checkouts have everything committed, so this adds nothing).
-EXCLUDE_RE='^(docs/spec-source-status\.md|docs/regulatory-decision-log\.md|docs/phase1-readiness\.md|CHANGELOG\.md|\.github/workflows/ci\.yml|scripts/governance-scan\.sh)$'
+EXCLUDE_RE='^(docs/spec-source-status\.md|docs/regulatory-decision-log\.md|docs/phase1-readiness\.md|CHANGELOG\.md|\.github/workflows/ci\.yml|scripts/governance-scan\.sh|data/governed/.*)$'
 while IFS= read -r untracked; do
   [ -f "$untracked" ] || continue
   content="$(cat "$untracked" 2>/dev/null || true)"

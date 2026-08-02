@@ -1,0 +1,43 @@
+{
+  "schema": "storage-manifest/v1",
+  "datasetVersion": "nhi-lipid-2026-09-01-r1",
+  "approvalRef": {
+    "rdlId": "RDL-012",
+    "approvalWording": "INTAKE-APPROVE nhi-lipid-2026-09-01-r1 01a4df7"
+  },
+  "sourceRegisterRefs": [
+    "docs/source-register/ezetimibe_3month_exception.md",
+    "docs/source-register/ezetimibe_statin_combo_3month_exception.md",
+    "docs/source-register/price_change_seed_20260901.md",
+    "docs/source-register/statin_table2_only_list.md",
+    "docs/source-register/attachment-1-price-change-detail.md",
+    "docs/source-register/attachment-2-rule-revision-table.md",
+    "docs/stage3/stage3-verification-report.md",
+    "docs/interpretations/INTERPRET-001.md"
+  ],
+  "effectiveFrom": "2026-09-01",
+  "effectiveTo": "9999-12-31",
+  "files": [
+    {
+      "declaredName": "ezetimibe_3month_exception.csv",
+      "sha256": "dae9534d1eb31ffaab5a1c4de35c89d3348ad8d8c524eb34f678dc2a704eebb7",
+      "bytes": 249
+    },
+    {
+      "declaredName": "ezetimibe_statin_combo_3month_exception.csv",
+      "sha256": "d4513a6cdd514470b87100352e4d8cca2f17124b1f23b5dc4bff7042a8f15948",
+      "bytes": 546
+    },
+    {
+      "declaredName": "price_change_seed_20260901.csv",
+      "sha256": "a480f90d9dd8d9d3eefaf9d206d94898a1184dc62f3e927041fcac7e2f6c6f1f",
+      "bytes": 7650
+    },
+    {
+      "declaredName": "statin_table2_only_list.csv",
+      "sha256": "b258acb48e68db096f74cb53abe89a96a6d2929701c7da89370484c00d2e8388",
+      "bytes": 7651
+    }
+  ],
+  "revoked": false
+}

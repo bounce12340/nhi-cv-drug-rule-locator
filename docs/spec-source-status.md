@@ -2,7 +2,9 @@
 
 ## Current truth
 
-The original **Master Project Prompt v3.2** was received on 2026-08-02 as an in-session upload from the project owner, together with four companion files. A fifth declared file (`statin_table2_only_list.csv`) was received the same day in a concurrent session of the same owner and is recorded below as a supplementary receipt under the same RDL-007 procedure. Receipt is recorded by content hash only; **none of the received payload has been committed to this repository**, and the files remain outside the repository tree.
+The original **Master Project Prompt v3.2** was received on 2026-08-02 as an in-session upload from the project owner, together with four companion files. A fifth declared file (`statin_table2_only_list.csv`) was received the same day in a concurrent session of the same owner and is recorded below as a supplementary receipt under the same RDL-007 procedure. Receipt is recorded by content hash only.
+
+**Payload location status (updated 2026-08-02):** the four structured CSVs entered governed storage `data/governed/nhi-lipid-2026-09-01-r1/` under the RA's `INTAKE-APPROVE nhi-lipid-2026-09-01-r1 01a4df7` (RDL-012), after the full Stage 1–3 path (provenance, dual-reviewed verification, interpretation ruling); their integrity is machine-verified against the storage manifest. **Every other received payload — the v3.2 prompt, the companion spec, and both attachment PDFs — remains outside the repository tree**, and any further entry requires its own `INTAKE-APPROVE`.
 
 | Received file (declared name) | SHA-256 | Bytes | Lines / records |
 | --- | --- | --- | --- |
@@ -49,6 +51,6 @@ Even when complete synthetic evidence is mechanically marked `VERIFIED`, the res
 
 ## Consequence
 
-Formal regulatory import and any production release remain **BLOCKED**. Receipt of the v3.2 prompt satisfies one precondition of the Phase 1 gate; it does not by itself approve intake, unblock RDL-005, or authorize committing any received content. See `docs/phase1-readiness.md` for the current gap analysis.
+Formal regulatory import and any production release remain **BLOCKED** under RDL-005, with exactly one narrow amendment on record: RDL-012 admits the four hash-locked structured CSVs into governed storage (no product wiring, no deployment). Rule texts, 表二, the announcement letter, and every other dataset or use remain blocked; each future entry requires its own per-dataset `INTAKE-APPROVE`. See `docs/phase1-readiness.md` for the current gap analysis.
 
 No implementation file may substitute memory, a web search, synthetic values or a partial summary for the missing sources.
