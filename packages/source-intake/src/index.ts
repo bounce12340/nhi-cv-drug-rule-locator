@@ -492,3 +492,18 @@ export type {
   OfficialSourceIntakeStatus,
   OfficialSourceProvenance
 } from "./official";
+
+export {
+  computeDatasetDigest,
+  GOVERNED_STORAGE_ROOT,
+  governedStoragePathForDatasetVersion,
+  isEligibleForUse,
+  STORAGE_MANIFEST_SCHEMA,
+  validateStorageManifest,
+  verifyStoredFileBytes
+} from "./storage";
+export type {
+  StorageApprovalRef,
+  StorageFileEntry,
+  StorageManifest
+} from "./storage";
