@@ -5,7 +5,7 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | # | §30 artifact | Status | Location / blocker |
 | --- | --- | --- | --- |
 | 1 | 專案 Scope 與 Non-goals | DONE | docs/scope-and-non-goals.md |
-| 2 | Regulatory Source Inventory | PARTIAL | docs/spec-source-status.md — receipt inventory by hash; origin channel, retrieval dates and custodian per file still missing |
+| 2 | Regulatory Source Inventory | PARTIAL | docs/spec-source-status.md — receipt inventory by hash; origin channel, retrieval dates and custodian per file still missing(補全程序已定義於 docs/phase1-intake-runbook.md Stage 1) |
 | 3 | CSV 與資料完整性報告 | PARTIAL | docs/phase1-readiness.md — counts/hash consistency only; field-level validation happens at governed intake, not before |
 | 4 | 法規及法律有效版本矩陣 | BLOCKED | Requires official texts and RA-designated effective-version confirmation |
 | 5 | 尚待 RA／法律／個資確認事項 | DONE (living list) | docs/phase1-readiness.md (P0 blockers) + docs/spec-source-status.md (missing sources) |
