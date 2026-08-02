@@ -19,13 +19,13 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 13 | Analytics／Logging Privacy ADR | PARTIAL | docs/privacy-data-inventory.md covers current no-PII posture; formal ADR TODO |
 | 14 | App Store／Google Play Compliance Matrix | TODO | — |
 | 15 | API Version Compatibility 與 Mobile Release Strategy | TODO | — |
-| 16 | GitHub Repository 與 Ruleset 設計 | PARTIAL | CONTRIBUTING.md + CI exist; branch-protection/ruleset formalization TODO |
+| 16 | GitHub Repository 與 Ruleset 設計 | PARTIAL | CONTRIBUTING.md + CI(六項檢查)exist;branch protection/rulesets、CODEOWNERS、docs/runbooks/、docs/acceptance/ 未建(v3.2 §21.2/§21.4;見 docs/v32-alignment-review.md #3/#4) |
 | 17 | Monorepo 與 Shared Contract 設計 | PARTIAL | docs/architecture.md; reconciliation with the v3.2 §17.9 suggested layout TODO |
-| 18 | Phase Branch Strategy | TODO | Reconcile v3.2 §21.3 (main / phase/* / agent/*) with current working-branch practice |
+| 18 | Phase Branch Strategy | DONE(R6 已裁決) | 規劃/治理期維持現行單分支逐 PR(核准之階段性偏離);實作期切換 v3.2 §21.3 三層模型(docs/v32-alignment-review.md #1);§24 Phase 編號對照表另待建(alignment #6) |
 | 19 | Milestones 及 Issues | TODO | — |
 | 20 | Subagent Task Contracts | DONE | docs/task-contract-template.md；首單 docs/task-contracts/TC-20260802-01.md |
 | 21 | Model Routing ADR | DONE | docs/adr/ADR-001-model-routing.md (requester consent 2026-08-02) |
-| 22 | Agent Execution Manifest 與 Attestation Schema | PARTIAL | ADR-001 lists required fields; machine-readable records started at `.github/attestations/` (`task-contract/v1`); formal JSON Schema file TODO |
+| 22 | Agent Execution Manifest 與 Attestation Schema | PARTIAL | `.github/attestations/`(task-contract/v1)運作中;自 TC-04 起補 `prompt_or_task_contract_hash` 欄位(v3.2 §21.5.4);`terra-pro-build-attestation`/`sol-pro-acceptance` Required Checks 與正式 JSON Schema TODO |
 | 23 | Requirement-to-Test Matrix | PARTIAL | docs/test-matrix.md covers demo-core invariants; v3.2-wide matrix TODO |
 | 24 | Cross-platform Feature Parity Matrix | TODO | — |
 | 25 | Web／iOS／Android Wireframes | TODO | — |
