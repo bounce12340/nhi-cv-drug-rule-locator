@@ -11,9 +11,9 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 5 | 尚待 RA／法律／個資確認事項 | DONE (living list) | docs/phase1-readiness.md (P0 blockers) + docs/spec-source-status.md (missing sources) |
 | 6 | Data Residency ADR | DONE | docs/adr/ADR-002-data-residency.md(PROPOSED;關鍵值待 RA/法務確認,Phase 2 前定案) |
 | 7 | Cloudflare Architecture ADR | DONE | docs/adr/ADR-003-cloudflare-architecture.md(基準核定;D1 production 採用待 §17.2 實測閘門) |
-| 8 | Cross-platform Mobile ADR | PARTIAL | Expo is the de-facto Phase 0 choice; formal ADR incl. alternatives comparison TODO |
+| 8 | Cross-platform Mobile ADR | DONE | docs/adr/ADR-008-cross-platform-mobile.md(PROPOSED;RN+Expo 優先候選,鎖定以 PoC 實機證據為條件) |
 | 9 | Mobile Framework PoC Report | BLOCKED | iOS/Android device or simulator runs are unavailable in this environment (no Xcode, no adb) |
-| 10 | Clinical Workflow／Human Factors Map | TODO | — |
+| 10 | Clinical Workflow／Human Factors Map | DONE | docs/clinical-workflow-map.md(設計基準;HF 驗證於 Phase 4/6 實機執行) |
 | 11 | Price Comparison Semantics ADR | DONE | docs/adr/ADR-005-price-comparison-semantics.md(語意定案;群組核定流程待資料到位) |
 | 12 | Authentication 與 Native Secure Storage ADR | DONE | docs/adr/ADR-006-auth-secure-storage.md(需求基準;實作參數 Phase 2 定案) |
 | 13 | Analytics／Logging Privacy ADR | DONE | docs/adr/ADR-004-analytics-logging-privacy.md(生效;保存期間數值 Phase 5 前定案) |
@@ -37,7 +37,7 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 31 | Data Retention Schedule 草稿 | TODO | — |
 | 32 | Database Schema、Search Index 與 Migration Plan | TODO | Structure-only drafts permitted; authoritative fields wait for governed intake (RDL-005) |
 | 33 | Drug Lookup／Price Comparison API Specification | TODO | Structure-only drafts permitted; same gate as #32 |
-| 34 | Backup／Restore／Web Rollback／Mobile Rollback Plan | TODO | — |
+| 34 | Backup／Restore／Web Rollback／Mobile Rollback Plan | DONE | docs/backup-restore-rollback-plan.md(藍圖;RPO/RTO 數值 Phase 5 前核定) |
 | 35 | Phase Acceptance Report Template | DONE | docs/acceptance/phase-acceptance-report-template.md(v3.2 §26 全欄位) |
 | 36 | Production Release Gate | BLOCKED | Production release itself is blocked by RDL-005 and later-phase reviews |
 
