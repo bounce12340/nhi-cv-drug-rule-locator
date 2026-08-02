@@ -24,3 +24,13 @@
 4. PASS 只對記錄的 head SHA 有效。任何新增 commit、amend、rebase 或其他 head SHA 變更，都會使先前驗收失效，必須重新執行驗收與必要 CI。
 5. 驗收為 FAIL 或 BLOCKED 時，不得合併。
 6. 對已符合前述條件的 commit，使用者預先授權代理提交 GitHub PR 並合併至 `main`，不需逐次再次確認；合併後必須回報產生的 merge commit SHA。
+
+## 派工與驗收作業（v2.0）
+
+1. 每次派工必須依 `docs/task-contract-template.md` 開立派工單（Task Contract），存於 `docs/task-contracts/`；未明文列入派工單的檔案與工作一律視為禁區。
+2. 建置者預設以 `--sandbox workspace-write`、網路關閉執行；不得改動治理面檔案（`.github/workflows/`、`CONTRIBUTING.md`、`docs/regulatory-decision-log.md`、`.claude/settings.json`、`.codex/config.toml`）——治理變更僅由派發方經 RA 流程處理；不得 force push。
+3. 驗收 SOP：re-fetch 鎖定 head SHA → 逐條核對驗收標準與範圍外改動 → 紅線掃描 → 五項 CI 與 `governance-scan` 全綠 → 產出 attestation → 結論 PASS／FAIL／BLOCKED。驗收方不得在同一驗收程序中修改受驗內容。
+4. RA 核准採固定語式「PASS <SHA 前 7 碼>」；未綁定 SHA 的核准視為未完成，須回問綁定。同一分支同一時間僅一個 active session 可寫入；驗收與合併前必須 re-fetch 再驗 head，發現非預期 commit 即停手重新驗收。
+5. 異常處理：同一派工單重派至多 2 次，仍敗即 BLOCKED 報 RA；驗收 FAIL 附逐條事由退回，修正後屬新 SHA 重新驗收；映射模型不可用即 BLOCKED，不得替換（ADR-001）。
+6. Effort 分級（RDL-010）：建置類固定 xhigh；非建置之純機械作業（無邏輯變更）可用 medium 以下，並在派工單記錄依據。
+7. Attestation：每次建置與驗收依模板第 12 節欄位記錄——PR 描述載人讀版，`.github/attestations/` 載機器可讀 JSON；驗收方之精確模型識別依 ADR-001 由 PR 連結的 session 執行紀錄保存。

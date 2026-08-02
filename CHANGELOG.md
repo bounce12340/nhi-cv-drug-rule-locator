@@ -10,6 +10,10 @@
 - 新增 `docs/phase1-readiness.md` Phase 1 準備度評估與決策日誌 RDL-007／RDL-008。
 - 記錄 RA 指定（RDL-009，專案負責人擔任）與需求方核准之 Model Routing ADR-001（Terra Pro ↦ Codex GPT-5.6 Sol xhigh 建置；Sol Pro ↦ Claude Fable 5 獨立驗收），RDL-008 隨之解除。
 - 新增 v3.2 §30 規劃產物：`docs/scope-and-non-goals.md` 與 `docs/v32-planning-tracker.md`（36 項規劃產物追蹤表）。
+- 新增標準派工單模板 `docs/task-contract-template.md`（§30 #20；首張派工單 TC-20260802-01 由 Codex GPT-5.6 Sol xhigh 建置），以及派工紀錄 `docs/task-contracts/` 與機器可讀 attestation `.github/attestations/`。
+- CONTRIBUTING 增補 v2.0 派工與驗收作業（派工單制、builder 沙箱與禁區、驗收 SOP、PASS 語式與併發防護、異常處理、RDL-010 effort 分級）。
+- CI 新增第六項 `governance-scan` 紅線掃描（`scripts/governance-scan.sh`）：自動攔查 PR 新增行中的健保代碼樣式、公告文號與非示範價格字樣，命中即紅燈供人工判讀。
+- 補記 RDL-010（effort 分級）與 RDL-011（Codex 認證儲存）；表二專用清單以 hash-only 補件收錄（吻合 v3.2 §6 宣告之 116 筆），Phase 1 資料缺口相應更新。
 
 ## [0.1.0] - 2026-08-01
 

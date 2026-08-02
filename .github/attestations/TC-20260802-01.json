@@ -1,0 +1,37 @@
+{
+  "attestation_schema": "task-contract/v1",
+  "task_id": "TC-20260802-01",
+  "task_contract": "docs/task-contracts/TC-20260802-01.md",
+  "repo": "bounce12340/nhi-cv-drug-rule-locator",
+  "branch": "claude/init-yd1kqu",
+  "records": [
+    {
+      "role": "builder",
+      "tier": "Terra Pro (v3.2 §21.5)",
+      "provider": "OpenAI",
+      "model_display_name": "Codex GPT-5.6 Sol",
+      "model_id": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "run_id": "codex-session-019fc09e-86de-79c2-9151-80f372868e20",
+      "head_sha": "329bd592041e2a0248c95a67c54cad6fe83cbd4c",
+      "started_at": "UNAVAILABLE (not emitted by codex exec output; traceable via the codex session id)",
+      "ended_at": "2026-08-02 (dispatcher session log; completion notification)",
+      "tokens_used": 48557,
+      "tool_permissions": "sandbox=workspace-write; network=off; allowed write path docs/task-contract-template.md only; no push",
+      "result": "PASS with one environmental deviation: self-check items 1/2/4 PASS and five CI checks exit 0; the commit step was BLOCKED by the Codex sandbox mounting .git read-only, so the dispatcher committed the unmodified output on the builder's behalf with authorship preserved (commit 329bd592041e2a0248c95a67c54cad6fe83cbd4c)"
+    },
+    {
+      "role": "dispatcher-acceptance (task-contract level)",
+      "tier": "Sol Pro (v3.2 §21.5)",
+      "provider": "Anthropic",
+      "model_display_name": "Claude Fable 5",
+      "model_id": "per ADR-001, the acceptance-side exact identifier is preserved in the session execution record linked below",
+      "run_id": "https://claude.ai/code/session_01QohqUPU5dYt5YV2ENrsQF7",
+      "head_sha": "329bd592041e2a0248c95a67c54cad6fe83cbd4c",
+      "started_at": "2026-08-02 (dispatcher session log)",
+      "ended_at": "2026-08-02 (dispatcher session log)",
+      "tool_permissions": "repository read/write on branch claude/init-yd1kqu; no self-acceptance of dispatcher-authored SHAs",
+      "result": "PASS at task-contract level: acceptance criteria 1-4 verified line-by-line against the delivered file; criterion 5 re-run scheduled with the repository-level checks. Repository-level acceptance of the PR head SHA remains with the RA because the PR mixes dispatcher-authored governance commits"
+    }
+  ]
+}
