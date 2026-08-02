@@ -29,6 +29,7 @@
 - §30 規劃產物第二批：ADR-002 Data Residency（PROPOSED）、ADR-003 Cloudflare Architecture（基準核定）、ADR-004 Analytics/Logging 隱私（生效）。
 - §30 規劃產物第三批：ADR-005 價格比較語意、ADR-006 Authentication 與 Native Secure Storage、ADR-007 API 相容與 Mobile Release 策略。
 - §30 規劃產物第四批：ADR-008 Cross-platform Mobile（PROPOSED，PoC 為鎖定條件）、臨床快速查詢流程圖、Backup/Restore/Rollback 計畫。
+- §30 規劃產物第五批：Processor Register 草稿、Data Retention Schedule 草稿、Monorepo 佈局對齊（現行佈局確認為 v3.2 §17.9 合法前綴）。
 
 ## [0.1.0] - 2026-08-01
 

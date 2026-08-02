@@ -20,7 +20,7 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 14 | App Store／Google Play Compliance Matrix | TODO | — |
 | 15 | API Version Compatibility 與 Mobile Release Strategy | DONE | docs/adr/ADR-007-api-compat-mobile-release.md(策略定案;數值 Phase 4 前定案) |
 | 16 | GitHub Repository 與 Ruleset 設計 | PARTIAL | CONTRIBUTING.md + CI(六項檢查)exist;branch protection/rulesets、CODEOWNERS、docs/runbooks/、docs/acceptance/ 未建(v3.2 §21.2/§21.4;見 docs/v32-alignment-review.md #3/#4) |
-| 17 | Monorepo 與 Shared Contract 設計 | PARTIAL | docs/architecture.md; reconciliation with the v3.2 §17.9 suggested layout TODO |
+| 17 | Monorepo 與 Shared Contract 設計 | DONE | docs/architecture.md + docs/monorepo-reconciliation.md(現行佈局為 §17.9 合法前綴;缺項對應各 Phase 建立) |
 | 18 | Phase Branch Strategy | DONE(R6 已裁決) | 規劃/治理期維持現行單分支逐 PR(核准之階段性偏離);實作期切換 v3.2 §21.3 三層模型(docs/v32-alignment-review.md #1);§24 Phase 編號對照表另待建(alignment #6) |
 | 19 | Milestones 及 Issues | TODO | — |
 | 20 | Subagent Task Contracts | DONE | docs/task-contract-template.md；首單 docs/task-contracts/TC-20260802-01.md |
@@ -33,8 +33,8 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 27 | Web、Native 與 TTFCA Performance Budget | DONE | docs/performance-budget.md(native 數值目標待 PoC 後訂定) |
 | 28 | Threat Model | PARTIAL | docs/threat-model.md covers Phase 0 surface; expand for auth/data phases |
 | 29 | Data Flow Diagram | DONE | docs/data-flow-diagram.md(現況+目標態;目標態節點標【待人工確認】) |
-| 30 | Processor Register 草稿 | TODO | — |
-| 31 | Data Retention Schedule 草稿 | TODO | — |
+| 30 | Processor Register 草稿 | DONE | docs/processor-register-draft.md(法律角色分類與審查狀態【待核】,Phase 2 前核定) |
+| 31 | Data Retention Schedule 草稿 | DONE | docs/data-retention-schedule-draft.md(期限數值【待核】;governed 資料集依 RDL-013 永久) |
 | 32 | Database Schema、Search Index 與 Migration Plan | TODO | Structure-only drafts permitted; authoritative fields wait for governed intake (RDL-005) |
 | 33 | Drug Lookup／Price Comparison API Specification | TODO | Structure-only drafts permitted; same gate as #32 |
 | 34 | Backup／Restore／Web Rollback／Mobile Rollback Plan | DONE | docs/backup-restore-rollback-plan.md(藍圖;RPO/RTO 數值 Phase 5 前核定) |
