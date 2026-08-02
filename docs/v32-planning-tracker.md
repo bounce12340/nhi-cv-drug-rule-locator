@@ -14,11 +14,11 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 8 | Cross-platform Mobile ADR | PARTIAL | Expo is the de-facto Phase 0 choice; formal ADR incl. alternatives comparison TODO |
 | 9 | Mobile Framework PoC Report | BLOCKED | iOS/Android device or simulator runs are unavailable in this environment (no Xcode, no adb) |
 | 10 | Clinical Workflow／Human Factors Map | TODO | — |
-| 11 | Price Comparison Semantics ADR | TODO | — |
-| 12 | Authentication 與 Native Secure Storage ADR | TODO | — |
+| 11 | Price Comparison Semantics ADR | DONE | docs/adr/ADR-005-price-comparison-semantics.md(語意定案;群組核定流程待資料到位) |
+| 12 | Authentication 與 Native Secure Storage ADR | DONE | docs/adr/ADR-006-auth-secure-storage.md(需求基準;實作參數 Phase 2 定案) |
 | 13 | Analytics／Logging Privacy ADR | DONE | docs/adr/ADR-004-analytics-logging-privacy.md(生效;保存期間數值 Phase 5 前定案) |
 | 14 | App Store／Google Play Compliance Matrix | TODO | — |
-| 15 | API Version Compatibility 與 Mobile Release Strategy | TODO | — |
+| 15 | API Version Compatibility 與 Mobile Release Strategy | DONE | docs/adr/ADR-007-api-compat-mobile-release.md(策略定案;數值 Phase 4 前定案) |
 | 16 | GitHub Repository 與 Ruleset 設計 | PARTIAL | CONTRIBUTING.md + CI(六項檢查)exist;branch protection/rulesets、CODEOWNERS、docs/runbooks/、docs/acceptance/ 未建(v3.2 §21.2/§21.4;見 docs/v32-alignment-review.md #3/#4) |
 | 17 | Monorepo 與 Shared Contract 設計 | PARTIAL | docs/architecture.md; reconciliation with the v3.2 §17.9 suggested layout TODO |
 | 18 | Phase Branch Strategy | DONE(R6 已裁決) | 規劃/治理期維持現行單分支逐 PR(核准之階段性偏離);實作期切換 v3.2 §21.3 三層模型(docs/v32-alignment-review.md #1);§24 Phase 編號對照表另待建(alignment #6) |
