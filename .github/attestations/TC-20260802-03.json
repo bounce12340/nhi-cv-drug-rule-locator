@@ -1,0 +1,37 @@
+{
+  "attestation_schema": "task-contract/v1",
+  "task_id": "TC-20260802-03",
+  "task_contract": "docs/task-contracts/TC-20260802-03.md",
+  "repo": "bounce12340/nhi-cv-drug-rule-locator",
+  "branch": "claude/init-yd1kqu",
+  "records": [
+    {
+      "role": "builder",
+      "tier": "Terra Pro (v3.2 §21.5)",
+      "provider": "OpenAI",
+      "model_display_name": "Codex GPT-5.6 Sol",
+      "model_id": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "run_id": "codex-session-019fc116-f812-79f0-97de-c38fcc87e91b",
+      "head_sha": "f0038d7 (builder commit, authorship preserved; committed by dispatcher due to read-only .git in builder sandbox)",
+      "started_at": "UNAVAILABLE (not emitted by codex exec output; traceable via session id)",
+      "ended_at": "2026-08-02 (dispatcher session log; completion notification)",
+      "tokens_used": 112076,
+      "tool_permissions": "sandbox=workspace-write; network=off; allowed paths per contract; no commit/push",
+      "result": "PASS with zero acceptance returns: 7/7 self-checked criteria met; 17 new tests (81 total); existing test files untouched; data/governed/ contains only the rules README, no payload"
+    },
+    {
+      "role": "dispatcher-acceptance (task-contract level)",
+      "tier": "Sol Pro (v3.2 §21.5)",
+      "provider": "Anthropic",
+      "model_display_name": "Claude Fable 5",
+      "model_id": "per ADR-001, the acceptance-side exact identifier is preserved in the session execution record linked below",
+      "run_id": "https://claude.ai/code/session_01QohqUPU5dYt5YV2ENrsQF7",
+      "head_sha": "f0038d7",
+      "started_at": "2026-08-02 (dispatcher session log)",
+      "ended_at": "2026-08-02 (dispatcher session log)",
+      "tool_permissions": "repository read/write on branch claude/init-yd1kqu; no self-acceptance of dispatcher-authored SHAs",
+      "result": "PASS at task-contract level after independent re-verification: scope diff limited to the six allowed files, empty diffs on existing test files, red-line scan clean, core-logic spot review (wording verification against dataset digest, deterministic sorted digest, revoked gating, path-traversal rejection), 81/81 tests, five CI checks and governance-scan green. Repository-level acceptance of the PR head SHA remains with the RA"
+    }
+  ]
+}

@@ -24,5 +24,10 @@
 | Type integrity | All packages typecheck after generated Worker types | `pnpm typecheck` |
 | Web artifact | Expo static web export completes | `pnpm export:web` |
 | Worker config | Generated types are current and deploy plan passes dry-run | `pnpm worker:types`, `pnpm worker:dry-run` |
+| Governed storage schema | Every `storage-manifest/v1` field and nested field is required, typed, normalized to frozen null-prototype records, and malformed input fails closed | `packages/source-intake/src/storage.test.ts` |
+| Governed storage approval | Approval wording exactly binds the dataset version and deterministic seven-character dataset-digest prefix; revoked or invalid manifests are ineligible | `packages/source-intake/src/storage.test.ts` |
+| Governed storage integrity | Dataset digests are filename-order deterministic and each stored file must match both its SHA-256 and byte length | `packages/source-intake/src/storage.test.ts` |
+| Governed storage path and isolation | Dataset directories reject traversal, and domain, contracts, API, and clinician package manifests cannot depend on `@nhi-cv/source-intake` | `packages/source-intake/src/storage.test.ts` |
+| Governed storage fixture safety | Storage fixtures are visibly fictional and exclude prohibited identifier shapes | `packages/source-intake/src/storage.test.ts` |
 
 iOS and Android simulator/device tests are not in this matrix because the local prerequisites are unavailable; see the build report.

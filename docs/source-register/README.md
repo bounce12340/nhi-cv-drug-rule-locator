@@ -6,9 +6,11 @@
 
 | 檔案 | 狀態 |
 | --- | --- |
-| master-project-prompt-v3.2 | PROVENANCE_INCOMPLETE(真實性未確認;提供者已表明將有更新版) |
+| master-project-prompt-v3.2 | PROVENANCE_DECLARED / AUTHENTICITY_CONFIRMED(RA 2026-08-02 裁示此版即權威版本) |
 | ezetimibe_3month_exception | PROVENANCE_DECLARED(待 Stage 3 驗證) |
 | ezetimibe_statin_combo_3month_exception | PROVENANCE_DECLARED(待 Stage 3 驗證) |
 | price_change_seed_20260901 | PROVENANCE_DECLARED(待 Stage 3 驗證) |
 | statin_table2_only_list | PROVENANCE_DECLARED(待 Stage 3 驗證) |
-| companion-spec-readme | PROVENANCE_DECLARED(附性質待釐清事項) |
+| companion-spec-readme | PROVENANCE_DECLARED(專案自撰文件,性質已釐清) |
+| attachment-1-price-change-detail(附件1 PDF) | PROVENANCE_DECLARED(2026-08-02 收件;Stage 3 比對基準) |
+| attachment-2-rule-revision-table(附件2 PDF) | PROVENANCE_DECLARED(2026-08-02 收件;Stage 3 比對基準) |
