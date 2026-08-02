@@ -37,7 +37,7 @@ All five files are official-looking material supplied mid-session. Under RDL-005
 3. The complete official text of 表一 — whether 附件2 (received 2026-08-02) contains it is to be confirmed during Stage 3 review.
 4. ~~The official announcement and attachments themselves as raw source documents~~ — the two attachment PDFs (附件1 異動明細表, 附件2 修訂對照表) were received 2026-08-02 (see table above); the announcement letter 本文 itself is still not received.
 5. Per-file provenance: origin channel, retrieval date and custodian for every received file.
-6. Requester confirmation that the received prompt bytes are the authentic v3.2 original — **on 2026-08-02 the owner stated the received v3.2 requires an update**; the received bytes are NOT confirmed as authoritative, and a superseding version will be re-received (new hash, new register entry) when supplied. See docs/source-register/master-project-prompt-v3.2.md.
+6. ~~Requester confirmation that the received prompt bytes are the authentic v3.2 original~~ — **CONFIRMED 2026-08-02**: the owner re-delivered byte-identical content to the dispatcher session (independent second delivery, hash MATCH) and ruled via structured in-session answer that this version IS the authoritative v3.2, withdrawing the earlier "requires an update" statement. See docs/source-register/master-project-prompt-v3.2.md.
 7. ~~A designated regulatory authority (RA)~~ — RA designated 2026-08-02 (RDL-009); an RA-approved interpretation procedure is still missing.
 8. Source ownership, update cadence and retention policy (phase-plan Phase 1 gate).
 

@@ -6,7 +6,7 @@
 
 | 檔案 | 狀態 |
 | --- | --- |
-| master-project-prompt-v3.2 | PROVENANCE_INCOMPLETE(真實性未確認;提供者已表明將有更新版) |
+| master-project-prompt-v3.2 | PROVENANCE_DECLARED / AUTHENTICITY_CONFIRMED(RA 2026-08-02 裁示此版即權威版本) |
 | ezetimibe_3month_exception | PROVENANCE_DECLARED(待 Stage 3 驗證) |
 | ezetimibe_statin_combo_3month_exception | PROVENANCE_DECLARED(待 Stage 3 驗證) |
 | price_change_seed_20260901 | PROVENANCE_DECLARED(待 Stage 3 驗證) |
