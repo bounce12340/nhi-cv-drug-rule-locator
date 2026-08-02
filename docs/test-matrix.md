@@ -29,5 +29,6 @@
 | Governed storage integrity | Dataset digests are filename-order deterministic and each stored file must match both its SHA-256 and byte length | `packages/source-intake/src/storage.test.ts` |
 | Governed storage path and isolation | Dataset directories reject traversal, and domain, contracts, API, and clinician package manifests cannot depend on `@nhi-cv/source-intake` | `packages/source-intake/src/storage.test.ts` |
 | Governed storage fixture safety | Storage fixtures are visibly fictional and exclude prohibited identifier shapes | `packages/source-intake/src/storage.test.ts` |
+| Governed repository storage | Every checked-in manifest, dataset directory, declared file hash and byte length, directory allowlist, and revoked eligibility state is verified; empty stores pass explicitly, while hash mismatches and extra files fail | `packages/source-intake/src/governed-store.test.ts` |
 
 iOS and Android simulator/device tests are not in this matrix because the local prerequisites are unavailable; see the build report.
