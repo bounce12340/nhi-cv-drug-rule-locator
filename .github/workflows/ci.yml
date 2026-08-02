@@ -42,3 +42,14 @@ jobs:
 
       - name: Dry-run Worker
         run: pnpm worker:dry-run
+
+  governance-scan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan added lines for governed-data red lines
+        run: bash scripts/governance-scan.sh "origin/${{ github.base_ref }}"

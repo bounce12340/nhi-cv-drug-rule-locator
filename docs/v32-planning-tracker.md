@@ -23,9 +23,9 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 17 | Monorepo 與 Shared Contract 設計 | PARTIAL | docs/architecture.md; reconciliation with the v3.2 §17.9 suggested layout TODO |
 | 18 | Phase Branch Strategy | TODO | Reconcile v3.2 §21.3 (main / phase/* / agent/*) with current working-branch practice |
 | 19 | Milestones 及 Issues | TODO | — |
-| 20 | Subagent Task Contracts | TODO | Template needed before first Phase 1 dispatch |
+| 20 | Subagent Task Contracts | DONE | docs/task-contract-template.md；首單 docs/task-contracts/TC-20260802-01.md |
 | 21 | Model Routing ADR | DONE | docs/adr/ADR-001-model-routing.md (requester consent 2026-08-02) |
-| 22 | Agent Execution Manifest 與 Attestation Schema | PARTIAL | ADR-001 lists required fields; machine-readable schema TODO |
+| 22 | Agent Execution Manifest 與 Attestation Schema | PARTIAL | ADR-001 lists required fields; machine-readable records started at `.github/attestations/` (`task-contract/v1`); formal JSON Schema file TODO |
 | 23 | Requirement-to-Test Matrix | PARTIAL | docs/test-matrix.md covers demo-core invariants; v3.2-wide matrix TODO |
 | 24 | Cross-platform Feature Parity Matrix | TODO | — |
 | 25 | Web／iOS／Android Wireframes | TODO | — |
