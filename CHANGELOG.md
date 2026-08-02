@@ -25,6 +25,7 @@
 - 新增 governed 儲存 CI 持續驗證測試（TC-20260802-05 由 Codex GPT-5.6 Sol 建置）：每次 CI 以 storage 模組機器驗證 data/governed/ 之 manifest、語式、逐檔雜湊與目錄純淨性。
 - 補記 RDL-013（governed 資料集保存政策：永久保留、只疊加不刪除；runbook §8/R4 定案）。
 - §30 規劃產物第一批（主模型撰寫，依 ADR-001）：#35 Phase Acceptance Report 模板、#27 效能預算（含 TTFCA）、#26 無障礙驗收標準、#29 資料流圖（現況＋目標態）。
+- 收件公告本文網頁擷取 PDF（hash-only；含主旨/發文字號標記），原始來源缺件 #4 結案；R7 確認 repo 自始 Private 結案。
 
 ## [0.1.0] - 2026-08-01
 

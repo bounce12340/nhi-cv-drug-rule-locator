@@ -16,6 +16,7 @@ The original **Master Project Prompt v3.2** was received on 2026-08-02 as an in-
 | `README.md` (companion software spec v1.0) | `7e86f6562175b64818b1f6c378d18aac7e7292254b87a8b2e9a869fd98b88d89` | 9,719 | 169 lines |
 | 附件1 PDF:全民健康保險藥品已收載項目異動明細表 (supplementary receipt 2026-08-02; upload filename transcoded, original filename to be declared) | `fafaae478dc8e188674c3585d65ef7d480c767fee8f5daa7b8b05458f6b6fe81` | 190,579 | 10 pages |
 | 附件2 PDF:「藥品給付規定」修訂對照表 第2節 心臟血管及腎臟藥物 (supplementary receipt 2026-08-02; upload filename transcoded, original filename to be declared) | `6389a5f654e0cb755d006f04ed47eca6ada9f867873f43c5088f79db6bb6c1c2` | 325,429 | 13 pages |
+| 公告本文網頁擷取 PDF (owner-saved capture of the announcement page, received 2026-08-02) | `792a05655c88b3a2f91a4ceeba6eccaad3bf64b049163222a4557764f7eb0422` | 74,827 | 1 page |
 
 Consistency observations (analysis only; no content imported):
 
@@ -37,7 +38,7 @@ All five files are official-looking material supplied mid-session. Under RDL-005
 1. ~~`statin_table2_only_list.csv` (declared 116 records in v3.2 §6)~~ — received 2026-08-02 as a supplementary receipt (see table above); like every received file it stays out of the repository pending governed intake.
 2. The complete official text of 表二 (the announcement reportedly prints 「以下略」) — whether 附件2 (received 2026-08-02) contains it is to be confirmed during Stage 3 review.
 3. The complete official text of 表一 — whether 附件2 (received 2026-08-02) contains it is to be confirmed during Stage 3 review.
-4. ~~The official announcement and attachments themselves as raw source documents~~ — the two attachment PDFs (附件1 異動明細表, 附件2 修訂對照表) were received 2026-08-02 (see table above). The announcement letter 本文 is webpage content rather than a standalone download (verified: neither attachment contains letter markers); per the RA's 2026-08-02 ruling the owner will supply a saved-as-PDF capture of the announcement page, to be hash-recorded on receipt.
+4. ~~The official announcement and attachments themselves as raw source documents~~ — **RESOLVED 2026-08-02**: both attachment PDFs and the owner-saved capture of the announcement webpage (verified to carry the letter markers 主旨/發文字號/依據) are hash-recorded (see table above). All raw source documents for this announcement are now in custody, out-of-repo pending any future per-dataset `INTAKE-APPROVE`.
 5. Per-file provenance: origin channel, retrieval date and custodian for every received file.
 6. ~~Requester confirmation that the received prompt bytes are the authentic v3.2 original~~ — **CONFIRMED 2026-08-02**: the owner re-delivered byte-identical content to the dispatcher session (independent second delivery, hash MATCH) and ruled via structured in-session answer that this version IS the authoritative v3.2, withdrawing the earlier "requires an update" statement. See docs/source-register/master-project-prompt-v3.2.md.
 7. ~~A designated regulatory authority (RA)~~ — RA designated 2026-08-02 (RDL-009); an RA-approved interpretation procedure is still missing.
