@@ -1,21 +1,26 @@
 import { createHash } from "node:crypto";
 import { types as utilTypes } from "node:util";
 
-/** The only schema accepted by this quarantine gate. */
-export const SOURCE_INTAKE_SCHEMA = "source-intake/v1" as const;
+/** The schema accepted only by the official-candidate quarantine gate. */
+export const OFFICIAL_SOURCE_INTAKE_SCHEMA = "source-intake/v2" as const;
 
-/** This package is deliberately restricted to invented test material. */
-export const SYNTHETIC_TEST_ONLY = "SYNTHETIC_TEST_ONLY" as const;
-export const QUARANTINED = "QUARANTINED" as const;
+/** Official-looking material remains only a candidate until governed intake completes. */
+export const OFFICIAL_CANDIDATE = "OFFICIAL_CANDIDATE" as const;
+const QUARANTINED = "QUARANTINED" as const;
 
-export type SourceIntakeStatus =
+export type OfficialSourceChannel =
+  | "OFFICIAL_WEBSITE"
+  | "OFFICIAL_DOCUMENT"
+  | "PHYSICAL_SCAN";
+
+export type OfficialSourceIntakeStatus =
   | "UNVERIFIED"
   | "PENDING_RA_REVIEW"
   | "VERIFIED"
   | "REJECTED";
 
-export type SourceIntakeReasonCode =
-  | "VERIFIED_SYNTHETIC_EVIDENCE"
+export type OfficialSourceIntakeReasonCode =
+  | "VERIFIED_OFFICIAL_EVIDENCE"
   | "MALFORMED_MANIFEST"
   | "MALFORMED_DIGEST"
   | "MALFORMED_BYTES"
@@ -25,68 +30,104 @@ export type SourceIntakeReasonCode =
   | "MISSING_RA_APPROVAL"
   | "RA_REJECTED";
 
-export interface SourceRetrievalMetadata {
-  readonly method: "SYNTHETIC_FIXTURE" | "SYNTHETIC_GENERATED";
+/** Stage 1 source-register fields carried by an official-candidate manifest. */
+export interface OfficialSourceProvenance {
+  readonly sourceChannel: OfficialSourceChannel;
+  readonly sourceChannelRef: string;
+  readonly announcementRef: string;
+  readonly effectiveDate: string;
   readonly retrievedAt: string;
   readonly retrievedBy: string;
+  readonly custodian: string;
+  readonly integrityStatement: string;
 }
 
-export interface SourceProvenance {
-  readonly sourceReference: string;
-  readonly retrieval: SourceRetrievalMetadata;
-}
-
-export interface RaEvidence {
-  readonly decision: "APPROVED" | "REJECTED";
+interface OfficialRaEvidenceBase {
   readonly reviewerId: string;
   readonly reviewedAt: string;
   readonly evidenceReference: string;
 }
 
+export interface OfficialApprovedRaEvidence extends OfficialRaEvidenceBase {
+  readonly decision: "APPROVED";
+  readonly approvalWording: string;
+}
+
+export interface OfficialRejectedRaEvidence extends OfficialRaEvidenceBase {
+  readonly decision: "REJECTED";
+  readonly approvalWording?: string;
+}
+
+export type OfficialRaEvidence = OfficialApprovedRaEvidence | OfficialRejectedRaEvidence;
+
 /**
- * No business data is accepted here: only a declared digest and synthetic-only
- * provenance needed to decide whether the bytes must stay quarantined.
+ * The gate accepts metadata plus separately supplied bytes. It never includes
+ * those bytes, decoded content, or other payload in an outcome.
  */
-export interface SourceIntakeManifest {
-  readonly schema: typeof SOURCE_INTAKE_SCHEMA;
-  readonly classification: typeof SYNTHETIC_TEST_ONLY;
+export interface OfficialSourceIntakeManifest {
+  readonly schema: typeof OFFICIAL_SOURCE_INTAKE_SCHEMA;
+  readonly classification: typeof OFFICIAL_CANDIDATE;
+  readonly datasetVersion: string;
   readonly declaredSha256: string;
   readonly authorityId: string;
-  readonly provenance: SourceProvenance;
-  readonly raEvidence?: RaEvidence;
+  readonly provenance: OfficialSourceProvenance;
+  readonly raEvidence?: OfficialRaEvidence;
 }
 
-/** Callers must explicitly supply every authority accepted for a test. */
-export interface SyntheticTestAuthority {
+/** Official authorities are classification-bound and must be injected explicitly. */
+export interface OfficialCandidateAuthority {
   readonly id: string;
-  readonly classification: typeof SYNTHETIC_TEST_ONLY;
+  readonly classification: typeof OFFICIAL_CANDIDATE;
 }
 
-export interface SourceIntakeOptions {
-  readonly authorityRegistry?: readonly SyntheticTestAuthority[];
+export interface OfficialSourceIntakeOptions {
+  readonly authorityRegistry?: readonly OfficialCandidateAuthority[];
 }
 
 /**
- * An intake result intentionally has no manifest, bytes, decoded content, or
- * other payload field. Verified means evidence was complete, never releasable.
+ * Eligibility means only that governed storage may accept this version. It
+ * never grants publishing, payload release, or downstream use.
  */
-export interface SourceIntakeOutcome {
-  readonly status: SourceIntakeStatus;
-  readonly reasonCode: SourceIntakeReasonCode;
+export interface OfficialSourceIntakeOutcome {
+  readonly status: OfficialSourceIntakeStatus;
+  readonly reasonCode: OfficialSourceIntakeReasonCode;
   readonly disposition: typeof QUARANTINED;
   readonly publishable: false;
   readonly payloadReleased: false;
   readonly downstreamUseAllowed: false;
+  readonly governedStorageEligible: boolean;
 }
 
-/** The default accepts no authority; production authorities cannot be preloaded. */
-export const DEFAULT_AUTHORITY_REGISTRY: readonly SyntheticTestAuthority[] = Object.freeze([]);
+/** The official-candidate channel trusts no authority by default. */
+export const DEFAULT_OFFICIAL_AUTHORITY_REGISTRY: readonly OfficialCandidateAuthority[] = Object.freeze([]);
 
 const SHA256_HEX = /^[a-f0-9]{64}$/;
-const MANIFEST_KEYS = new Set(["schema", "classification", "declaredSha256", "authorityId", "provenance", "raEvidence"]);
-const PROVENANCE_KEYS = new Set(["sourceReference", "retrieval"]);
-const RETRIEVAL_KEYS = new Set(["method", "retrievedAt", "retrievedBy"]);
-const RA_EVIDENCE_KEYS = new Set(["decision", "reviewerId", "reviewedAt", "evidenceReference"]);
+const MANIFEST_KEYS = new Set([
+  "schema",
+  "classification",
+  "datasetVersion",
+  "declaredSha256",
+  "authorityId",
+  "provenance",
+  "raEvidence"
+]);
+const PROVENANCE_KEYS = new Set([
+  "sourceChannel",
+  "sourceChannelRef",
+  "announcementRef",
+  "effectiveDate",
+  "retrievedAt",
+  "retrievedBy",
+  "custodian",
+  "integrityStatement"
+]);
+const RA_EVIDENCE_KEYS = new Set([
+  "decision",
+  "reviewerId",
+  "reviewedAt",
+  "evidenceReference",
+  "approvalWording"
+]);
 const OPTIONS_KEYS = new Set(["authorityRegistry"]);
 const AUTHORITY_KEYS = new Set(["id", "classification"]);
 
@@ -103,28 +144,23 @@ type SemanticDecodeResult<T> =
   | { readonly kind: "malformed" };
 
 type ManifestDecodeResult =
-  | { readonly kind: "ok"; readonly manifest: SourceIntakeManifest }
-  | { readonly kind: "outcome"; readonly outcome: SourceIntakeOutcome };
+  | { readonly kind: "ok"; readonly manifest: OfficialSourceIntakeManifest }
+  | { readonly kind: "outcome"; readonly outcome: OfficialSourceIntakeOutcome };
 
 type AuthorityResolution =
   | { readonly kind: "recognized" }
   | { readonly kind: "unknown" }
   | { readonly kind: "malformed" };
 
-/** Computes a SHA-256 from the original bytes, not text decoded from those bytes. */
-export function sha256Of(bytes: Uint8Array): string {
-  return createHash("sha256").update(bytes).digest("hex");
-}
-
 /**
- * Performs a Node-only, fail-closed evidence check. It never returns input
- * bytes or content, and never grants publishing or downstream use.
+ * Performs a Node-only, fail-closed check for the v2 channel. The result never
+ * releases the supplied bytes, including when governed storage is eligible.
  */
-export function evaluateSourceIntake(
+export function evaluateOfficialSourceIntake(
   manifestInput: unknown,
   rawBytes: Uint8Array,
-  options: SourceIntakeOptions = {}
-): SourceIntakeOutcome {
+  options: OfficialSourceIntakeOptions = {}
+): OfficialSourceIntakeOutcome {
   const manifestCheck = decodeManifest(manifestInput);
   if (manifestCheck.kind === "outcome") return manifestCheck.outcome;
 
@@ -134,7 +170,7 @@ export function evaluateSourceIntake(
 
   let actualDigest: string;
   try {
-    actualDigest = sha256Of(rawBytes);
+    actualDigest = createHash("sha256").update(rawBytes).digest("hex");
   } catch {
     return outcome("REJECTED", "MALFORMED_BYTES");
   }
@@ -156,17 +192,17 @@ export function evaluateSourceIntake(
     return outcome("REJECTED", "RA_REJECTED");
   }
 
-  if (!isCompleteRaApproval(manifest.raEvidence)) {
+  if (!hasExactApprovalWording(manifest)) {
     return outcome("PENDING_RA_REVIEW", "MISSING_RA_APPROVAL");
   }
 
-  return outcome("VERIFIED", "VERIFIED_SYNTHETIC_EVIDENCE");
+  return outcome("VERIFIED", "VERIFIED_OFFICIAL_EVIDENCE", true);
 }
 
 function decodeManifest(input: unknown): ManifestDecodeResult {
   const decoded = decodePlainDataObject(
     input,
-    ["schema", "classification", "declaredSha256", "authorityId", "provenance"],
+    ["schema", "classification", "datasetVersion", "declaredSha256", "authorityId", "provenance"],
     ["raEvidence"],
     MANIFEST_KEYS
   );
@@ -188,8 +224,9 @@ function decodeManifest(input: unknown): ManifestDecodeResult {
 
   const manifest = decoded.value;
   if (
-    manifest.schema !== SOURCE_INTAKE_SCHEMA ||
-    manifest.classification !== SYNTHETIC_TEST_ONLY ||
+    manifest.schema !== OFFICIAL_SOURCE_INTAKE_SCHEMA ||
+    manifest.classification !== OFFICIAL_CANDIDATE ||
+    !isBoundedNonEmptyString(manifest.datasetVersion) ||
     !isBoundedNonEmptyString(manifest.authorityId)
   ) {
     return { kind: "outcome", outcome: outcome("REJECTED", "MALFORMED_MANIFEST") };
@@ -206,7 +243,7 @@ function decodeManifest(input: unknown): ManifestDecodeResult {
     return { kind: "outcome", outcome: outcome("UNVERIFIED", "MISSING_PROVENANCE") };
   }
 
-  let raEvidence: RaEvidence | undefined;
+  let raEvidence: OfficialRaEvidence | undefined;
   if (Object.hasOwn(manifest, "raEvidence")) {
     const ra = decodeRaEvidence(manifest.raEvidence);
     if (ra.kind === "malformed") {
@@ -220,9 +257,10 @@ function decodeManifest(input: unknown): ManifestDecodeResult {
 
   return {
     kind: "ok",
-    manifest: createFrozenNullPrototype<SourceIntakeManifest>([
-      ["schema", SOURCE_INTAKE_SCHEMA],
-      ["classification", SYNTHETIC_TEST_ONLY],
+    manifest: createFrozenNullPrototype<OfficialSourceIntakeManifest>([
+      ["schema", OFFICIAL_SOURCE_INTAKE_SCHEMA],
+      ["classification", OFFICIAL_CANDIDATE],
+      ["datasetVersion", manifest.datasetVersion],
       ["declaredSha256", manifest.declaredSha256],
       ["authorityId", manifest.authorityId],
       ["provenance", provenance.value],
@@ -231,87 +269,96 @@ function decodeManifest(input: unknown): ManifestDecodeResult {
   };
 }
 
-function decodeProvenance(input: unknown): SemanticDecodeResult<SourceProvenance> {
+function decodeProvenance(input: unknown): SemanticDecodeResult<OfficialSourceProvenance> {
   if (typeof input !== "object" || input === null) return { kind: "invalid" };
   if (isRejectedProxy(input)) return { kind: "malformed" };
   if (Array.isArray(input)) return { kind: "invalid" };
-  const decoded = decodePlainDataObject(input, ["sourceReference", "retrieval"], [], PROVENANCE_KEYS);
+  const decoded = decodePlainDataObject(
+    input,
+    [
+      "sourceChannel",
+      "sourceChannelRef",
+      "announcementRef",
+      "effectiveDate",
+      "retrievedAt",
+      "retrievedBy",
+      "custodian",
+      "integrityStatement"
+    ],
+    [],
+    PROVENANCE_KEYS
+  );
   if (decoded.kind === "malformed") return { kind: "malformed" };
   if (decoded.kind === "missing-required") return { kind: "invalid" };
 
-  const retrieval = decodeRetrieval(decoded.value.retrieval);
-  if (retrieval.kind !== "ok") return retrieval;
-  if (!isBoundedNonEmptyString(decoded.value.sourceReference) || !decoded.value.sourceReference.startsWith("synthetic://")) {
-    return { kind: "invalid" };
-  }
-
-  return {
-    kind: "ok",
-    value: createFrozenNullPrototype<SourceProvenance>([
-      ["sourceReference", decoded.value.sourceReference],
-      ["retrieval", retrieval.value]
-    ])
-  };
-}
-
-function decodeRetrieval(input: unknown): SemanticDecodeResult<SourceRetrievalMetadata> {
-  if (typeof input !== "object" || input === null) return { kind: "invalid" };
-  if (isRejectedProxy(input)) return { kind: "malformed" };
-  if (Array.isArray(input)) return { kind: "invalid" };
-  const decoded = decodePlainDataObject(input, ["method", "retrievedAt", "retrievedBy"], [], RETRIEVAL_KEYS);
-  if (decoded.kind === "malformed") return { kind: "malformed" };
-  if (decoded.kind === "missing-required") return { kind: "invalid" };
-
+  const provenance = decoded.value;
   if (
-    (decoded.value.method !== "SYNTHETIC_FIXTURE" && decoded.value.method !== "SYNTHETIC_GENERATED") ||
-    !isIsoTimestamp(decoded.value.retrievedAt) ||
-    !isBoundedNonEmptyString(decoded.value.retrievedBy)
+    !isOfficialSourceChannel(provenance.sourceChannel) ||
+    !isBoundedNonEmptyString(provenance.sourceChannelRef) ||
+    !isBoundedNonEmptyString(provenance.announcementRef) ||
+    !isIsoDate(provenance.effectiveDate) ||
+    !isIsoTimestamp(provenance.retrievedAt) ||
+    !isBoundedNonEmptyString(provenance.retrievedBy) ||
+    !isBoundedNonEmptyString(provenance.custodian) ||
+    !isBoundedNonEmptyString(provenance.integrityStatement)
   ) {
     return { kind: "invalid" };
   }
 
   return {
     kind: "ok",
-    value: createFrozenNullPrototype<SourceRetrievalMetadata>([
-      ["method", decoded.value.method],
-      ["retrievedAt", decoded.value.retrievedAt],
-      ["retrievedBy", decoded.value.retrievedBy]
+    value: createFrozenNullPrototype<OfficialSourceProvenance>([
+      ["sourceChannel", provenance.sourceChannel],
+      ["sourceChannelRef", provenance.sourceChannelRef],
+      ["announcementRef", provenance.announcementRef],
+      ["effectiveDate", provenance.effectiveDate],
+      ["retrievedAt", provenance.retrievedAt],
+      ["retrievedBy", provenance.retrievedBy],
+      ["custodian", provenance.custodian],
+      ["integrityStatement", provenance.integrityStatement]
     ])
   };
 }
 
-function decodeRaEvidence(input: unknown): SemanticDecodeResult<RaEvidence> {
+function decodeRaEvidence(input: unknown): SemanticDecodeResult<OfficialRaEvidence> {
   if (typeof input !== "object" || input === null) return { kind: "invalid" };
   if (isRejectedProxy(input)) return { kind: "malformed" };
   if (Array.isArray(input)) return { kind: "invalid" };
-  const decoded = decodePlainDataObject(input, ["decision", "reviewerId", "reviewedAt", "evidenceReference"], [], RA_EVIDENCE_KEYS);
+  const decoded = decodePlainDataObject(
+    input,
+    ["decision", "reviewerId", "reviewedAt", "evidenceReference"],
+    ["approvalWording"],
+    RA_EVIDENCE_KEYS
+  );
   if (decoded.kind === "malformed") return { kind: "malformed" };
   if (decoded.kind === "missing-required") return { kind: "invalid" };
 
+  const raEvidence = decoded.value;
   if (
-    (decoded.value.decision !== "APPROVED" && decoded.value.decision !== "REJECTED") ||
-    !isBoundedNonEmptyString(decoded.value.reviewerId) ||
-    !isIsoTimestamp(decoded.value.reviewedAt) ||
-    !isBoundedNonEmptyString(decoded.value.evidenceReference)
+    (raEvidence.decision !== "APPROVED" && raEvidence.decision !== "REJECTED") ||
+    !isBoundedNonEmptyString(raEvidence.reviewerId) ||
+    !isIsoTimestamp(raEvidence.reviewedAt) ||
+    !isBoundedNonEmptyString(raEvidence.evidenceReference) ||
+    (Object.hasOwn(raEvidence, "approvalWording") && !isBoundedNonEmptyString(raEvidence.approvalWording))
   ) {
     return { kind: "invalid" };
   }
 
   return {
     kind: "ok",
-    value: createFrozenNullPrototype<RaEvidence>([
-      ["decision", decoded.value.decision],
-      ["reviewerId", decoded.value.reviewerId],
-      ["reviewedAt", decoded.value.reviewedAt],
-      ["evidenceReference", decoded.value.evidenceReference]
+    value: createFrozenNullPrototype<OfficialRaEvidence>([
+      ["decision", raEvidence.decision],
+      ["reviewerId", raEvidence.reviewerId],
+      ["reviewedAt", raEvidence.reviewedAt],
+      ["evidenceReference", raEvidence.evidenceReference],
+      ...(Object.hasOwn(raEvidence, "approvalWording")
+        ? [["approvalWording", raEvidence.approvalWording] as const]
+        : [])
     ])
   };
 }
 
-function resolveAuthority(
-  options: SourceIntakeOptions,
-  authorityId: string
-): AuthorityResolution {
+function resolveAuthority(options: OfficialSourceIntakeOptions, authorityId: string): AuthorityResolution {
   const decodedOptions = decodePlainDataObject(options, [], ["authorityRegistry"], OPTIONS_KEYS);
   if (decodedOptions.kind !== "ok") return { kind: "malformed" };
   if (!Object.hasOwn(decodedOptions.value, "authorityRegistry")) return { kind: "unknown" };
@@ -330,7 +377,7 @@ function resolveAuthority(
     }
     if (
       !isBoundedNonEmptyString(decodedAuthority.value.id) ||
-      decodedAuthority.value.classification !== SYNTHETIC_TEST_ONLY
+      decodedAuthority.value.classification !== OFFICIAL_CANDIDATE
     ) {
       hasSemanticInvalidEntry = true;
       continue;
@@ -343,23 +390,58 @@ function resolveAuthority(
   return foundAuthority ? { kind: "recognized" } : { kind: "unknown" };
 }
 
-function isCompleteRaApproval(input: RaEvidence | undefined): boolean {
-  return input?.decision === "APPROVED";
+function hasExactApprovalWording(manifest: OfficialSourceIntakeManifest): boolean {
+  const evidence = manifest.raEvidence;
+  if (evidence?.decision !== "APPROVED") return false;
+  const expected = `INTAKE-APPROVE ${manifest.datasetVersion} ${manifest.declaredSha256.slice(0, 7)}`;
+  return evidence.approvalWording === expected;
 }
 
-/** Builds all post-validation semantic objects without inheriting Object.prototype. */
+function isOfficialSourceChannel(value: unknown): value is OfficialSourceChannel {
+  return value === "OFFICIAL_WEBSITE" || value === "OFFICIAL_DOCUMENT" || value === "PHYSICAL_SCAN";
+}
+
+function isIsoDate(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function isIsoTimestamp(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false;
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === value;
+}
+
+function isBoundedNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0 && value.length <= 512;
+}
+
+function isSafeUint8Array(value: unknown): value is Uint8Array {
+  if (typeof value !== "object" || value === null || isRejectedProxy(value)) return false;
+  try {
+    return value instanceof Uint8Array;
+  } catch {
+    return false;
+  }
+}
+
+function isRejectedProxy(value: object): boolean {
+  try {
+    return utilTypes.isProxy(value);
+  } catch {
+    return true;
+  }
+}
+
+/** Builds post-validation semantic objects without inheriting Object.prototype. */
 function createFrozenNullPrototype<T extends object>(entries: readonly (readonly [string, unknown])[]): T {
   const normalized = Object.create(null) as Record<string, unknown>;
-  for (const [key, value] of entries) {
-    normalized[key] = value;
-  }
+  for (const [key, value] of entries) normalized[key] = value;
   return Object.freeze(normalized) as unknown as T;
 }
 
-/**
- * Reads only own enumerable data descriptors and copies their values into a
- * null-prototype record. No caller-owned object is read after this succeeds.
- */
+/** Copies only own enumerable data descriptors and never executes accessors. */
 function decodePlainDataObject(
   input: unknown,
   requiredKeys: readonly string[],
@@ -397,7 +479,7 @@ function decodePlainDataObject(
   }
 }
 
-/** Arrays are copied descriptor-by-descriptor so registry getters and holes cannot be observed. */
+/** Copies registry arrays descriptor-by-descriptor, rejecting holes and getters. */
 function decodeDataArray(input: unknown): readonly unknown[] | undefined {
   if (typeof input !== "object" || input === null || isRejectedProxy(input) || !Array.isArray(input)) return undefined;
 
@@ -435,60 +517,18 @@ function decodeDataArray(input: unknown): readonly unknown[] | undefined {
   }
 }
 
-function isSafeUint8Array(value: unknown): value is Uint8Array {
-  if (typeof value !== "object" || value === null || isRejectedProxy(value)) return false;
-  try {
-    return value instanceof Uint8Array;
-  } catch {
-    return false;
-  }
-}
-
-function isRejectedProxy(value: object): boolean {
-  try {
-    return utilTypes.isProxy(value);
-  } catch {
-    return true;
-  }
-}
-
-function isBoundedNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0 && value.length <= 512;
-}
-
-function isIsoTimestamp(value: unknown): value is string {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false;
-  const parsed = new Date(value);
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === value;
-}
-
-function outcome(status: SourceIntakeStatus, reasonCode: SourceIntakeReasonCode): SourceIntakeOutcome {
-  return createFrozenNullPrototype<SourceIntakeOutcome>([
+function outcome(
+  status: OfficialSourceIntakeStatus,
+  reasonCode: OfficialSourceIntakeReasonCode,
+  governedStorageEligible = false
+): OfficialSourceIntakeOutcome {
+  return createFrozenNullPrototype<OfficialSourceIntakeOutcome>([
     ["status", status],
     ["reasonCode", reasonCode],
     ["disposition", QUARANTINED],
     ["publishable", false],
     ["payloadReleased", false],
-    ["downstreamUseAllowed", false]
+    ["downstreamUseAllowed", false],
+    ["governedStorageEligible", governedStorageEligible]
   ]);
 }
-
-export {
-  DEFAULT_OFFICIAL_AUTHORITY_REGISTRY,
-  evaluateOfficialSourceIntake,
-  OFFICIAL_CANDIDATE,
-  OFFICIAL_SOURCE_INTAKE_SCHEMA
-} from "./official";
-export type {
-  OfficialApprovedRaEvidence,
-  OfficialCandidateAuthority,
-  OfficialRaEvidence,
-  OfficialRejectedRaEvidence,
-  OfficialSourceChannel,
-  OfficialSourceIntakeManifest,
-  OfficialSourceIntakeOptions,
-  OfficialSourceIntakeOutcome,
-  OfficialSourceIntakeReasonCode,
-  OfficialSourceIntakeStatus,
-  OfficialSourceProvenance
-} from "./official";

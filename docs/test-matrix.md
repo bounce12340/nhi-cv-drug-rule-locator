@@ -16,6 +16,11 @@
 | Synthetic RA state | Missing approval remains pending and an explicit rejection is rejected | `packages/source-intake/src/index.test.ts` |
 | Synthetic quarantine | Every outcome is quarantined, non-publishable and contains no released payload or content | `packages/source-intake/src/index.test.ts` |
 | Synthetic fixture safety | Fixtures exclude real drug-code, price, patient and official-authority identifiers | `packages/source-intake/src/index.test.ts` |
+| Official schema and provenance | Schema v2 accepts only `OFFICIAL_CANDIDATE`; every Stage 1 provenance field is required and all three official source channels are covered | `packages/source-intake/src/official.test.ts` |
+| Official authority isolation | The official registry defaults empty, requires explicit injection, and rejects cross-classification authorities and manifests in both directions | `packages/source-intake/src/official.test.ts` |
+| Official RA approval wording | Approval is exact-match bound to dataset version and SHA-256 prefix; wrong version, digest, format, or missing wording remains pending | `packages/source-intake/src/official.test.ts` |
+| Official quarantine and governed-storage eligibility | Every outcome remains quarantined and non-releasable; only verified evidence with exact approval wording is governed-storage eligible | `packages/source-intake/src/official.test.ts` |
+| Official negative and fixture safety | Hash mismatch, provenance gaps, unknown authority, RA rejection, malformed inputs, and prohibited fixture patterns fail closed | `packages/source-intake/src/official.test.ts` |
 | Type integrity | All packages typecheck after generated Worker types | `pnpm typecheck` |
 | Web artifact | Expo static web export completes | `pnpm export:web` |
 | Worker config | Generated types are current and deploy plan passes dry-run | `pnpm worker:types`, `pnpm worker:dry-run` |
