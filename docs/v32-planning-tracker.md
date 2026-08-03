@@ -25,13 +25,13 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 19 | Milestones 及 Issues | DONE | docs/milestones-and-issues.md(M0–M5 結構+Labels/Issue 規則;GitHub 實際建立為合併後執行動作,建立後回寫連結) |
 | 20 | Subagent Task Contracts | DONE | docs/task-contract-template.md；首單 docs/task-contracts/TC-20260802-01.md |
 | 21 | Model Routing ADR | DONE | docs/adr/ADR-001-model-routing.md (requester consent 2026-08-02) |
-| 22 | Agent Execution Manifest 與 Attestation Schema | PARTIAL | `.github/attestations/`(task-contract/v1)運作中;自 TC-04 起補 `prompt_or_task_contract_hash` 欄位(v3.2 §21.5.4);`terra-pro-build-attestation`/`sol-pro-acceptance` Required Checks 與正式 JSON Schema TODO |
-| 23 | Requirement-to-Test Matrix | PARTIAL | docs/test-matrix.md covers demo-core invariants; v3.2-wide matrix TODO |
+| 22 | Agent Execution Manifest 與 Attestation Schema | DONE | docs/schemas/task-contract-attestation.v1.schema.json + docs/attestation-schema.md(祖父條款 TC-01–03/terra-pro-build;CI 機器驗證待派工;Required Checks 歸 #16 執行域) |
+| 23 | Requirement-to-Test Matrix | DONE (living) | docs/r2t-matrix.md(v3.2 全域 A–E 區,COVERED/PROCESS/PLANNED/GATED)+docs/test-matrix.md(示範核心細目);PLANNED 到期未建測=milestone 不得關閉 |
 | 24 | Cross-platform Feature Parity Matrix | DONE | docs/feature-parity-matrix.md(I/E/D 分級;實機 parity 證據俟 PoC/Phase 4) |
 | 25 | Web／iOS／Android Wireframes | DONE | docs/wireframes.md(低擬真文字版;文案【待核】;W5/W6 為後續 Phase 佔位) |
 | 26 | WCAG 2.2 AA 與 Native Accessibility 驗收標準 | DONE | docs/accessibility-criteria.md(工具選型待確認) |
 | 27 | Web、Native 與 TTFCA Performance Budget | DONE | docs/performance-budget.md(native 數值目標待 PoC 後訂定) |
-| 28 | Threat Model | PARTIAL | docs/threat-model.md covers Phase 0 surface; expand for auth/data phases |
+| 28 | Threat Model | DONE (living) | docs/threat-model.md 擴充:Phase 1+ 現況面(governed 資料、attestation 鏈、憑證)+Phase 2/3 目標態;Phase 2 進入閘門=正式 STRIDE review |
 | 29 | Data Flow Diagram | DONE | docs/data-flow-diagram.md(現況+目標態;目標態節點標【待人工確認】) |
 | 30 | Processor Register 草稿 | DONE | docs/processor-register-draft.md(法律角色分類與審查狀態【待核】,Phase 2 前核定) |
 | 31 | Data Retention Schedule 草稿 | DONE | docs/data-retention-schedule-draft.md(期限數值【待核】;governed 資料集依 RDL-013 永久) |
