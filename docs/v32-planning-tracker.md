@@ -22,7 +22,7 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 16 | GitHub Repository 與 Ruleset 設計 | PARTIAL | CONTRIBUTING.md + CI(六項檢查)exist;branch protection/rulesets、CODEOWNERS、docs/runbooks/、docs/acceptance/ 未建(v3.2 §21.2/§21.4;見 docs/v32-alignment-review.md #3/#4) |
 | 17 | Monorepo 與 Shared Contract 設計 | DONE | docs/architecture.md + docs/monorepo-reconciliation.md(現行佈局為 §17.9 合法前綴;缺項對應各 Phase 建立) |
 | 18 | Phase Branch Strategy | DONE(R6 已裁決) | 規劃/治理期維持現行單分支逐 PR(核准之階段性偏離);實作期切換 v3.2 §21.3 三層模型(docs/v32-alignment-review.md #1);§24 Phase 編號對照表另待建(alignment #6) |
-| 19 | Milestones 及 Issues | TODO | — |
+| 19 | Milestones 及 Issues | DONE | docs/milestones-and-issues.md(M0–M5 結構+Labels/Issue 規則;GitHub 實際建立為合併後執行動作,建立後回寫連結) |
 | 20 | Subagent Task Contracts | DONE | docs/task-contract-template.md；首單 docs/task-contracts/TC-20260802-01.md |
 | 21 | Model Routing ADR | DONE | docs/adr/ADR-001-model-routing.md (requester consent 2026-08-02) |
 | 22 | Agent Execution Manifest 與 Attestation Schema | PARTIAL | `.github/attestations/`(task-contract/v1)運作中;自 TC-04 起補 `prompt_or_task_contract_hash` 欄位(v3.2 §21.5.4);`terra-pro-build-attestation`/`sol-pro-acceptance` Required Checks 與正式 JSON Schema TODO |
@@ -35,8 +35,8 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 29 | Data Flow Diagram | DONE | docs/data-flow-diagram.md(現況+目標態;目標態節點標【待人工確認】) |
 | 30 | Processor Register 草稿 | DONE | docs/processor-register-draft.md(法律角色分類與審查狀態【待核】,Phase 2 前核定) |
 | 31 | Data Retention Schedule 草稿 | DONE | docs/data-retention-schedule-draft.md(期限數值【待核】;governed 資料集依 RDL-013 永久) |
-| 32 | Database Schema、Search Index 與 Migration Plan | TODO | Structure-only drafts permitted; authoritative fields wait for governed intake (RDL-005) |
-| 33 | Drug Lookup／Price Comparison API Specification | TODO | Structure-only drafts permitted; same gate as #32 |
+| 32 | Database Schema、Search Index 與 Migration Plan | DONE(structure-only) | docs/db-schema-migration-plan.md(資料域/帳號域分離;權威欄位語意【待核】俟 governed intake,RDL-005 閘門不變) |
+| 33 | Drug Lookup／Price Comparison API Specification | DONE(structure-only) | docs/api-specification.md(端點面+白名單防火牆+版本策略;OpenAPI 於 Phase 3 正式化;同 #32 閘門) |
 | 34 | Backup／Restore／Web Rollback／Mobile Rollback Plan | DONE | docs/backup-restore-rollback-plan.md(藍圖;RPO/RTO 數值 Phase 5 前核定) |
 | 35 | Phase Acceptance Report Template | DONE | docs/acceptance/phase-acceptance-report-template.md(v3.2 §26 全欄位) |
 | 36 | Production Release Gate | BLOCKED | Production release itself is blocked by RDL-005 and later-phase reviews |

@@ -31,6 +31,7 @@
 - §30 規劃產物第四批：ADR-008 Cross-platform Mobile（PROPOSED，PoC 為鎖定條件）、臨床快速查詢流程圖、Backup/Restore/Rollback 計畫。
 - §30 規劃產物第五批：Processor Register 草稿、Data Retention Schedule 草稿、Monorepo 佈局對齊（現行佈局確認為 v3.2 §17.9 合法前綴）。
 - §30 規劃產物第六批：App Store／Google Play 合規矩陣（法律定性待核）、三端功能對等矩陣（I/E/D 分級）、低擬真 Wireframes（W1–W6）。
+- §30 規劃產物第七批：Milestones/Issues 規劃（M0–M5＋Labels 分類法）、DB Schema 與 Migration 結構草稿（資料域 append-only／帳號域分離）、API 規格結構草稿（白名單防火牆＋/v1 additive 策略）；#32/#33 均 structure-only，權威欄位俟 governed intake。
 
 ## [0.1.0] - 2026-08-01
 
