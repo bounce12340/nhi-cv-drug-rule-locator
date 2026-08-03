@@ -42,6 +42,7 @@
 - 表二程序新版 2.6.2／2.6.3 全文候選推導（TC-20260803-09 由 Codex GPT-5.6 Sol 建置；RA 明示指示派工）：新增 scripts/table2-new262-263-derive.mjs——3 檔雜湊 MATCH 後依左欄標題垂直座標切分第 12 頁兩項（非整頁粒度），各自右欄機械擷取雙候選，payload 僅寫 repo 外；262 候選 a3c84db3…75f3（784 bytes，條文 2→2、日期列示 1→2）、263 候選 57fef95e…e3dd（952 bytes，條文 2→3、日期列示 4→5）；兩候選表一／表二均 0 次（與 INTERPRET-002 相容）；狀態 PENDING_RA_REVIEW，不得下游使用，待官方新版另案驗證。附件2 三項修訂之候選推導至此全數完成。
 - 表二程序階段性驗收報告（docs/acceptance/table2-stage-interim-20260803.md，依 §30 #35 模板）：彙整 TC-06→09 段落——PR #18–#22 逐筆 head SHA／RA 簽記／merge SHA、四份 attestation、三候選統計成果、未解決事項（候選 PENDING_RA_REVIEW、261 候選 B 系 0 列檢視點、RDL-005 維持 BLOCKED、M1 其餘條件）；階段性 PASS，非 Phase 結案，不解除任何 BLOCKED。
 - M1 續行規劃（docs/m1-continuation-plan.md；RA ③B 裁示）：第二資料集提案 `nhi-lipid-rules-2026-09-01-r1`（官方新版規則全文 PDF 原件＋storage-manifest）之六步入庫路徑（官方收件→Stage 1→官方 vs 候選比對→INTAKE-APPROVE→RDL-005 第二次窄幅解除→governed 入庫），與 Stage 1–6 常態運轉對照表（以表二程序循環為參照運轉，結論：常態運轉認定＝第二資料集走完一輪）；三項待 RA 決定點；不匯入內容、不解除 BLOCKED。另：三份候選檔已傳送 RA 檢視（①A），2026-09-01 官方驗證開工排程已建立（②A）。
+- M1 續行規劃三項決定點經 RA 裁示（2026-08-03 結構化答覆「1 照案 2 原件 3 立即」）：第二資料集照案核名 `nhi-lipid-rules-2026-09-01-r1`；入庫物＝官方 PDF 原件（結構化轉錄另案）；官方收件後立即派工比對驗證。`INTAKE-APPROVE` 與 RDL-005 窄幅解除仍待屆時逐案作成。
 
 ## [0.1.0] - 2026-08-01
 
