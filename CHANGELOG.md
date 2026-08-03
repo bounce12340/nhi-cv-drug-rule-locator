@@ -34,6 +34,7 @@
 - §30 規劃產物第七批：Milestones/Issues 規劃（M0–M5＋Labels 分類法）、DB Schema 與 Migration 結構草稿（資料域 append-only／帳號域分離）、API 規格結構草稿（白名單防火牆＋/v1 additive 策略）；#32/#33 均 structure-only，權威欄位俟 governed intake。
 - §30 規劃產物第八批（PARTIAL 升級）：attestation 正式 JSON Schema（task-contract/v1 定稿＋祖父條款）、v3.2 全域 Requirement-to-Test 矩陣（A–E 區）、威脅模型擴充（Phase 1+ 現況面＋Phase 2/3 目標態，Phase 2 進入閘門＝正式 STRIDE review）。
 - 收件藥品給付規定 2.6.1 舊版全文 PDF（hash-only；官方入口網端點直接下載、修訂前有效版、出處宣告齊備）：spec-source-status 缺口 #2（舊版表二全文）結案，方向 B（v3.2 §9.6 表二程序）解除封鎖；來源登錄增至 10 筆。payload 依 RDL-007 留置 repo 外。
+- 表二程序 Stage 3 交叉檢視（TC-20260803-06 由 Codex GPT-5.6 Sol 建置）：新增 scripts/table2-cross-review.mjs 與統計式報告——3/3 輸入檔雜湊 MATCH；附件2 修訂項目 3 項，修正前欄對舊版 2.6.1 定位 PARTIAL 1／NOT_FOUND 2（附件2 涵蓋逾 2.6.1 之訊號）；表一／表二字樣僅見於附件2（舊版全文 0 次，編號為新版引入之訊號）；結構計數與來源登錄一致；最終對應認定待 RA。
 
 ## [0.1.0] - 2026-08-01
 
