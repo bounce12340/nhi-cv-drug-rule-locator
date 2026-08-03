@@ -17,6 +17,7 @@ The original **Master Project Prompt v3.2** was received on 2026-08-02 as an in-
 | 附件1 PDF:全民健康保險藥品已收載項目異動明細表 (supplementary receipt 2026-08-02; upload filename transcoded, original filename to be declared) | `fafaae478dc8e188674c3585d65ef7d480c767fee8f5daa7b8b05458f6b6fe81` | 190,579 | 10 pages |
 | 附件2 PDF:「藥品給付規定」修訂對照表 第2節 心臟血管及腎臟藥物 (supplementary receipt 2026-08-02; upload filename transcoded, original filename to be declared) | `6389a5f654e0cb755d006f04ed47eca6ada9f867873f43c5088f79db6bb6c1c2` | 325,429 | 13 pages |
 | 公告本文網頁擷取 PDF (owner-saved capture of the announcement page, received 2026-08-02) | `792a05655c88b3a2f91a4ceeba6eccaad3bf64b049163222a4557764f7eb0422` | 74,827 | 1 page |
+| 藥品給付規定 2.6.1 舊版全文 PDF (prior effective version, last revised 108/2/1; supplementary receipt 2026-08-03, retrieved 2026-07-28 by direct download from the official portal endpoint) | `bd7e96e5b8551c39718f80b3d5fa394581457e34f2dea1f8628a8982201bc79a` | 83,240 | 1 page |
 
 Consistency observations (analysis only; no content imported):
 
@@ -36,8 +37,8 @@ All five files are official-looking material supplied mid-session. Under RDL-005
 ## Still missing before Phase 1 intake can be considered
 
 1. ~~`statin_table2_only_list.csv` (declared 116 records in v3.2 §6)~~ — received 2026-08-02 as a supplementary receipt (see table above); like every received file it stays out of the repository pending governed intake.
-2. The complete official text of 表二 (the announcement reportedly prints 「以下略」) — whether 附件2 (received 2026-08-02) contains it is to be confirmed during Stage 3 review.
-3. The complete official text of 表一 — whether 附件2 (received 2026-08-02) contains it is to be confirmed during Stage 3 review.
+2. ~~The complete official text of 表二 (the announcement reportedly prints 「以下略」)~~ — **RESOLVED 2026-08-03**: the prior effective version of 給付規定 2.6.1 (full text incl. both tables, last revised 108/2/1) was received by hash-only supplementary receipt with full provenance (official portal endpoint, retrieved 2026-07-28); the owner ruled it the authoritative 舊版表二 full text. See docs/source-register/rule-2.6.1-prior-version-full-text.md. The NEW-version full text remains a derivation task for the v3.2 §9.6 procedure (old text + 附件2 revision table), not a further receipt.
+3. The complete official text of 表一 — whether 附件2 (received 2026-08-02) contains it is to be confirmed during Stage 3 review; the 2.6.1 prior-version receipt (2026-08-03) contains both 規定表, and whether that fully covers the 表一 gap is part of the same Stage 3 determination.
 4. ~~The official announcement and attachments themselves as raw source documents~~ — **RESOLVED 2026-08-02**: both attachment PDFs and the owner-saved capture of the announcement webpage (verified to carry the letter markers 主旨/發文字號/依據) are hash-recorded (see table above). All raw source documents for this announcement are now in custody, out-of-repo pending any future per-dataset `INTAKE-APPROVE`.
 5. Per-file provenance: origin channel, retrieval date and custodian for every received file.
 6. ~~Requester confirmation that the received prompt bytes are the authentic v3.2 original~~ — **CONFIRMED 2026-08-02**: the owner re-delivered byte-identical content to the dispatcher session (independent second delivery, hash MATCH) and ruled via structured in-session answer that this version IS the authoritative v3.2, withdrawing the earlier "requires an update" statement. See docs/source-register/master-project-prompt-v3.2.md.

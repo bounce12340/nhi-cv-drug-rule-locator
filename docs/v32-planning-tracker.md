@@ -5,7 +5,7 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | # | §30 artifact | Status | Location / blocker |
 | --- | --- | --- | --- |
 | 1 | 專案 Scope 與 Non-goals | DONE | docs/scope-and-non-goals.md |
-| 2 | Regulatory Source Inventory | DONE (living) | docs/spec-source-status.md + docs/source-register/(9 筆)— 全部收件檔出處宣告+雜湊複驗完成;v3.2 真實性確認、公告本文擷取收件、CSV 原生性已釐清(整理轉出);唯一開放來源缺口:舊版表二全文 |
+| 2 | Regulatory Source Inventory | DONE (living) | docs/spec-source-status.md + docs/source-register/(10 筆)— 全部收件檔出處宣告+雜湊複驗完成;v3.2 真實性確認、公告本文擷取收件、CSV 原生性已釐清;舊版表二全文 2026-08-03 收件,開放缺口歸零(表一舊版是否同檔涵蓋待 Stage 3 認定) |
 | 3 | CSV 與資料完整性報告 | DONE | docs/stage3/stage3-verification-report.md — 雙重覆核 ACCEPTED(列數/空值/重複/格式/跨檔/母本 187/187);首個資料集已依 RDL-012 入 governed 儲存 |
 | 4 | 法規及法律有效版本矩陣 | BLOCKED | Requires official texts and RA-designated effective-version confirmation |
 | 5 | 尚待 RA／法律／個資確認事項 | DONE (living list) | docs/phase1-readiness.md (P0 blockers) + docs/spec-source-status.md (missing sources) |

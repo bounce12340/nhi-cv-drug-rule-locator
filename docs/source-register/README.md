@@ -15,3 +15,4 @@
 | attachment-1-price-change-detail(附件1 PDF) | PROVENANCE_DECLARED(2026-08-02 收件;Stage 3 比對基準) |
 | attachment-2-rule-revision-table(附件2 PDF) | PROVENANCE_DECLARED(2026-08-02 收件;Stage 3 比對基準) |
 | announcement-webpage-capture(公告本文擷取) | PROVENANCE_DECLARED(2026-08-02 收件;缺件 #4 結案) |
+| rule-2.6.1-prior-version-full-text(舊版 2.6.1 全文 PDF) | PROVENANCE_DECLARED(2026-08-03 收件;舊版表二缺口結案;方向 B 基準) |
