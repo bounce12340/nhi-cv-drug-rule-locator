@@ -40,6 +40,7 @@
 - 表二程序 Stage 3 交叉檢視 r2（TC-20260803-07 由 Codex GPT-5.6 Sol 建置）：新增 scripts/table2-cross-review-r2.mjs 多基準重跑（r1 腳本與報告凍結不動）——4 檔雜湊 MATCH；3 項 × 3 基準定位矩陣：A2-ITEM-01 唯一定位於 2.6.1（PARTIAL 4/5）、A2-ITEM-02 於 2.6.2 完整定位（FOUND 12/12）、A2-ITEM-03 於 2.6.3 完整定位（FOUND 10/10），交叉命中僅各 1 片段；TC-06 兩項 NOT_FOUND 定位缺口補齊；新基準結構複驗與來源登錄一致；2.6.2/2.6.3 均無表一／表二字樣（與 INTERPRET-002 相容）；歸屬正式認定依報告警語保留 RA。
 - 表二程序新版 2.6.1 全文候選推導（TC-20260803-08 由 Codex GPT-5.6 Sol 建置）：新增 scripts/table2-new261-derive.mjs——2 檔雜湊 MATCH 後自附件2 A2-ITEM-01 右欄（修正後）機械擷取候選全文，payload 僅寫 repo 外（內建 repo 邊界防呆）；repo 內統計報告：候選 SHA-256 8b178837…75f1（11,392 bytes）、表一 3 次／表二 2 次（INTERPRET-002 預期相符）、修訂日期列示 8→9、規定表 A 系資料列 5→6、B 系 3→0（RA 檢視點）、定義區塊項數擴充；狀態 PENDING_RA_REVIEW，不得下游使用，待官方新版可下載（2026-09-01 起）後另案驗證。
 - 表二程序新版 2.6.2／2.6.3 全文候選推導（TC-20260803-09 由 Codex GPT-5.6 Sol 建置；RA 明示指示派工）：新增 scripts/table2-new262-263-derive.mjs——3 檔雜湊 MATCH 後依左欄標題垂直座標切分第 12 頁兩項（非整頁粒度），各自右欄機械擷取雙候選，payload 僅寫 repo 外；262 候選 a3c84db3…75f3（784 bytes，條文 2→2、日期列示 1→2）、263 候選 57fef95e…e3dd（952 bytes，條文 2→3、日期列示 4→5）；兩候選表一／表二均 0 次（與 INTERPRET-002 相容）；狀態 PENDING_RA_REVIEW，不得下游使用，待官方新版另案驗證。附件2 三項修訂之候選推導至此全數完成。
+- 表二程序階段性驗收報告（docs/acceptance/table2-stage-interim-20260803.md，依 §30 #35 模板）：彙整 TC-06→09 段落——PR #18–#22 逐筆 head SHA／RA 簽記／merge SHA、四份 attestation、三候選統計成果、未解決事項（候選 PENDING_RA_REVIEW、261 候選 B 系 0 列檢視點、RDL-005 維持 BLOCKED、M1 其餘條件）；階段性 PASS，非 Phase 結案，不解除任何 BLOCKED。
 
 ## [0.1.0] - 2026-08-01
 
