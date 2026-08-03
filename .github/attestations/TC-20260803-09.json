@@ -1,0 +1,37 @@
+{
+  "attestation_schema": "task-contract/v1",
+  "task_id": "TC-20260803-09",
+  "task_contract": "docs/task-contracts/TC-20260803-09.md",
+  "task_contract_sha256": "a67bec6c97448fb502a1aa84d5662462f1e72f21451c357696dc21aa489a65c4",
+  "repo": "bounce12340/nhi-cv-drug-rule-locator",
+  "branch": "claude/init-yd1kqu",
+  "records": [
+    {
+      "role": "builder",
+      "tier": "Terra Pro (v3.2 §21.5)",
+      "provider": "OpenAI",
+      "model_display_name": "Codex GPT-5.6 Sol",
+      "model_id": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "run_id": "codex-session-019fc6c0-ba42-7d10-89c4-950a4067e979",
+      "head_sha": "a729988 (builder commit, authorship preserved)",
+      "started_at": "2026-08-03 (dispatcher session log)",
+      "ended_at": "2026-08-03 (dispatcher session log)",
+      "tool_permissions": "sandbox=workspace-write; network=off; allowed repo paths per contract plus dispatcher-approved external scratchpad candidate paths; custody inputs read-only; no commit/push",
+      "result": "PASS with zero acceptance returns: 8/8 self-checks including forced hash-mismatch probes on all three inputs (exit 1, report and both candidates absent, zero residue), six prior table-two files byte-frozen, page-12 item split by left-column heading vertical coordinates rather than whole-page granularity, final double-run idempotent on report and both candidates; candidates written outside the repository only; six checks green with 86/86 tests"
+    },
+    {
+      "role": "dispatcher-acceptance (task-contract level)",
+      "tier": "Sol Pro (v3.2 §21.5)",
+      "provider": "Anthropic",
+      "model_display_name": "Claude Fable 5",
+      "model_id": "per ADR-001, preserved in the session execution record linked below",
+      "run_id": "https://claude.ai/code/session_01QohqUPU5dYt5YV2ENrsQF7",
+      "head_sha": "a729988",
+      "started_at": "2026-08-03 (dispatcher session log)",
+      "ended_at": "2026-08-03 (dispatcher session log)",
+      "tool_permissions": "repository read/write on branch claude/init-yd1kqu",
+      "result": "PASS at task-contract level after independent re-verification: script re-run twice with byte-identical report (sha256 59a624da...) and candidates (a3c84db3... / 57fef95e...), fail-closed probe independently reproduced with zero residue, all six frozen files verified byte-identical against origin/main (builder log's anomalous r1-report hash string confirmed to be a log-display truncation only), 261 candidate undisturbed, all 109 CJK literals audited as template/structural vocabulary with zero rule content, candidates present only at approved external paths, red-line scan clean, six checks green. Candidates remain PENDING_RA_REVIEW; repository-level acceptance of the PR head SHA remains with the RA"
+    }
+  ]
+}
