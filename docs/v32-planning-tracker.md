@@ -17,7 +17,7 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 11 | Price Comparison Semantics ADR | DONE | docs/adr/ADR-005-price-comparison-semantics.md(語意定案;群組核定流程待資料到位) |
 | 12 | Authentication 與 Native Secure Storage ADR | DONE | docs/adr/ADR-006-auth-secure-storage.md(需求基準;實作參數 Phase 2 定案) |
 | 13 | Analytics／Logging Privacy ADR | DONE | docs/adr/ADR-004-analytics-logging-privacy.md(生效;保存期間數值 Phase 5 前定案) |
-| 14 | App Store／Google Play Compliance Matrix | TODO | — |
+| 14 | App Store／Google Play Compliance Matrix | DONE | docs/store-compliance-matrix.md(法律定性與聲明文案【待核】;送審前逐條轉 PASS/N-A) |
 | 15 | API Version Compatibility 與 Mobile Release Strategy | DONE | docs/adr/ADR-007-api-compat-mobile-release.md(策略定案;數值 Phase 4 前定案) |
 | 16 | GitHub Repository 與 Ruleset 設計 | PARTIAL | CONTRIBUTING.md + CI(六項檢查)exist;branch protection/rulesets、CODEOWNERS、docs/runbooks/、docs/acceptance/ 未建(v3.2 §21.2/§21.4;見 docs/v32-alignment-review.md #3/#4) |
 | 17 | Monorepo 與 Shared Contract 設計 | DONE | docs/architecture.md + docs/monorepo-reconciliation.md(現行佈局為 §17.9 合法前綴;缺項對應各 Phase 建立) |
@@ -27,8 +27,8 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 21 | Model Routing ADR | DONE | docs/adr/ADR-001-model-routing.md (requester consent 2026-08-02) |
 | 22 | Agent Execution Manifest 與 Attestation Schema | PARTIAL | `.github/attestations/`(task-contract/v1)運作中;自 TC-04 起補 `prompt_or_task_contract_hash` 欄位(v3.2 §21.5.4);`terra-pro-build-attestation`/`sol-pro-acceptance` Required Checks 與正式 JSON Schema TODO |
 | 23 | Requirement-to-Test Matrix | PARTIAL | docs/test-matrix.md covers demo-core invariants; v3.2-wide matrix TODO |
-| 24 | Cross-platform Feature Parity Matrix | TODO | — |
-| 25 | Web／iOS／Android Wireframes | TODO | — |
+| 24 | Cross-platform Feature Parity Matrix | DONE | docs/feature-parity-matrix.md(I/E/D 分級;實機 parity 證據俟 PoC/Phase 4) |
+| 25 | Web／iOS／Android Wireframes | DONE | docs/wireframes.md(低擬真文字版;文案【待核】;W5/W6 為後續 Phase 佔位) |
 | 26 | WCAG 2.2 AA 與 Native Accessibility 驗收標準 | DONE | docs/accessibility-criteria.md(工具選型待確認) |
 | 27 | Web、Native 與 TTFCA Performance Budget | DONE | docs/performance-budget.md(native 數值目標待 PoC 後訂定) |
 | 28 | Threat Model | PARTIAL | docs/threat-model.md covers Phase 0 surface; expand for auth/data phases |
