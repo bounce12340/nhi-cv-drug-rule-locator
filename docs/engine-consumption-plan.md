@@ -60,13 +60,15 @@ docs/test-matrix.md 同步增列以上斷言。
 
 每單獨立 TC(派工單雜湊、雙重覆核、attestation、RA PASS),建置慣例全套沿用(凍結、探針、冪等、字面稽核)。E2+E3 涉 deterministic 行為→負向測試隨單強制。
 
-## 6. RA 決定點
+## 6. RA 決定點(已裁,2026-08-05)
 
-1. **G1 消費形態**:第一階段=display-only 逐字文本查詢,§1 排除清單照列(建議照案)
-2. **G2 進碼機制與 RDL-016**:build-time codegen 生成模組入 repo;RA 核准語式草案——**`ENGINE-CONSUME-APPROVE nhi-lipid-rules-structured-2026-09-01-r1 display-only`**(將登錄為 RDL-016:RDL-005 第四次窄幅解除,範疇=該資料集之 display-only 引擎消費;可計算邏輯/對映/價格/eligibility 不在內)
-3. **G3 警語文案**:§3 草案兩則(demo 不變+官方轉錄新則);RA 可修文
-4. **G4 派工切分**:E2+E3 合一單、E4+E5 合一單,共兩單(建議);或四單分行
-5. **G5 清單類資料**:statin_table2_only_list 等 CSV 本階段維持 storage-only 不接引擎(建議照案;其消費屬未來藥品對映階段)
+RA 於驗收語式中一併裁示(原文「ASS a5e7485 G1照案 G2核准 G3照案 G4兩單 G5照案」,SHA 正確且五項齊備,判讀為 `PASS a5e7485` 之明顯漏字,原文如實在案):
+
+1. **G1 消費形態:照案**——第一階段=display-only 逐字文本查詢,§1 排除清單照列
+2. **G2 核准**——RA 簽發 **`ENGINE-CONSUME-APPROVE nhi-lipid-rules-structured-2026-09-01-r1 display-only`**,登錄 RDL-016(RDL-005 第四次窄幅解除;可計算邏輯/對映/價格/eligibility 不在內)
+3. **G3 警語文案:照案**(§3 草案兩則)
+4. **G4 派工切分:兩單**(E2+E3 一單=TC-20260805-12;E4+E5 一單後續)
+5. **G5 清單類資料:照案**(維持 storage-only)
 
 ## 7. 依然 BLOCKED(本規劃不觸碰)
 
