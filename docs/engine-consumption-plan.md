@@ -62,7 +62,7 @@ docs/test-matrix.md 同步增列以上斷言。
 
 ## 6. RA 決定點(已裁,2026-08-05)
 
-RA 於驗收語式中一併裁示(原文「ASS a5e7485 G1照案 G2核准 G3照案 G4兩單 G5照案」,SHA 正確且五項齊備,判讀為 `PASS a5e7485` 之明顯漏字,原文如實在案):
+RA 於驗收語式中一併裁示(原文「ASS a5e7485 G1照案 G2核准 G3照案 G4兩單 G5照案」,SHA 正確且五項齊備,判讀為 `PASS a5e7485` 之明顯漏字,原文如實在案;**RA 旋於同日以正字全文「PASS a5e7485 G1照案 G2核准 G3照案 G4兩單 G5照案」重簽,判讀獲確認**):
 
 1. **G1 消費形態:照案**——第一階段=display-only 逐字文本查詢,§1 排除清單照列
 2. **G2 核准**——RA 簽發 **`ENGINE-CONSUME-APPROVE nhi-lipid-rules-structured-2026-09-01-r1 display-only`**,登錄 RDL-016(RDL-005 第四次窄幅解除;可計算邏輯/對映/價格/eligibility 不在內)
