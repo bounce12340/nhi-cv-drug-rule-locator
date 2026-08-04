@@ -1,5 +1,10 @@
-import { DEMO_DATA_STATUS, parseLookupRequest, type ApiError } from "@nhi-cv/contracts";
-import { getDatasetMeta, lookupMedication } from "@nhi-cv/domain";
+import {
+  DEMO_DATA_STATUS,
+  parseLookupRequest,
+  parseRuleTextLookupRequest,
+  type ApiError
+} from "@nhi-cv/contracts";
+import { getDatasetMeta, lookupMedication, lookupRuleText } from "@nhi-cv/domain";
 
 type LogAttributes = Record<string, string | number | boolean | undefined>;
 
@@ -60,7 +65,18 @@ const worker = {
 
       if (request.method === "GET" && url.pathname === "/v1/meta") {
         structuredLog("info", "meta_requested", { request_id: requestId });
-        return json(getDatasetMeta(), 200, requestId);
+        const rulesMeta = lookupRuleText({ query: "", as_of_date: "" });
+        return json(
+          {
+            ...getDatasetMeta(),
+            rulesDataset: {
+              version: rulesMeta.datasetVersion,
+              effectiveFrom: rulesMeta.effectiveFrom
+            }
+          },
+          200,
+          requestId
+        );
       }
 
       if (request.method === "POST" && url.pathname === "/v1/lookup") {
@@ -90,7 +106,29 @@ const worker = {
         return json({ result }, 200, requestId);
       }
 
-      if (["/health", "/v1/meta", "/v1/lookup"].includes(url.pathname)) {
+      if (request.method === "POST" && url.pathname === "/v1/rules/lookup") {
+        let payload: unknown;
+        try {
+          payload = await request.json();
+        } catch {
+          return errorResponse(400, "INVALID_REQUEST", "Request body must be valid JSON.", requestId);
+        }
+
+        const parsed = parseRuleTextLookupRequest(payload);
+        if (!parsed.ok) {
+          return errorResponse(400, "INVALID_REQUEST", parsed.message, requestId);
+        }
+
+        const result = lookupRuleText(parsed.value);
+        structuredLog("info", "rule_text_lookup_completed", {
+          request_id: requestId,
+          lookup_status: result.status,
+          unit_count: result.units.length
+        });
+        return json({ result }, 200, requestId);
+      }
+
+      if (["/health", "/v1/meta", "/v1/lookup", "/v1/rules/lookup"].includes(url.pathname)) {
         return errorResponse(405, "METHOD_NOT_ALLOWED", "Method not allowed for this endpoint.", requestId);
       }
 

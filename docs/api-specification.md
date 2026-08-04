@@ -9,6 +9,15 @@
 | GET /health | 存活探測;無業務資料 |
 | GET /v1/meta | 資料集版本、涵蓋視窗、警語 |
 | POST /v1/lookup | body 僅允許 `query`/`as_of_date`/`dataset_version`(未知欄位一律拒絕=病人資料防火牆);回應三態+`manualReviewRequired` |
+| POST /v1/rules/lookup | body 僅允許 `query`/`as_of_date`/`dataset_version`;回傳逐字規則單元與來源警語 |
+
+### 規則逐字查詢(E4;additive)
+
+- `POST /v1/rules/lookup` request:`{query: string, as_of_date: string, dataset_version?: string}`;三欄之外一律依既有 `INVALID_REQUEST` 錯誤契約拒絕。
+- Success response:`{result: {status, sourceTag, warning, manualReviewRequired, datasetVersion, effectiveFrom, units}}`;每個 `units[]` 保留 domain 回傳的 `clausePath`、`verbatimText` 與來源追溯欄位。
+- 日期格式、資料集有效起日或版本不匹配由 domain 回傳封閉結果,不改寫為近似值。
+- `GET /v1/meta` additive 增列 `rulesDataset: {version, effectiveFrom}`,原有欄位維持不變。
+- 完成日誌僅增加狀態、單元數與 request ID,不寫入 request body 或 `query` 文字。
 
 ## 規劃端點(結構)
 
