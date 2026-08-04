@@ -46,6 +46,7 @@
 - **第二次 INTAKE-APPROVE（RDL-014）**：RA 指出公告文件即三小節合併之官方新版載體、無需等 9/1，重複上傳附件1／附件2 經逐位元組複驗與 08-02 收件一致後，以結構化答覆「C 留」核准 `INTAKE-APPROVE nhi-lipid-rules-2026-09-01-r1 feb6621`——公告原件包三檔（公告本文擷取＋附件1＋附件2）經雙向雜湊驗證入庫 `data/governed/nhi-lipid-rules-2026-09-01-r1/` 附 storage-manifest；來源登錄三筆追記（複驗、涵蓋 2.6.1–2.6.3 宣告、入庫參照）；M1 規劃 §2/§3/§4 同步修訂——**M1 兩項完成條件在文件面均已達成**（正式結案認定留 RA）；9/1 排程降為生效版勘誤攔截（保留）。附件2 規則文字在自身後續閘門前仍不可編碼；其餘一切維持 RDL-005 BLOCKED。
 - M3 起手規劃（docs/rules-transcription-plan.md；RA 2026-08-04 指示不暫停）：規則結構化轉錄管線 T1–T4——governed 附件2 右欄逐字轉錄為 JSONL 條文單元（欄位含逐單元錨定＋雜湊）、往返保真驗證、`INTAKE-APPROVE nhi-lipid-rules-structured-2026-09-01-r1` 入庫；轉錄物 payload 置 repo 外、統計報告入 repo；261 候選 B 系疑點隨轉錄機械結案；明列「還不解鎖」清單（引擎消費需另裁、eligibility 永久排除、production 照舊 BLOCKED）；三項 RA 決定點（範圍／格式／派工時點）。
 - T2 規則結構化轉錄（TC-20260804-10 由 Codex GPT-5.6 Sol 建置；RA 裁示 D1全／D2JSONL／D3立即）：新增 scripts/rules-transcribe-t2.mjs——三方雜湊閘門後自 governed 附件2 機械切分 67 個條文單元（表題4／資料列20／定義項34／條文8／註1），覆蓋 661/661 行 100%；表一 6 列、表二 0 列（新版表二「表題存在、內嵌列 0」訊號，解釋層讀法待 T3 後送 RA）；JSONL 草稿 payload 置 repo 外，schema 自檢＋派發方獨立複驗雙重確認。建置異常如實記錄：builder 程序於產物完成後、自檢回報前遭終止，派發方以逐條獨立驗證替代（產物與獨立重跑逐位元一致）；狀態 TRANSCRIPTION_DRAFT。
+- T3 轉錄往返保真驗證（TC-20260804-11 由 Codex GPT-5.6 Sol 建置；一次退回如實記錄——builder 首輪自我攔截 TSV 欄側映射錯誤、依 write-once 條款停手請求授權，派發方授權重生後續跑完成）：新增 scripts/rules-verify-t3.mjs——五件輸入雜湊閘門（附件2 三方全等）、錨點完全分割驗證（三區段零縫隙／零重疊／零越界）、往返逐位元比對 **等值 true×3**（7455／444／654 字元，零分歧）、**候選 261／262／263 交叉核對位元組全等**、schema 獨立重驗 5 項 67/67；總判定 **FIDELITY_VERIFIED**。轉錄保真已證，JSONL 待 T4 `INTAKE-APPROVE nhi-lipid-rules-structured-2026-09-01-r1 dcb6bd9` 前仍為草稿。
 
 ## [0.1.0] - 2026-08-01
 
