@@ -1,0 +1,38 @@
+{
+  "attestation_schema": "task-contract/v1",
+  "task_id": "TC-20260804-10",
+  "task_contract": "docs/task-contracts/TC-20260804-10.md",
+  "task_contract_sha256": "06a5bbad046158b8e5c5dedc0f43f36e6297cf67c118dd7f3406fd2c6e715689",
+  "repo": "bounce12340/nhi-cv-drug-rule-locator",
+  "branch": "claude/init-yd1kqu",
+  "records": [
+    {
+      "role": "builder",
+      "tier": "Terra Pro (v3.2 §21.5)",
+      "provider": "OpenAI",
+      "model_display_name": "Codex GPT-5.6 Sol",
+      "model_id": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "run_id": "codex-session-019fcab0-fe79-79a2-a6f1-178c123e19e7",
+      "head_sha": "392fa1f (builder commit, authorship preserved)",
+      "started_at": "2026-08-04 (dispatcher session log)",
+      "ended_at": "2026-08-04T03:10:25 (process terminated after final artifacts were written, before self-check report; honestly recorded)",
+      "tokens_used": "UNAVAILABLE (session terminated before token summary was emitted)",
+      "tool_permissions": "sandbox=workspace-write; network=off; allowed repo paths per contract plus dispatcher-approved external JSONL path; governed input read-only; no commit/push",
+      "result": "ARTIFACTS COMPLETE, SELF-CHECK REPORT UNAVAILABLE: all three deterministic artifacts (script, stats report, external JSONL) were written and later proven byte-identical to independent dispatcher re-runs; the builder session was terminated before emitting its self-check table, which the dispatcher replaced with a full independent criterion-by-criterion verification"
+    },
+    {
+      "role": "dispatcher-acceptance (task-contract level)",
+      "tier": "Sol Pro (v3.2 §21.5)",
+      "provider": "Anthropic",
+      "model_display_name": "Claude Fable 5",
+      "model_id": "per ADR-001, preserved in the session execution record linked below",
+      "run_id": "https://claude.ai/code/session_01QohqUPU5dYt5YV2ENrsQF7",
+      "head_sha": "392fa1f",
+      "started_at": "2026-08-04 (dispatcher session log)",
+      "ended_at": "2026-08-04 (dispatcher session log)",
+      "tool_permissions": "repository read/write on branch claude/init-yd1kqu",
+      "result": "PASS at task-contract level after full independent verification substituting the missing builder self-check: script re-run twice with report (sha256 a7d61890...) and JSONL (sha256 9aa028b9...) byte-identical to the builder's artifacts, fail-closed probe reproduced with zero residue and candidates undisturbed, eight frozen files verified byte-identical against origin/main, independent dispatcher-written JSONL schema validation (67/67 fields, 67/67 unit hashes, 67 unique ids, 20 data rows with extras) cross-confirming the report's machine self-checks, all 92 CJK literals audited as template/structural vocabulary, red-line scan clean, six checks green with 86/86 tests, 100% line coverage. Output remains TRANSCRIPTION_DRAFT pending T3 fidelity verification and T4 INTAKE-APPROVE; repository-level acceptance of the PR head SHA remains with the RA"
+    }
+  ]
+}
