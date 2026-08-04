@@ -53,7 +53,10 @@ if [ -n "$hits_a" ]; then
 fi
 
 # Set B (code directories only): patient identifiers and eligibility copy.
-hits_b="$(printf '%s\n' "$added_code" | grep -nE '病歷號|身分證字號|病人姓名|符合給付' || true)"
+# Exact-literal exemption: the mandatory no-patient-data NOTICE (Phase 0 required
+# copy) names the forbidden identifiers in order to forbid them; moved lines would
+# re-trip Set B forever. Only this exact sentence is exempt — any variation trips.
+hits_b="$(printf '%s\n' "$added_code" | grep -nE '病歷號|身分證字號|病人姓名|符合給付' | grep -vF '請勿輸入姓名、病歷號、檢驗值、診斷或任何可識別病人資訊。' || true)"
 if [ -n "$hits_b" ]; then
   printf 'governance-scan RED LINE — patient/eligibility patterns in code:\n%s\n' "$hits_b"
   fail=1
