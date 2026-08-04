@@ -15,6 +15,8 @@
 | T3 保真驗證 | 建置(Codex xhigh) | 往返驗證:結構化檔重組→正規化文字 vs 附件2 右欄擷取逐位元比對;逐單元錨點覆蓋率;統計式報告 | 派發方雙重覆核 |
 | T4 入庫核准 | RA 裁決 | `INTAKE-APPROVE nhi-lipid-rules-structured-2026-09-01-r1 <digest7>` → 新 RDL 條目 → `data/governed/` 入庫+CI 機器驗證 | RA 語式 |
 
+**2026-08-04 執行狀態追記**:T1–T4 全鏈完成——T1(PR #27)、T2(TC-20260804-10,一次建置異常如實在案)、T3(TC-20260804-11,FIDELITY_VERIFIED,一次退回如實在案)、T4(RA 語式 `INTAKE-APPROVE nhi-lipid-rules-structured-2026-09-01-r1 dcb6bd9`,RDL-015,RA 於核准前已檢視會期中傳送之 JSONL)。§5 界線不變:引擎消費需另一次 RA 裁決,尚未授予。
+
 T2/T3 沿用表二程序全部安全慣例:雜湊閘門、強制失敗探針、冪等雙跑、凍結檔驗證、字面稽核、產物安全自我掃描。
 
 ## 3. 結構化 schema 草案(欄位名,零內容)
