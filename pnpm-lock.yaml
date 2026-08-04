@@ -62,9 +62,20 @@ importers:
         specifier: ^19.0.0
         version: 19.2.18
 
+  packages/api-client:
+    dependencies:
+      '@nhi-cv/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@nhi-cv/domain':
+        specifier: workspace:*
+        version: link:../domain
+
   packages/contracts: {}
 
   packages/domain: {}
+
+  packages/price-comparison: {}
 
   packages/source-intake: {}
 
