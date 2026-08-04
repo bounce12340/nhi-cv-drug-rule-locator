@@ -20,6 +20,8 @@ EXCLUDES=(
   ':(exclude)CHANGELOG.md'
   ':(exclude).github/workflows/ci.yml'
   ':(exclude)scripts/governance-scan.sh'
+  # RDL-016 codegen output; drift tests guard governed-dataset integrity, as storage guards data/governed/**.
+  ':(exclude)packages/domain/src/generated/**'
   ':(exclude)data/governed/**'
 )
 

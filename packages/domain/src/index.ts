@@ -254,3 +254,4 @@ function makeResult(input: {
     warning: input.warning ?? DEMO_WARNING
   };
 }
+export * from "./rule-text-lookup";
