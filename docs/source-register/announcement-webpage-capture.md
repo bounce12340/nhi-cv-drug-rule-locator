@@ -8,3 +8,4 @@
 - 完整性聲明:網頁另存擷取——版面為列印格式,內容以擷取時點之網頁為準;公告參照號以 docs/spec-source-status.md 收件紀錄為準
 - 用途定位:公告函文本體之位元組存證;缺件清單 #4 據此結案
 - payload 依 RDL-007 留置 repo 外;本紀錄僅 metadata
+- 2026-08-03 追記:經 RA 核准(RDL-014,`INTAKE-APPROVE nhi-lipid-rules-2026-09-01-r1 feb6621`)以 declaredName `announcement-webpage-capture.pdf` 入庫 `data/governed/nhi-lipid-rules-2026-09-01-r1/`;RDL-007 留置原則自此由該窄幅核准取代(僅此檔、僅治理儲存)
