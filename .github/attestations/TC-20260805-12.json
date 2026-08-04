@@ -1,0 +1,38 @@
+{
+  "attestation_schema": "task-contract/v1",
+  "task_id": "TC-20260805-12",
+  "task_contract": "docs/task-contracts/TC-20260805-12.md",
+  "task_contract_sha256": "02a6787727b0b9ea20f762fd5ab0a3cf374078b613b2cc249f127235014cc798",
+  "repo": "bounce12340/nhi-cv-drug-rule-locator",
+  "branch": "claude/init-yd1kqu",
+  "records": [
+    {
+      "role": "builder",
+      "tier": "Terra Pro (v3.2 §21.5)",
+      "provider": "OpenAI",
+      "model_display_name": "Codex GPT-5.6 Sol",
+      "model_id": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "run_id": "codex-session-019fce92-af9e-7eb2-b142-d098afb3f137",
+      "head_sha": "c725966 (builder commit, authorship preserved)",
+      "started_at": "2026-08-05 (dispatcher session log)",
+      "ended_at": "2026-08-05 (dispatcher session log)",
+      "tokens_used": "recorded in session log (line 38883)",
+      "tool_permissions": "sandbox=workspace-write; network=off; allowed paths per contract; data/governed read-only; no commit/push",
+      "result": "PASS with zero acceptance returns: 10/10 self-checks including codegen fail-closed probe, tamper-the-generated-file drift-test red probe, eligibility-blacklist bidirectional exemption probes, dual-source isolation, 86 existing tests unmodified plus 15 new (101/101), deterministic double regeneration, honest dual-view governance-scan handling (untracked local hits on generated verbatim text disclosed; committed-view simulation CLEAN), twelve frozen files FROZEN-OK, external branch advance during build disclosed and untouched"
+    },
+    {
+      "role": "dispatcher-acceptance (task-contract level)",
+      "tier": "Sol Pro (v3.2 §21.5)",
+      "provider": "Anthropic",
+      "model_display_name": "Claude Fable 5",
+      "model_id": "per ADR-001, preserved in the session execution record linked below",
+      "run_id": "https://claude.ai/code/session_01QohqUPU5dYt5YV2ENrsQF7",
+      "head_sha": "c725966",
+      "started_at": "2026-08-05 (dispatcher session log)",
+      "ended_at": "2026-08-05 (dispatcher session log)",
+      "tool_permissions": "repository read/write on branch claude/init-yd1kqu",
+      "result": "PASS at task-contract level after independent re-verification: codegen double re-run byte-identical (generated sha256 d13e025b...), fail-closed probe exit 1, independent tamper probe (appended bytes, drift test red, regenerated to restore), full five checks re-run with 101/101 tests, independent blacklist scan of engine-authored sources zero hits, generated-file header fields verified (digest dcb6bd91..., 67 units, RDL-016, DO-NOT-EDIT), governance-scan.sh diff exactly one exclusion line with comment, index.ts diff exactly one export line, frozen files spot-verified, post-commit governance-scan against origin/main CLEAN. Scope confined to RDL-016 display-only grant; repository-level acceptance of the PR head SHA remains with the RA"
+    }
+  ]
+}
