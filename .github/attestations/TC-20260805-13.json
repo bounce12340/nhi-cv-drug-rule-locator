@@ -1,0 +1,38 @@
+{
+  "attestation_schema": "task-contract/v1",
+  "task_id": "TC-20260805-13",
+  "task_contract": "docs/task-contracts/TC-20260805-13.md",
+  "task_contract_sha256": "ccc6cf16f1f3bda455bc6a29c907a32cf07d632f04500c5cb66309106fd405eb",
+  "repo": "bounce12340/nhi-cv-drug-rule-locator",
+  "branch": "claude/init-yd1kqu",
+  "records": [
+    {
+      "role": "builder",
+      "tier": "Terra Pro (v3.2 §21.5)",
+      "provider": "OpenAI",
+      "model_display_name": "Codex GPT-5.6 Sol",
+      "model_id": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "run_id": "codex-session-019fcec0-8eab-7630-bdbd-748a36f9eeff",
+      "head_sha": "a1e14ca (builder commit, authorship preserved)",
+      "started_at": "2026-08-05 (dispatcher session log)",
+      "ended_at": "2026-08-05 (dispatcher session log)",
+      "tokens_used": 132477,
+      "tool_permissions": "sandbox=workspace-write; network=off; allowed paths per contract; domain/generated/scripts/governed untouched; no commit/push",
+      "result": "PASS with zero acceptance returns: 10/10 self-checks including three-field allowlist with patient-like-field negative tests, full route chain, log content-free assertion via marker strings, dual-mode UI isolation with pass-through official warning, blacklist grep zero hits, frozen-path verification, 101 existing tests unmodified plus 21 new (122/122), double test run identical, governance-scan CLEAN"
+    },
+    {
+      "role": "dispatcher-acceptance (task-contract level)",
+      "tier": "Sol Pro (v3.2 §21.5)",
+      "provider": "Anthropic",
+      "model_display_name": "Claude Fable 5",
+      "model_id": "per ADR-001, preserved in the session execution record linked below",
+      "run_id": "https://claude.ai/code/session_01QohqUPU5dYt5YV2ENrsQF7",
+      "head_sha": "a1e14ca",
+      "started_at": "2026-08-05 (dispatcher session log)",
+      "ended_at": "2026-08-05 (dispatcher session log)",
+      "tool_permissions": "repository read/write on branch claude/init-yd1kqu",
+      "result": "PASS at task-contract level after independent re-verification: five checks re-run with 122/122 tests, git diff against origin/main empty for packages/domain, scripts, and data/governed (frozen), independent blacklist grep zero hits, governance-scan CLEAN, UI warning rendering verified as domain pass-through (single source of truth) with DEMO_WARNING preserved in place, worktree confined to allowed paths. UI screenshot honestly BLOCKED in this environment (no browser capture); structural description on record. Repository-level acceptance of the PR head SHA remains with the RA"
+    }
+  ]
+}
