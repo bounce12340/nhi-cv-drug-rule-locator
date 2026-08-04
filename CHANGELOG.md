@@ -52,6 +52,8 @@
 - **RDL-016（RDL-005 第四次窄幅解除）**：RA 裁示 G1–G5（G2 核准即簽發 `ENGINE-CONSUME-APPROVE nhi-lipid-rules-structured-2026-09-01-r1 display-only`；驗收原文含明顯漏字，如實在案）——domain 引擎獲准以 build-time codegen 對 governed 結構化規則資料集作 **display-only 消費**；未授予：可計算邏輯／藥品對映／價格／eligibility（永久）／production。E2+E3（codegen＋domain 擴充）依 G4 兩單制隨即派工（TC-20260805-12）。
 - E2+E3 規則引擎 display-only 消費（TC-20260805-12 由 Codex GPT-5.6 Sol 建置）：**domain 自 Phase 0 以來首次功能擴充**——scripts/rules-codegen.mjs（雜湊＋INTAKE-APPROVE 語式雙閘門）生成 packages/domain/src/generated/rules-2026-09-01.ts（67 單元進碼、深凍結、檔頭鏈結 digest／RDL-016、位元組決定性）＋CI 漂移防護測試（竄改實測紅燈）；lookupRuleText（小節／單元／表標籤三種精確查詢、近似零建議、日期與版本 fail closed、OFFICIAL_TEXT_TRANSCRIBED＋官方轉錄警語、非 EXACT_MATCH 一律 manualReviewRequired、與 demo 雙源型別隔離）；負向測試全套含 eligibility 黑名單（verbatim 豁免探針雙向實測）；86 舊測試零修改＋新增 15＝101/101；governance-scan 僅增一行排除生成檔（完整性改由漂移測試看守）。
 - E4+E5 規則查詢三端接線（TC-20260805-13 由 Codex GPT-5.6 Sol 建置；RA 明示「派 E4E5」）：contracts 新增 parseRuleTextLookupRequest（白名單恰三欄，patient_id／diagnosis 等病人樣欄位逐一拒絕——防火牆延伸）；API 新增 POST /v1/rules/lookup（additive）＋meta 擴欄 rulesDataset，日誌零查詢內容（測試鎖定）；clinician UI 雙模式分頁（示範藥品／規則逐字查詢），規則結果恆常呈現 domain 透傳之官方轉錄警語（單一事實來源），demo 警語與無病人資料聲明零變動；101 舊測試零修改＋新增 21＝122/122；domain／生成檔／scripts 零位元組變動。規則逐字查詢自此 Web／iOS／Android／API 四面可用（display-only，RDL-016 範疇）。
+- governance-scan Set B tripwire 首次實戰與窄幅修正：UI 改版使 Phase 0 強制無病人資料聲明在 diff 呈新增行而紅燈；人工判讀＝誤報，僅豁免該句精確全文（任何變體照舊紅燈）；SOP 教訓（掃描應於 commit 後重跑）入案。
+- M3 續章＋M2 起手雙規劃（RA 2026-08-05 指示「M3及M2接續」）：docs/m3-price-apiclient-plan.md——C1 price-comparison 套件（DEMO_DATA_ONLY，依 ADR-005 語意全文：comparability_key 四態、price_status 非 CURRENT 不排序、禁用語黑名單、≤4 項）＋C2 api-client＋C3 真實價格顯示決定點（建議緩至主檔 intake）；docs/m2-kickoff-plan.md——P1 隱私文件草案／P2 ADR-006 細部定案設計／P3 D1 schema 細化（全文件側，實作鎖 Phase 2 閘門），SaMD 工作假設決定點；六項 RA 決定點 H1–H6。
 
 ## [0.1.0] - 2026-08-01
 
