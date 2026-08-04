@@ -1,0 +1,37 @@
+{
+  "schema": "storage-manifest/v1",
+  "datasetVersion": "nhi-lipid-rules-2026-09-01-r1",
+  "approvalRef": {
+    "rdlId": "RDL-014",
+    "approvalWording": "INTAKE-APPROVE nhi-lipid-rules-2026-09-01-r1 feb6621"
+  },
+  "sourceRegisterRefs": [
+    "docs/source-register/announcement-webpage-capture.md",
+    "docs/source-register/attachment-1-price-change-detail.md",
+    "docs/source-register/attachment-2-rule-revision-table.md",
+    "docs/stage3/table2-cross-review-report.md",
+    "docs/stage3/table2-cross-review-report-r2.md",
+    "docs/interpretations/INTERPRET-002.md",
+    "docs/acceptance/table2-stage-interim-20260803.md"
+  ],
+  "effectiveFrom": "2026-09-01",
+  "effectiveTo": "9999-12-31",
+  "files": [
+    {
+      "declaredName": "announcement-webpage-capture.pdf",
+      "sha256": "792a05655c88b3a2f91a4ceeba6eccaad3bf64b049163222a4557764f7eb0422",
+      "bytes": 74827
+    },
+    {
+      "declaredName": "attachment-1-price-change-detail.pdf",
+      "sha256": "fafaae478dc8e188674c3585d65ef7d480c767fee8f5daa7b8b05458f6b6fe81",
+      "bytes": 190579
+    },
+    {
+      "declaredName": "attachment-2-rule-revision-table.pdf",
+      "sha256": "6389a5f654e0cb755d006f04ed47eca6ada9f867873f43c5088f79db6bb6c1c2",
+      "bytes": 325429
+    }
+  ],
+  "revoked": false
+}

@@ -9,3 +9,5 @@
 - 完整性聲明(提供者宣告):**原始官方附件**,未經編輯
 - 用途定位:price_change_seed CSV 的宣告母本;Stage 3 逐筆比對之基準文件
 - payload 依 RDL-007 留置 repo 外;本紀錄僅 metadata
+- 2026-08-03 追記①:提供者重複上傳本檔,派發方自原始位元組複驗 SHA-256 與 bytes 與本紀錄完全一致(獨立重下載之完整性佐證);下載端點頁再宣告:`https://www.nhi.gov.tw/ch/cp-20300-7968a-3258-1.html`,取得日期 2026-07-28
+- 2026-08-03 追記②:經 RA 核准(RDL-014)以 declaredName `attachment-1-price-change-detail.pdf` 入庫 `data/governed/nhi-lipid-rules-2026-09-01-r1/`;價格內容依 v3.2 §6 為異動清單、永非完整價格主檔
