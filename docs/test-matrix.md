@@ -37,5 +37,13 @@
 | Rule-text date, version, and review safeguards | Invalid or pre-effective dates, missing required strings, and mismatched dataset versions fail closed; every non-exact result requires manual review | `packages/domain/src/rule-text-lookup.test.ts` |
 | Rule-text dual-source isolation | Demo medication output has no official text units or source tag, and official text output has no demo record, price, or source tag | `packages/domain/src/rule-text-lookup.test.ts` |
 | Rule-text output vocabulary | The fixed negative vocabulary list scans engine-authored source and non-verbatim output fields while explicitly exempting official `verbatimText` and `columnLabels` | `packages/domain/src/rule-text-lookup.test.ts` |
+| Rule-text transport allowlist | Exactly `query`/`as_of_date`/`dataset_version` are accepted; unknown patient-like fields and invalid types are rejected | `packages/contracts/src/rule-text-lookup.test.ts` |
+| Rule-text API chain | Valid requests traverse contracts to domain and return every display-only result field | `apps/api/src/rule-text-lookup.test.ts` |
+| Rule-text API rejection | Malformed JSON, unknown fields, and unsupported methods use the existing error contract | `apps/api/src/rule-text-lookup.test.ts` |
+| Rule-text API fail-closed | Invalid or pre-effective dates and unknown dataset versions return no units and require manual review | `apps/api/src/rule-text-lookup.test.ts` |
+| Rule-text API logging | Completion logs contain only common structured fields, status, unit count, and request ID; query text is absent | `apps/api/src/rule-text-lookup.test.ts` |
+| Rule-text metadata | `/v1/meta` retains demo metadata and adds rule dataset version and effective date | `apps/api/src/rule-text-lookup.test.ts` |
+| Clinician mode isolation | Demo medication and rule-text lookup render through separate mode components and only the selected result tree is mounted | `apps/clinician/App.tsx`, `pnpm export:web` |
+| Clinician rule-text rendering | Every rule result places the official transcription warning first, followed by dataset metadata and per-unit `clausePath` plus `verbatimText` | `apps/clinician/App.tsx`, `pnpm typecheck`, `pnpm export:web` |
 
 iOS and Android simulator/device tests are not in this matrix because the local prerequisites are unavailable; see the build report.
