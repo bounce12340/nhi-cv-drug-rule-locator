@@ -26,9 +26,9 @@
 
 C1+C2 合一單(TC 下一號,Codex xhigh;同屬 packages 新增、demo-only、零資料閘門);全套慣例(凍結/探針/冪等/黑名單/86→122 既有測試零修改)。
 
-## 5. RA 決定點
+## 5. RA 決定點(已裁,2026-08-05:「PASS 32a1f23 H1照案 H2照案 H3緩 H4照案 H5照案 H6照案」)
 
-- **H1** C1 照案(demo-only 套件)
-- **H2** C2 照案(api-client)
-- **H3** C3:緩(建議)vs 建(需 RDL-017 新閘門)
-- **H6**(與 M2 共用)派工切分:M3=C1+C2 一單 Codex;M2=文件側 Fable 直寫(見 m2-kickoff-plan)
+- **H1 照案**:C1 demo-only 套件(=TC-20260805-14)
+- **H2 照案**:C2 api-client(併入 TC-20260805-14)
+- **H3 緩**:C3 真實價格顯示緩至價格主檔 governed intake 後另案規劃
+- **H6 照案**:M3=C1+C2 一單 Codex;M2=文件側 Fable 直寫分批

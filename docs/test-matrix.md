@@ -45,5 +45,11 @@
 | Rule-text metadata | `/v1/meta` retains demo metadata and adds rule dataset version and effective date | `apps/api/src/rule-text-lookup.test.ts` |
 | Clinician mode isolation | Demo medication and rule-text lookup render through separate mode components and only the selected result tree is mounted | `apps/clinician/App.tsx`, `pnpm export:web` |
 | Clinician rule-text rendering | Every rule result places the official transcription warning first, followed by dataset metadata and per-unit `clausePath` plus `verbatimText` | `apps/clinician/App.tsx`, `pnpm typecheck`, `pnpm export:web` |
+| Demo price comparability | All eight `comparability_key` attributes produce the four ADR-005 states; missing attributes fail to `INSUFFICIENT_DATA`, and only package quantity differences produce `CONTEXT_ONLY` | `packages/price-comparison/src/index.test.ts` |
+| Demo price status and ordering gate | `CURRENT`, `FUTURE`, `MISSING`, `STALE`, and `CONFLICT` are derived as of a validated date; any non-current or non-direct candidate removes the price order | `packages/price-comparison/src/index.test.ts` |
+| Demo price display safeguards | Current and future entries are separated with effective dates, missing or expired amounts are never filled or carried forward, and more than four candidates fails closed | `packages/price-comparison/src/index.test.ts` |
+| Demo price fixture and vocabulary safety | Every fixture is visibly fictional and demo-tagged; real-code shape, price-decision copy, percentage-style copy, and the five eligibility terms are rejected while the exact demo warning is locked | `packages/price-comparison/src/index.test.ts` |
+| Typed API client endpoints | Health, metadata, medication lookup, and rule-text lookup use contracts/domain-derived types and preserve warning, source tag, and manual-review fields | `packages/api-client/src/index.test.ts` |
+| Typed API client failures and integration | HTTP, network, and malformed-JSON failures return typed results with no retry; direct Worker-handler integration covers GET and both lookup request chains | `packages/api-client/src/index.test.ts`, `packages/api-client/src/integration.test.ts` |
 
 iOS and Android simulator/device tests are not in this matrix because the local prerequisites are unavailable; see the build report.
