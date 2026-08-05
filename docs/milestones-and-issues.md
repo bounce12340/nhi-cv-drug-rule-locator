@@ -15,6 +15,8 @@ GitHub Milestones/Labels/Issues 之結構規劃。本文件為權威規劃來源
 
 註:與 v3.2 §24 Phase 編號之對照表另建(alignment #6 追蹤中),本表以工作內容為準。
 
+註 2(2026-08-05):**M1 正式結案**(A6,RDL-017;完成條件達成紀錄見 docs/m1-continuation-plan.md §4)。
+
 ## Labels 分類法
 
 - 類型:`type:build`(Codex 派工)/`type:planning`(主模型)/`type:governance`(RA 裁決)/`type:incident`

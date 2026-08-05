@@ -1,10 +1,12 @@
 # M2 P3:帳號域 Schema 細化(structure-only)
 
 > **DRAFT — structure-only。** 依 ADR-006 欄位邊界細化 docs/db-schema-migration-plan.md 之帳號域;不含任何實際資料值;Phase 2 首張 migration 派工單以本文件為欄位基準。**永久紅線不變**:任何表不得含病人識別/診斷/檢驗欄位;查詢內容不落資料庫。
+>
+> **2026-08-05 RA 裁示(A2,RDL-017)**:§0 資料域/帳號域**分離為兩個 D1 database 照案核定**;§1 HMAC 金鑰輪替策略與 §3 IP 遮罩格式兩項細節**遞延至 Phase 2 首張派工單**隨實作核定;其餘結構照案。
 
 ## 0. 部署原則(提案)
 
-- **資料域與帳號域分離為兩個 D1 database**【待核】:爆炸半徑隔離、備份/保留政策各自獨立(法規資料永久 vs 個資依 retention)
+- **資料域與帳號域分離為兩個 D1 database**【已核:A2,RDL-017】:爆炸半徑隔離、備份/保留政策各自獨立(法規資料永久 vs 個資依 retention)
 - 帳號域 migrations:forward-only+資料保全;每張 migration 附回滾說明(§30 #32 原則)
 
 ## 1. users(細化)
