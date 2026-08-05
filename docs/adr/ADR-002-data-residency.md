@@ -1,6 +1,6 @@
 # ADR-002: Data Residency(§30 #6)
 
-- Status: **PROPOSED — 關鍵值待人工確認**(RA + 法律/個資人員確認後轉 Accepted;Phase 2 註冊功能實作前必須定案)
+- Status: **PROPOSED(RA 側已核)** — 2026-08-05 RA 裁示照案(A4,RDL-017);**法律/個資人員確認後方轉 Accepted**(Phase 2 註冊功能實作前必須定案;各【待人工確認】之技術查證項——實際 primary location 等——於實作時執行並回填)
 - 依據:v3.2 §17.4、§15.8;docs/data-flow-diagram.md 目標態
 
 ## Context

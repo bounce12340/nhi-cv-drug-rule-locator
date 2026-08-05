@@ -57,6 +57,7 @@
 - M2 P2＋P3 設計批次（H5 裁示，Fable 撰寫）：docs/m2-auth-detail-design.md——ADR-006【待人工確認】細部提案（自建輕量 auth 選型評估、PBKDF2 參數、@simplewebauthn Passkey 方案、token／速率參數表全數【待核】、深鏈定案化）；docs/m2-account-schema-detail.md——帳號域十表 structure-only 細化（隨機 PK 防枚舉、email／證書字號 HMAC lookup＋加密雙欄、十態狀態機、SoD 雙核欄、audit／exception 全枚舉無自由文字、retention class 逐表標註、資料域帳號域分離兩 D1【待核】）。M2 文件側（P1–P3）至此收齊；實作維持 Phase 2 閘門＋STRIDE＋v3.2 §32。
 - governance-scan Set B tripwire 首次實戰與窄幅修正：UI 改版使 Phase 0 強制無病人資料聲明在 diff 呈新增行而紅燈；人工判讀＝誤報，僅豁免該句精確全文（任何變體照舊紅燈）；SOP 教訓（掃描應於 commit 後重跑）入案。
 - M3 續章＋M2 起手雙規劃（RA 2026-08-05 指示「M3及M2接續」）：docs/m3-price-apiclient-plan.md——C1 price-comparison 套件（DEMO_DATA_ONLY，依 ADR-005 語意全文：comparability_key 四態、price_status 非 CURRENT 不排序、禁用語黑名單、≤4 項）＋C2 api-client＋C3 真實價格顯示決定點（建議緩至主檔 intake）；docs/m2-kickoff-plan.md——P1 隱私文件草案／P2 ADR-006 細部定案設計／P3 D1 schema 細化（全文件側，實作鎖 Phase 2 閘門），SaMD 工作假設決定點；六項 RA 決定點 H1–H6。
+- 裁示批次 A1–A8 登錄（RDL-017；RA 2026-08-05 結構化答覆「A 全部照案」）：A1 auth 參數包照案（PBKDF2 600,000 迭代、@simplewebauthn 以 Workers PoC 為前提、九項 token／速率值——docs/m2-auth-detail-design.md）；A2 帳號域兩 D1 分離照案（HMAC 金鑰輪替與 IP 遮罩格式遞延 Phase 2 首張派工單）；A3 八類個資保存期限照案（法律側確認留 v3.2 §32 B 軌）；A4 ADR-002 RA 側核定（法律／個資確認後方轉 Accepted）；A5 ADR-008 PoC 排程照案（鎖定仍以實機證據為唯一條件）；A6 M1 里程碑正式簽結（docs/m1-continuation-plan.md §4）；A7 分支制度維持現制（tracker #18 無變更再確認）；A8 INTERPRET-003 裁決（新版表二品項內容以獨立清單載體存在、不內嵌 2.6.1 條文本文；對映式消費屬未來另案引擎裁決）。批次各項均不解除 RDL-005、不替代 v3.2 §32 專業簽核。
 
 ## [0.1.0] - 2026-08-01
 

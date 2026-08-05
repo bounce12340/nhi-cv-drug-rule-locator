@@ -1,6 +1,7 @@
 # ADR-008: Cross-platform Mobile 方案(§30 #8)
 
 - Status: **PROPOSED — 優先候選 React Native + Expo;正式鎖定以 PoC 實機證據為條件**(v3.2 §17.8 明文不得未經 PoC 即鎖定;PoC 屬 tracker #9,本環境 BLOCKED,須於具 Xcode/adb 之環境執行)
+- 2026-08-05 RA 裁示(A5,RDL-017):**PoC 排程照案核定**——優先候選維持 React Native + Expo;鎖定仍以 PoC 實機證據為唯一條件,PoC 為 B 軌實機作業(本環境不可執行),完成後依 §17.8 逐項對 performance-budget 目標評定方轉 ACCEPTED。
 - 依據:v3.2 §17.8、§2.4、§17.9;現況:Phase 0 已以 Expo SDK 57 建立 demo 客戶端
 
 ## Context
