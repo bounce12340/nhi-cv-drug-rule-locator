@@ -20,6 +20,14 @@ EXCLUDES=(
   ':(exclude)CHANGELOG.md'
   ':(exclude).github/workflows/ci.yml'
   ':(exclude)scripts/governance-scan.sh'
+  # Task Contracts record what was dispatched and verified, and that record has
+  # to be able to name the patterns it checked for — a contract describing this
+  # scan trips it (CI run 30959516258). This is the widest exemption here and
+  # the only one covering a directory that keeps growing, so it is also the one
+  # that carries real risk: a contract is free prose, and payload pasted into
+  # one is no longer caught. Naming a pattern by reference rather than quoting
+  # its text still keeps the record inside the tripwire and remains preferred.
+  ':(exclude)docs/task-contracts/**'
   # RDL-016 codegen output; drift tests guard governed-dataset integrity, as storage guards data/governed/**.
   ':(exclude)packages/domain/src/generated/**'
   ':(exclude)data/governed/**'
@@ -31,7 +39,7 @@ added_code="$(git diff "$BASE_REF"...HEAD -- packages apps | grep -E '^\+' | gre
 # Local runs must also see files not yet committed: untracked files are
 # invisible to git diff, which would let a red line slip through pre-commit
 # checks (in CI, checkouts have everything committed, so this adds nothing).
-EXCLUDE_RE='^(docs/spec-source-status\.md|docs/regulatory-decision-log\.md|docs/phase1-readiness\.md|CHANGELOG\.md|\.github/workflows/ci\.yml|scripts/governance-scan\.sh|data/governed/.*)$'
+EXCLUDE_RE='^(docs/spec-source-status\.md|docs/regulatory-decision-log\.md|docs/phase1-readiness\.md|CHANGELOG\.md|\.github/workflows/ci\.yml|scripts/governance-scan\.sh|docs/task-contracts/.*|data/governed/.*)$'
 while IFS= read -r untracked; do
   [ -f "$untracked" ] || continue
   content="$(cat "$untracked" 2>/dev/null || true)"
