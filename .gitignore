@@ -12,4 +12,8 @@ coverage/
 !.env.example
 .claude/settings.local.json
 .claude/*.local.json
+# 建置者於 repo 內開設之暫存區(如 Codex 的草稿樹)。忽略而非放任:忽略者永遠
+# 進不了 git 歷史,這正是紅線掃描要守的東西;掃描亦因此不再對其誤報。
+# 派工單一律要求最終產物寫入真實路徑,暫存區於驗收時清除。
+/scratchpad/
 apps/api/worker-configuration.d.ts

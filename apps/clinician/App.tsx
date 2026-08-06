@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
 import {
   DEMO_WARNING,
+  lookupDrugItem,
   lookupMedication,
   lookupRuleText,
+  type DrugItemLookupResult,
+  type DrugItemRecord,
   type LookupResult,
   type MedicationRecord,
   type RuleTextLookupResult,
@@ -18,9 +21,10 @@ import {
   View
 } from "react-native";
 
-type LookupMode = "demo" | "rules";
+type LookupMode = "demo" | "rules" | "items";
 
 const ruleTextDataset = lookupRuleText({ query: "", as_of_date: "" });
+const itemDataset = lookupDrugItem({ query: "", as_of_date: "" });
 
 function ResultCard({ record }: { record: MedicationRecord }): React.JSX.Element {
   return (
@@ -110,11 +114,19 @@ function RuleUnitCard({ unit }: { unit: RuleTextUnit }): React.JSX.Element {
   );
 }
 
-function RuleLookupMode(): React.JSX.Element {
-  const [query, setQuery] = useState("");
+function RuleLookupMode({ initialQuery = "" }: { initialQuery?: string }): React.JSX.Element {
+  const [query, setQuery] = useState(initialQuery);
   const [asOfDate, setAsOfDate] = useState<string>(ruleTextDataset.effectiveFrom);
   const [datasetVersion, setDatasetVersion] = useState<string>(ruleTextDataset.datasetVersion);
-  const [result, setResult] = useState<RuleTextLookupResult | null>(null);
+  const [result, setResult] = useState<RuleTextLookupResult | null>(() =>
+    initialQuery.length === 0
+      ? null
+      : lookupRuleText({
+          query: initialQuery,
+          as_of_date: ruleTextDataset.effectiveFrom,
+          dataset_version: ruleTextDataset.datasetVersion
+        })
+  );
 
   function performLookup(): void {
     setResult(
@@ -172,6 +184,135 @@ function RuleLookupMode(): React.JSX.Element {
   );
 }
 
+function DrugItemCard({
+  record,
+  onOpenRuleText
+}: {
+  record: DrugItemRecord;
+  onOpenRuleText: (coverageRule: string) => void;
+}): React.JSX.Element {
+  const missingField = "本資料列未提供";
+  const missingPrice = "本次公告未列異動";
+  const priceComparison =
+    record.priceBefore === undefined && record.priceAfter === undefined
+      ? missingPrice
+      : `${record.priceBefore ?? missingPrice} → ${record.priceAfter ?? missingPrice}`;
+
+  return (
+    <View style={styles.itemCard} accessibilityRole="summary">
+      <Text style={styles.code}>{record.nhiCode}</Text>
+      <Text style={styles.productName}>{record.drugNameEn}</Text>
+      <Text style={styles.detail}>成分及含量：{record.ingredient ?? missingField}</Text>
+      <Text style={styles.detail}>成分類別：{record.ingredientCategory ?? missingField}</Text>
+      <Text style={styles.detail}>藥商：{record.manufacturer ?? missingField}</Text>
+      <Text style={styles.itemPrice}>原支付價 → 初核價格：{priceComparison}</Text>
+      <Text style={styles.detail}>生效日期：{record.effectiveDate ?? missingField}</Text>
+      <View style={styles.itemFieldRow}>
+        <Text style={styles.detail}>公告所載給付規定條號：</Text>
+        {record.coverageRule === undefined ? (
+          <Text style={styles.detail}>{missingField}</Text>
+        ) : (
+          <Pressable
+            accessibilityLabel={`開啟規則 ${record.coverageRule} 的逐字條文`}
+            accessibilityRole="button"
+            onPress={() => onOpenRuleText(record.coverageRule!)}
+          >
+            <Text style={styles.coverageLink}>{record.coverageRule}（開啟逐字條文）</Text>
+          </Pressable>
+        )}
+      </View>
+      <Text style={styles.detail}>表別分類：{record.tableClassification ?? missingField}</Text>
+      <Text style={styles.detail}>例外註記：{record.exceptionNote ?? missingField}</Text>
+    </View>
+  );
+}
+
+function DrugItemLookupMode({
+  onOpenRuleText
+}: {
+  onOpenRuleText: (coverageRule: string) => void;
+}): React.JSX.Element {
+  const [query, setQuery] = useState("");
+  const [asOfDate, setAsOfDate] = useState<string>(itemDataset.effectiveFrom);
+  const [datasetVersion, setDatasetVersion] = useState<string>(itemDataset.datasetVersion);
+  const [result, setResult] = useState<DrugItemLookupResult | null>(null);
+
+  function performLookup(): void {
+    setResult(
+      lookupDrugItem({
+        query,
+        as_of_date: asOfDate,
+        ...(datasetVersion.trim().length > 0 ? { dataset_version: datasetVersion } : {})
+      })
+    );
+  }
+
+  return (
+    <View style={styles.modeContent}>
+      <Text style={styles.title}>藥品品項查詢</Text>
+      <Text style={styles.subtitle}>以健保代碼、英文品名或成分查找公告所載品項。</Text>
+
+      <TextInput
+        autoFocus
+        accessibilityLabel="藥品品項搜尋"
+        autoCapitalize="characters"
+        autoCorrect={false}
+        onChangeText={setQuery}
+        onSubmitEditing={performLookup}
+        placeholder="輸入健保代碼、英文品名或成分"
+        returnKeyType="search"
+        style={styles.input}
+        value={query}
+      />
+      <TextInput
+        accessibilityLabel="品項查詢日期"
+        autoCapitalize="none"
+        autoCorrect={false}
+        onChangeText={setAsOfDate}
+        placeholder="查詢日期 YYYY-MM-DD"
+        style={styles.input}
+        value={asOfDate}
+      />
+      <TextInput
+        accessibilityLabel="品項資料集版本"
+        autoCapitalize="none"
+        autoCorrect={false}
+        onChangeText={setDatasetVersion}
+        placeholder="資料集版本"
+        style={styles.input}
+        value={datasetVersion}
+      />
+      <Pressable accessibilityRole="button" onPress={performLookup} style={styles.itemButton}>
+        <Text style={styles.buttonText}>查詢藥品品項</Text>
+      </Pressable>
+
+      <PrivacyNotice />
+
+      {result ? (
+        <View style={styles.results}>
+          <View style={styles.officialItemWarning} accessibilityRole="alert">
+            <Text style={styles.officialWarningTitle}>官方轉錄警語</Text>
+            <Text style={styles.officialWarningText}>{result.warning}</Text>
+          </View>
+          <Text style={styles.resultTitle}>查詢結果：{result.status}</Text>
+          <Text style={styles.resultText}>
+            資料集版本：{result.datasetVersion} · 生效日：{result.effectiveFrom}
+          </Text>
+          {result.manualReviewRequired ? (
+            <Text style={styles.review}>此結果需要人工確認；系統不會自動選取品項。</Text>
+          ) : null}
+          {result.items.map((record) => (
+            <DrugItemCard key={record.nhiCode} record={record} onOpenRuleText={onOpenRuleText} />
+          ))}
+          {result.items.length === 0 ? (
+            <Text style={styles.empty}>此查詢未取得已驗證的品項資料。</Text>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function RuleLookupResult({ result }: { result: RuleTextLookupResult }): React.JSX.Element {
   return (
     <View style={styles.results}>
@@ -207,6 +348,12 @@ function PrivacyNotice(): React.JSX.Element {
 
 export default function App(): React.JSX.Element {
   const [mode, setMode] = useState<LookupMode>("demo");
+  const [ruleQuerySeed, setRuleQuerySeed] = useState("");
+
+  function openRuleText(coverageRule: string): void {
+    setRuleQuerySeed(coverageRule);
+    setMode("rules");
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -232,9 +379,25 @@ export default function App(): React.JSX.Element {
               規則逐字查詢
             </Text>
           </Pressable>
+          <Pressable
+            accessibilityRole="tab"
+            accessibilityState={{ selected: mode === "items" }}
+            onPress={() => setMode("items")}
+            style={[styles.modeTab, mode === "items" ? styles.modeTabSelected : null]}
+          >
+            <Text style={[styles.modeTabText, mode === "items" ? styles.modeTabTextSelected : null]}>
+              藥品品項查詢
+            </Text>
+          </Pressable>
         </View>
 
-        {mode === "demo" ? <DemoLookupMode /> : <RuleLookupMode />}
+        {mode === "demo" ? (
+          <DemoLookupMode />
+        ) : mode === "rules" ? (
+          <RuleLookupMode initialQuery={ruleQuerySeed} />
+        ) : (
+          <DrugItemLookupMode onOpenRuleText={openRuleText} />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -278,6 +441,13 @@ const styles = StyleSheet.create({
     minHeight: 50,
     justifyContent: "center"
   },
+  itemButton: {
+    alignItems: "center",
+    backgroundColor: "#146356",
+    borderRadius: 10,
+    minHeight: 50,
+    justifyContent: "center"
+  },
   buttonText: { color: "#ffffff", fontSize: 17, fontWeight: "700" },
   privacyNotice: { backgroundColor: "#e6f6ff", borderRadius: 10, borderWidth: 1, borderColor: "#9fb3c8", padding: 14 },
   privacyNoticeTitle: { color: "#102a43", fontWeight: "800", marginBottom: 4 },
@@ -297,6 +467,18 @@ const styles = StyleSheet.create({
   officialWarning: { backgroundColor: "#3f3a68", borderRadius: 10, padding: 14 },
   officialWarningTitle: { color: "#f5f3ff", fontWeight: "800", marginBottom: 4 },
   officialWarningText: { color: "#f5f3ff", fontSize: 15, lineHeight: 22 },
+  officialItemWarning: { backgroundColor: "#285943", borderRadius: 10, padding: 14 },
+  itemCard: {
+    backgroundColor: "#ffffff",
+    borderColor: "#b8d8cf",
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 6,
+    padding: 14
+  },
+  itemPrice: { color: "#146356", fontSize: 16, fontWeight: "700", marginTop: 4 },
+  itemFieldRow: { alignItems: "baseline", flexDirection: "row", flexWrap: "wrap" },
+  coverageLink: { color: "#0f609b", fontWeight: "700", textDecorationLine: "underline" },
   ruleCard: {
     backgroundColor: "#ffffff",
     borderColor: "#bcccdc",

@@ -18,4 +18,5 @@
 | rule-2.6.1-prior-version-full-text(舊版 2.6.1 全文 PDF) | PROVENANCE_DECLARED(2026-08-03 收件;舊版表二缺口結案;方向 B 基準) |
 | rule-2.6.2-prior-version-full-text(舊版 2.6.2 全文 PDF) | PROVENANCE_DECLARED(2026-08-03 收件;2A 補件,Stage 3 補充基準) |
 | rule-2.6.3-prior-version-full-text(舊版 2.6.3 全文 PDF) | PROVENANCE_DECLARED(2026-08-03 收件;2A 補件,Stage 3 補充基準) |
+| nhi-drug-item-master-20260806(健保用藥品項查詢項目檔) | PROVENANCE_DECLARED(2026-08-06 收件;政府資料開放平臺 23715,開放授權,RA 授權由 session 直接取得;範圍子集待 Stage 3 派工驗證) |
 | rules-structured-jsonl(結構化規則轉錄 JSONL) | DERIVED_VERIFIED(2026-08-04 內部推導;T3 FIDELITY_VERIFIED;RDL-015 入庫) |
