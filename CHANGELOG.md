@@ -62,6 +62,7 @@
 - B 軌推進包(RA 2026-08-05 指示「B軌全推進」,Fable 撰寫):新增 docs/b-track/ 六件——總索引(B1–B5 相依關係、統一回登程序、§32 簽核台帳 append-only 格式)、B1 SaMD 法律意見委任摘要(產品事實/委任問題/影響面)、B2 隱私與個資審閱包(七文件逐份問題清單+Cloudflare DPA)、B3 正式 STRIDE 資安審閱委任摘要(六面×STRIDE、SoD 要求、Phase 2 進入閘門)、B4 ADR-008 實機 PoC 執行手冊(W1 現在可測/W2 隨 Phase 2 兩波、逐項效能預算對應、證據格式)、B5 商店合規法律定性摘要(六項【待核】結清路徑)。均為委任準備文件,不解除任何閘門;專業簽核取得前對應閘門維持關閉。
 - RDL-018(RDL-005 第五次窄幅解除;RA 2026-08-06 結構化答覆「L1B L2照案 L3照案 L4否」):核准 **web-only、無帳號、display-only 之 production 部署**(雙分頁照現狀:示範藥品查詢+官方逐字規則查詢,各帶警語),附 **v3.2 §32 誠實偏離紀錄**——本次發布未取得法律/個資/資安專業簽核,RA 明示承擔風險,B 軌並行續辦、專業意見如要求變更則變更;偏離登記非合規宣告。緩解事實:無個資蒐集、無病人資料、無 eligibility、fail-closed 不變。其餘照舊 BLOCKED(真實價格顯示、Phase 2、商店送審);L4 並裁 SaMD 意見此時不委任(H4 工作假設續用)。
 - **Production 首次部署(2026-08-06,依 RDL-018)**:API Worker → `https://nhi-cv-drug-rule-locator-api.bounceto12340.workers.dev`(version 2c94dc5b);Web(Cloudflare Pages)→ `https://nhi-cv-lookup.pages.dev`(專案 nhi-cv-lookup);部署樹=commit `17ae6dc`。煙霧測試六項全過:health 200、meta 雙資料源正確、demo 查詢 fail-closed+警語、官方規則查詢 EXACT_MATCH 逐字+官方警語+生效日前 fail-closed、patient_id 未知欄位 400 拒絕、web 200 且 bundle 內含全部強制警語(unicode 轉義驗證)。部署憑證僅存 session 暫存區,未入 repo。
+- 部署憑證存放規則定型(RDL-011 同式;RA 指示將 token 加入環境變數設定):launch-runbook §1.1 新增三層對照——個人雲端環境設定(跨 session 持久、僅負責人可設)/容器內使用者層級 `~/.claude/settings.json`(僅該容器存續)/repo 內 `.claude/settings.json`(**禁用**,該檔為 git 追蹤檔);`.gitignore` 補上 `.claude/settings.local.json` 與 `.claude/*.local.json` 以堵本機設定挾帶祕密之路徑。憑證值一律不入文件與 repo;輪替/外洩時撤銷重發並更新兩處。
 
 ## [0.1.0] - 2026-08-01
 
