@@ -1,11 +1,18 @@
 import {
   DEMO_DATA_STATUS,
+  parseDrugItemMasterLookupRequest,
   parseDrugItemLookupRequest,
   parseLookupRequest,
   parseRuleTextLookupRequest,
   type ApiError
 } from "@nhi-cv/contracts";
-import { getDatasetMeta, lookupDrugItem, lookupMedication, lookupRuleText } from "@nhi-cv/domain";
+import {
+  getDatasetMeta,
+  lookupDrugItem,
+  lookupDrugItemMaster,
+  lookupMedication,
+  lookupRuleText
+} from "@nhi-cv/domain";
 
 type LogAttributes = Record<string, string | number | boolean | undefined>;
 
@@ -68,6 +75,7 @@ const worker = {
         structuredLog("info", "meta_requested", { request_id: requestId });
         const rulesMeta = lookupRuleText({ query: "", as_of_date: "" });
         const itemsMeta = lookupDrugItem({ query: "", as_of_date: "" });
+        const drugItemsMeta = lookupDrugItemMaster({ query: "", as_of_date: "" });
         return json(
           {
             ...getDatasetMeta(),
@@ -78,6 +86,11 @@ const worker = {
             itemsDataset: {
               version: itemsMeta.datasetVersion,
               effectiveFrom: itemsMeta.effectiveFrom
+            },
+            drugItemsDataset: {
+              version: drugItemsMeta.datasetVersion,
+              effectiveFrom: drugItemsMeta.effectiveFrom,
+              effectiveTo: drugItemsMeta.effectiveTo
             }
           },
           200,
@@ -156,10 +169,37 @@ const worker = {
         return json({ result }, 200, requestId);
       }
 
+      if (request.method === "POST" && url.pathname === "/v1/drug-items/lookup") {
+        let payload: unknown;
+        try {
+          payload = await request.json();
+        } catch {
+          return errorResponse(400, "INVALID_REQUEST", "Request body must be valid JSON.", requestId);
+        }
+
+        const parsed = parseDrugItemMasterLookupRequest(payload);
+        if (!parsed.ok) {
+          return errorResponse(400, "INVALID_REQUEST", parsed.message, requestId);
+        }
+
+        const result = lookupDrugItemMaster(parsed.value);
+        structuredLog("info", "drug_item_master_lookup_completed", {
+          request_id: requestId,
+          lookup_status: result.status,
+          match_count: result.matches.length
+        });
+        return json({ result }, 200, requestId);
+      }
+
       if (
-        ["/health", "/v1/meta", "/v1/lookup", "/v1/rules/lookup", "/v1/items/lookup"].includes(
-          url.pathname
-        )
+        [
+          "/health",
+          "/v1/meta",
+          "/v1/lookup",
+          "/v1/rules/lookup",
+          "/v1/items/lookup",
+          "/v1/drug-items/lookup"
+        ].includes(url.pathname)
       ) {
         return errorResponse(405, "METHOD_NOT_ALLOWED", "Method not allowed for this endpoint.", requestId);
       }
