@@ -5,7 +5,9 @@
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
   // 自訂網域(RDL-018 上線範圍)。custom_domain 由 wrangler 於部署時建立 DNS 與憑證。
-  "routes": [{ "pattern": "api.nhi.uic-ai.com", "custom_domain": true }],
+  // 必須為二層主機名:*.uic-ai.com 萬用憑證不涵蓋三層,三層名無法取得免費憑證
+  // (2026-08-06 曾以 api.nhi.uic-ai.com 實測失敗)。
+  "routes": [{ "pattern": "nhi-api.uic-ai.com", "custom_domain": true }],
   // 必須明寫:設定 routes 後 workers_dev 預設轉為 false,會使既有 *.workers.dev
   // 位址回 404。2026-08-06 曾因此短暫中斷,故顯式保留兩個位址並存。
   "workers_dev": true,

@@ -65,6 +65,7 @@
 - 部署憑證存放規則定型(RDL-011 同式;RA 指示將 token 加入環境變數設定):launch-runbook §1.1 新增三層對照——個人雲端環境設定(跨 session 持久、僅負責人可設)/容器內使用者層級 `~/.claude/settings.json`(僅該容器存續)/repo 內 `.claude/settings.json`(**禁用**,該檔為 git 追蹤檔);`.gitignore` 補上 `.claude/settings.local.json` 與 `.claude/*.local.json` 以堵本機設定挾帶祕密之路徑。憑證值一律不入文件與 repo;輪替/外洩時撤銷重發並更新兩處。
 - 自訂網域設定(RA 2026-08-06 裁示「P1 N1A N2A」):web 綁 `nhi.uic-ai.com`(Pages 專案 custom domain 已登記,待 DNS)、API 綁 `api.nhi.uic-ai.com`(wrangler.jsonc `routes` 之 `custom_domain: true`,部署時建立 DNS 與憑證);launch-runbook §2.1 記載兩面對照與所需 token 權限(Zone DNS Edit + Workers Routes Edit)。預設 `*.pages.dev`/`*.workers.dev` 位址於綁定後仍有效。
 - 事故與修正(2026-08-06,API 短暫無可用位址):於 wrangler.jsonc 設定 `routes` 後,`workers_dev` 預設轉為 `false`,既有 `*.workers.dev` 位址回 404;同時新自訂網域憑證尚未發放,API 兩個位址同時不可達數分鐘。修正:顯式 `workers_dev: true` 並於設定內留註解防止重犯,重新部署後 `workers.dev` 恢復 200。查詢網站不受影響(web 版直接呼叫 domain 引擎,不經 API),全程 200。附帶查明:`nhi.uic-ai.com`(二層)受 `*.uic-ai.com` 萬用憑證涵蓋故即時生效;`api.nhi.uic-ai.com`(三層)不在涵蓋範圍,免費憑證無法發放——主機名層級為此類綁定之前置條件,非權限問題。
+- 自訂網域完成(RA 2026-08-06 提供新部署憑證後執行):API 主機名改採二層 `nhi-api.uic-ai.com` 並部署生效;三層之 `api.nhi.uic-ai.com` 廢棄。三個位址並存且全數 200——`https://nhi.uic-ai.com`(web)、`https://nhi-api.uic-ai.com`(API)、既有 `*.workers.dev`。線上煙霧測試七項全過:health、meta 雙資料源、demo 查詢 fail-closed、官方逐字 EXACT_MATCH(43 單元、官方警語)、生效日前 fail-closed、未知欄位 400 拒絕、web 標題正確。launch-runbook §2.1 追記兩條實測限制(主機名須二層、`workers_dev` 須顯式 true)與實際所需權限範圍(帳號層級三項即足,Worker 自訂網域之 DNS 由該流程自建)。
 
 ## [0.1.0] - 2026-08-01
 
