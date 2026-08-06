@@ -10,4 +10,6 @@ coverage/
 .env
 .env.*
 !.env.example
+.claude/settings.local.json
+.claude/*.local.json
 apps/api/worker-configuration.d.ts

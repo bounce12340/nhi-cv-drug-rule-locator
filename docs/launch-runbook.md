@@ -4,8 +4,18 @@
 
 ## 1. 前置(擇一)
 
-- **A. 由本 session 部署**:環境需有 `CLOUDFLARE_API_TOKEN`(scopes:Workers Scripts:Edit、Cloudflare Pages:Edit、Account Settings:Read)+`CLOUDFLARE_ACCOUNT_ID`;並在 Claude Code 環境允許 `wrangler` 指令(permission rule)。設定後告知即執行。
+- **A. 由 session 部署**(2026-08-06 首次部署採此途徑):需 `CLOUDFLARE_API_TOKEN`(scopes:Workers Scripts:Edit、Cloudflare Pages:Edit、Account Settings:Read)+`CLOUDFLARE_ACCOUNT_ID`。
 - **B. 由 RA 本機部署**:本機 `git pull` 後 `npx wrangler login` 一次,跑 §2 兩條指令即完成。
+
+### 1.1 憑證存放規則(RDL-011 同式;**值一律不入本文件、不入 repo**)
+
+| 位置 | 效力 | 用途 |
+| --- | --- | --- |
+| 個人雲端環境之環境變數設定(claude.ai/code 環境設定) | **跨 session 持久**——容器回收後仍在 | 正式存放處;僅專案負責人可設定 |
+| 容器內使用者層級 `~/.claude/settings.json` 之 `env` | 僅該容器存續期間 | session 內即用;容器回收即消失,需重設 |
+| repo 內 `.claude/settings.json` | — | **禁用**:該檔為 git 追蹤檔,寫入即等於提交祕密 |
+
+`.gitignore` 已涵蓋 `.claude/settings.local.json` 與 `.claude/*.local.json`,以防本機層級設定挾帶祕密被提交。憑證輪替或外洩時:於 Cloudflare dashboard 撤銷該 token 後重發,並更新上述兩處。
 
 ## 2. 部署指令
 
