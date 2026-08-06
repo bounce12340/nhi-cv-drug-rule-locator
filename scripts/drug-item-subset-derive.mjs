@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const EXPECTED_SOURCE_SHA256 =
   "d41cf7bf91ca1d6997ac751601548f68226a8326452aa5d8befd725e3a8d0158";
 const EXPECTED_SOURCE_DATA_ROWS = 224_553;
-const EXPECTED_HEADERS = [
+export const EXPECTED_SOURCE_HEADERS = Object.freeze([
   "異動",
   "藥品代號",
   "藥品英文名稱",
@@ -31,7 +31,8 @@ const EXPECTED_HEADERS = [
   "給付規定章節",
   "藥品代碼超連結",
   "給付規定章節連結",
-];
+]);
+const EXPECTED_HEADERS = EXPECTED_SOURCE_HEADERS;
 
 export const TARGET_CHAPTERS = Object.freeze(["2.6.1.", "2.6.2.", "2.6.3."]);
 const TARGET_CHAPTER_SET = new Set(TARGET_CHAPTERS);
@@ -116,7 +117,7 @@ async function hashFile(filePath) {
   };
 }
 
-async function parseCsvFile(filePath, onRow) {
+export async function parseCsvFile(filePath, onRow) {
   const decoder = new TextDecoder("utf-8", { fatal: true });
   let row = [];
   let field = "";
@@ -466,32 +467,91 @@ export async function deriveSubsetFile({
 }
 
 function parseArguments(argv) {
-  if (argv.length === 0) {
-    return { check: false, forceHashMismatch: false };
+  const parsed = {
+    check: false,
+    forceHashMismatch: false,
+    source: sourcePath,
+    expectedSha256: EXPECTED_SOURCE_SHA256,
+    expectedDataRows: EXPECTED_SOURCE_DATA_ROWS,
+    out: outputPath,
+  };
+  const seen = new Set();
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+    if (argument === "--check" || argument === "--force-hash-mismatch") {
+      if (seen.has(argument)) {
+        fail("argument_error");
+      }
+      seen.add(argument);
+      if (argument === "--check") {
+        parsed.check = true;
+      } else {
+        parsed.forceHashMismatch = true;
+      }
+      continue;
+    }
+
+    const valueFlags = new Map([
+      ["--source", "source"],
+      ["--expect-sha256", "expectedSha256"],
+      ["--expect-rows", "expectedDataRows"],
+      ["--out", "out"],
+    ]);
+    const property = valueFlags.get(argument);
+    const value = argv[index + 1];
+    if (property === undefined || value === undefined || value.startsWith("--") || seen.has(argument)) {
+      fail("argument_error");
+    }
+    seen.add(argument);
+    index += 1;
+
+    if (property === "expectedSha256") {
+      if (!/^[a-fA-F0-9]{64}$/u.test(value)) {
+        fail("argument_error");
+      }
+      parsed.expectedSha256 = value.toLowerCase();
+    } else if (property === "expectedDataRows") {
+      if (!/^(0|[1-9]\d*)$/u.test(value)) {
+        fail("argument_error");
+      }
+      const rows = Number(value);
+      if (!Number.isSafeInteger(rows)) {
+        fail("argument_error");
+      }
+      parsed.expectedDataRows = rows;
+    } else {
+      if (value.length === 0) {
+        fail("argument_error");
+      }
+      parsed[property] = path.resolve(value);
+    }
   }
-  if (argv.length === 1 && argv[0] === "--check") {
-    return { check: true, forceHashMismatch: false };
+
+  if (parsed.forceHashMismatch && seen.has("--expect-sha256")) {
+    fail("argument_error");
   }
-  if (argv.length === 1 && argv[0] === "--force-hash-mismatch") {
-    return { check: false, forceHashMismatch: true };
-  }
-  fail("argument_error");
+  return parsed;
+}
+
+export async function deriveSubsetFromArguments(argv) {
+  const argumentsToUse = parseArguments(argv);
+  const expectedSha256 = argumentsToUse.forceHashMismatch
+    ? `${EXPECTED_SOURCE_SHA256.slice(0, -1)}0`
+    : argumentsToUse.expectedSha256;
+
+  return deriveSubsetFile({
+    inputPath: argumentsToUse.source,
+    derivedPath: argumentsToUse.out,
+    expectedSha256,
+    expectedHeaders: EXPECTED_HEADERS,
+    expectedDataRows: argumentsToUse.expectedDataRows,
+    check: argumentsToUse.check,
+  });
 }
 
 async function main() {
-  const argumentsToUse = parseArguments(process.argv.slice(2));
-  const expectedSha256 = argumentsToUse.forceHashMismatch
-    ? `${EXPECTED_SOURCE_SHA256.slice(0, -1)}0`
-    : EXPECTED_SOURCE_SHA256;
-
-  return deriveSubsetFile({
-    inputPath: sourcePath,
-    derivedPath: outputPath,
-    expectedSha256,
-    expectedHeaders: EXPECTED_HEADERS,
-    expectedDataRows: EXPECTED_SOURCE_DATA_ROWS,
-    check: argumentsToUse.check,
-  });
+  return deriveSubsetFromArguments(process.argv.slice(2));
 }
 
 const invokedAsScript =
