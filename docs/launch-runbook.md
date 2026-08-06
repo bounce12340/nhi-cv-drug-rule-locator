@@ -25,7 +25,21 @@ pnpm --filter @nhi-cv/api exec wrangler deploy        # API → *.workers.dev
 pnpm exec wrangler pages deploy apps/clinician/dist --project-name nhi-cv-lookup   # Web → *.pages.dev(首跑自動建案)
 ```
 
-自訂網域:部署後於 Cloudflare dashboard 綁定(不擋上線;先用預設網址亦可)。
+### 2.1 自訂網域(RA 2026-08-06 裁示 N1A/N2A)
+
+| 面 | 主機名 | 綁定方式 | 狀態 |
+| --- | --- | --- | --- |
+| Web | `nhi.uic-ai.com` | Pages 專案 custom domain + CNAME `nhi` → `nhi-cv-lookup.pages.dev`(proxied) | 生效 |
+| API | `nhi-api.uic-ai.com` | wrangler.jsonc `routes` 之 `custom_domain: true`;部署時自動建立 DNS 與憑證 | 生效 |
+
+預設位址 `*.pages.dev` / `*.workers.dev` 綁定後仍然有效。
+
+### 兩條必須遵守的限制(皆為 2026-08-06 實測所得)
+
+1. **主機名一律二層**:`*.uic-ai.com` 萬用憑證**不涵蓋三層**;三層名(曾試 `api.nhi.uic-ai.com`)DNS 會建立但憑證永遠發不出來,除非啟用 Advanced Certificate Manager。zone 內其他既有服務亦皆為二層。
+2. **`workers_dev` 必須顯式設 `true`**:設定 `routes` 後其預設轉為 `false`,會使既有 `*.workers.dev` 位址回 404。
+
+**權限要求**:部署與自訂網域綁定所需為 **Account → Workers Scripts / Cloudflare Pages(Edit)+ Account Settings(Read)**;Worker 自訂網域之 DNS 由該流程自行建立,**不需** Zone DNS / Workers Routes 權限(僅手動增刪 DNS 紀錄時才需要)。
 
 ## 3. 上線煙霧測試(逐項)
 
