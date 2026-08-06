@@ -25,7 +25,16 @@ pnpm --filter @nhi-cv/api exec wrangler deploy        # API → *.workers.dev
 pnpm exec wrangler pages deploy apps/clinician/dist --project-name nhi-cv-lookup   # Web → *.pages.dev(首跑自動建案)
 ```
 
-自訂網域:部署後於 Cloudflare dashboard 綁定(不擋上線;先用預設網址亦可)。
+### 2.1 自訂網域(RA 2026-08-06 裁示 N1A/N2A)
+
+| 面 | 主機名 | 綁定方式 |
+| --- | --- | --- |
+| Web | `nhi.uic-ai.com` | Pages 專案 custom domain(已登記)+ **CNAME `nhi` → `nhi-cv-lookup.pages.dev`(proxied)** |
+| API | `api.nhi.uic-ai.com` | wrangler.jsonc `routes` 之 `custom_domain: true`;部署時自動建立 DNS 與憑證 |
+
+預設位址 `*.pages.dev` / `*.workers.dev` 於綁定後仍然有效,不影響既有連結。
+
+**權限要求**:自訂網域綁定需部署憑證具 **Zone → DNS → Edit** 與 **Zone → Workers Routes → Edit**(範圍限本 zone);僅有 Workers/Pages 權限時,Pages 自訂網域會停在 `pending` 而 DNS 不會自動建立,Worker 端部署則會失敗。
 
 ## 3. 上線煙霧測試(逐項)
 

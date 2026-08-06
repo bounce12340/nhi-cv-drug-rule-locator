@@ -63,6 +63,7 @@
 - RDL-018(RDL-005 第五次窄幅解除;RA 2026-08-06 結構化答覆「L1B L2照案 L3照案 L4否」):核准 **web-only、無帳號、display-only 之 production 部署**(雙分頁照現狀:示範藥品查詢+官方逐字規則查詢,各帶警語),附 **v3.2 §32 誠實偏離紀錄**——本次發布未取得法律/個資/資安專業簽核,RA 明示承擔風險,B 軌並行續辦、專業意見如要求變更則變更;偏離登記非合規宣告。緩解事實:無個資蒐集、無病人資料、無 eligibility、fail-closed 不變。其餘照舊 BLOCKED(真實價格顯示、Phase 2、商店送審);L4 並裁 SaMD 意見此時不委任(H4 工作假設續用)。
 - **Production 首次部署(2026-08-06,依 RDL-018)**:API Worker → `https://nhi-cv-drug-rule-locator-api.bounceto12340.workers.dev`(version 2c94dc5b);Web(Cloudflare Pages)→ `https://nhi-cv-lookup.pages.dev`(專案 nhi-cv-lookup);部署樹=commit `17ae6dc`。煙霧測試六項全過:health 200、meta 雙資料源正確、demo 查詢 fail-closed+警語、官方規則查詢 EXACT_MATCH 逐字+官方警語+生效日前 fail-closed、patient_id 未知欄位 400 拒絕、web 200 且 bundle 內含全部強制警語(unicode 轉義驗證)。部署憑證僅存 session 暫存區,未入 repo。
 - 部署憑證存放規則定型(RDL-011 同式;RA 指示將 token 加入環境變數設定):launch-runbook §1.1 新增三層對照——個人雲端環境設定(跨 session 持久、僅負責人可設)/容器內使用者層級 `~/.claude/settings.json`(僅該容器存續)/repo 內 `.claude/settings.json`(**禁用**,該檔為 git 追蹤檔);`.gitignore` 補上 `.claude/settings.local.json` 與 `.claude/*.local.json` 以堵本機設定挾帶祕密之路徑。憑證值一律不入文件與 repo;輪替/外洩時撤銷重發並更新兩處。
+- 自訂網域設定(RA 2026-08-06 裁示「P1 N1A N2A」):web 綁 `nhi.uic-ai.com`(Pages 專案 custom domain 已登記,待 DNS)、API 綁 `api.nhi.uic-ai.com`(wrangler.jsonc `routes` 之 `custom_domain: true`,部署時建立 DNS 與憑證);launch-runbook §2.1 記載兩面對照與所需 token 權限(Zone DNS Edit + Workers Routes Edit)。預設 `*.pages.dev`/`*.workers.dev` 位址於綁定後仍有效。
 
 ## [0.1.0] - 2026-08-01
 

@@ -4,6 +4,9 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
+  // 自訂網域(RDL-018 上線範圍)。custom_domain 由 wrangler 於部署時建立 DNS 與憑證;
+  // 需部署憑證具 Zone DNS / Workers Routes 權限。既有 *.workers.dev 位址不受影響。
+  "routes": [{ "pattern": "api.nhi.uic-ai.com", "custom_domain": true }],
   "observability": {
     "enabled": true
   },
