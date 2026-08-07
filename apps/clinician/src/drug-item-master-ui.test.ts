@@ -9,7 +9,8 @@ const source = readFileSync(appPath, "utf8");
 describe("clinician drug-item master display", () => {
   it("adds the fourth Chinese-name tab and makes it the default without removing existing tabs", () => {
     expect(source).toContain('useState<LookupMode>("drugItems")');
-    for (const label of ["示範藥品", "規則逐字查詢", "藥品品項查詢", "藥品查詢(中文品名)"]) {
+    expect(source).not.toContain("示範藥品");
+    for (const label of ["規則逐字查詢", "藥品品項查詢", "藥品查詢(中文品名)"]) {
       expect(source).toContain(label);
     }
   });
