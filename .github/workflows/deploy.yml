@@ -31,8 +31,40 @@ jobs:
     steps:
       - name: Require deploy secrets
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets not configured"
+          set -eu
+
+          token_state=present
+          account_state=present
+          [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || token_state=empty
+          [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] || account_state=empty
+
+          if [ "$token_state" = empty ] && [ "$account_state" = empty ]; then
+            echo "::error::Both CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are empty or unavailable. Add both as repository Actions secrets; Environment and Dependabot secrets are not supplied to this workflow. Confirm both names and capitalization exactly."
+            exit 1
+          fi
+          if [ "$token_state" = empty ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is empty or unavailable. Add it as a repository Actions secret; Environment and Dependabot secrets are not supplied to this workflow. Confirm the name and capitalization exactly."
+            exit 1
+          fi
+          if [ "$account_state" = empty ]; then
+            echo "::error::CLOUDFLARE_ACCOUNT_ID is empty or unavailable. Add it as a repository Actions secret; Environment and Dependabot secrets are not supplied to this workflow. Confirm the name and capitalization exactly."
+            exit 1
+          fi
+
+          whitespace_state=clean
+          case "$CLOUDFLARE_API_TOKEN" in
+            *[[:space:]]*)
+              echo "::error::CLOUDFLARE_API_TOKEN contains whitespace. Re-copy it without leading or trailing spaces or line breaks, then update the repository Actions secret."
+              whitespace_state=invalid
+              ;;
+          esac
+          case "$CLOUDFLARE_ACCOUNT_ID" in
+            *[[:space:]]*)
+              echo "::error::CLOUDFLARE_ACCOUNT_ID contains whitespace. Re-copy it without leading or trailing spaces or line breaks, then update the repository Actions secret."
+              whitespace_state=invalid
+              ;;
+          esac
+          if [ "$whitespace_state" = invalid ]; then
             exit 1
           fi
 

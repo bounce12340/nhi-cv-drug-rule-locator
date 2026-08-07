@@ -41,6 +41,27 @@ pnpm exec wrangler pages deploy apps/clinician/dist --project-name nhi-cv-lookup
 
 **權限要求**:部署與自訂網域綁定所需為 **Account → Workers Scripts / Cloudflare Pages(Edit)+ Account Settings(Read)**;Worker 自訂網域之 DNS 由該流程自行建立,**不需** Zone DNS / Workers Routes 權限(僅手動增刪 DNS 紀錄時才需要)。
 
+### 2.2 GitHub Actions 自動部署
+
+`Deploy` workflow 會在 `main` 的產品路徑變更或手動 `workflow_dispatch` 時執行。自動部署只讀取下列 **repository Actions secrets**；secret 值及 account ID 均不得寫入本文件、repo、log、output、artifact 或 `GITHUB_ENV`。
+
+| Secret 名稱 | 設定位置與用途 |
+| --- | --- |
+| `CLOUDFLARE_API_TOKEN` | Repository Settings → Secrets and variables → Actions；Cloudflare token 權限必須與 §2.1 相同：**Account → Workers Scripts / Cloudflare Pages(Edit)+ Account Settings(Read)**，不需 Zone DNS / Workers Routes |
+| `CLOUDFLARE_ACCOUNT_ID` | Repository Settings → Secrets and variables → Actions；供 Wrangler 鎖定部署帳戶 |
+
+部署前 guard 的失敗模式均已實測為 fail-closed（非零結束），且只指出設定類型，不回顯值、長度、前後綴或任何可推導特徵：
+
+| 失敗模式 | 可區分訊息與處置 |
+| --- | --- |
+| 兩者皆空或 workflow 取不到 | 明確指出兩個名稱皆 unavailable；確認兩者均建在 **repository Actions secrets**。Environment secrets 未綁定 job environment 時不會供應，Dependabot secrets 也不供應此 workflow，勿放錯位置；名稱與大小寫須完全一致 |
+| 僅 `CLOUDFLARE_API_TOKEN` 為空或取不到 | 只指出該名稱；於 repository Actions secrets 補建或修正拼字／大小寫後重跑 |
+| 僅 `CLOUDFLARE_ACCOUNT_ID` 為空或取不到 | 只指出該名稱；於 repository Actions secrets 補建或修正拼字／大小寫後重跑 |
+| 任一值含空白、貼上換行或首尾空格 | 指出含 whitespace 的 secret 名稱；從來源重新複製、不含首尾空格或換行，更新 repository Actions secret 後重跑 |
+| PR #49 曾見 Pages `ENOENT` | `pnpm --filter @nhi-cv/api` 會以 `apps/api` 為工作目錄，舊相對路徑 `apps/clinician/dist` 因而解析成不存在的 `apps/api/apps/clinician/dist`；workflow 必須維持 `${{ github.workspace }}/apps/clinician/dist` 絕對路徑 |
+
+Cloudflare token 輪替、到期或疑似外洩時，先在 Cloudflare dashboard 撤銷舊 token 並發新 token，再同步更新 repository Actions secret；若個人雲端環境或當次容器也使用該 token，須一併更新其受控存放處。任何輪替步驟都不得把值貼入 issue、PR、對話或日誌。
+
 ## 3. 上線煙霧測試(逐項)
 
 | 項 | 驗法 | 通過準則 |
