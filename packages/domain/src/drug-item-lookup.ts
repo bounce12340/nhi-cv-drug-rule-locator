@@ -5,18 +5,18 @@ import {
   DRUG_ITEM_MASTER_RECORDS,
   type DrugItemMasterPricePeriod,
   type DrugItemMasterRecord
-} from "./generated/drug-items-2026-08-06";
+} from "./generated/drug-items-2026-08-07";
 
 export type {
   DrugItemMasterPricePeriod,
   DrugItemMasterRecord
-} from "./generated/drug-items-2026-08-06";
+} from "./generated/drug-items-2026-08-07";
 export {
   DRUG_ITEMS_DATASET_EFFECTIVE_FROM,
   DRUG_ITEMS_DATASET_EFFECTIVE_TO,
   DRUG_ITEMS_DATASET_VERSION,
   DRUG_ITEM_MASTER_RECORDS
-} from "./generated/drug-items-2026-08-06";
+} from "./generated/drug-items-2026-08-07";
 
 export const DRUG_ITEM_MASTER_SOURCE_TAG = "OFFICIAL_TEXT_TRANSCRIBED" as const;
 export const DRUG_ITEM_MASTER_WARNING =

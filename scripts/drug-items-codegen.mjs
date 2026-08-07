@@ -11,18 +11,18 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const SCRIPT_NAME = "scripts/drug-items-codegen.mjs";
-const DATASET_VERSION = "nhi-drug-items-2026-08-06-r1";
-const DATASET_EFFECTIVE_FROM = "2026-08-06";
+const DATASET_VERSION = "nhi-drug-items-2026-08-07-r2";
+const DATASET_EFFECTIVE_FROM = "2026-08-07";
 const DATASET_EFFECTIVE_TO = "9999-12-31";
 const EXPECTED_FILE_SHA256 =
-  "e4783015aa0e84be62a9a27eff3dd6090f5019786771d389bc4498bc52b6e9f5";
-const EXPECTED_FILE_BYTES = 1_843_720;
+  "ec6c9fdb3a047d0ad9b29db6d0ffab23f0e0bb1ddd39851a7d50619bc3529412";
+const EXPECTED_FILE_BYTES = 1_844_105;
 const EXPECTED_DATASET_DIGEST =
-  "de376fec6c11203fe030389e37663b715ada502259dcd2b041020c88d996970f";
+  "c340830cfff85c0d8fe067fde4033574f741d03ca3f3c9361329df05ec4c9857";
 const EXPECTED_APPROVAL_WORDING =
-  "INTAKE-APPROVE nhi-drug-items-2026-08-06-r1 de376fe";
-const EXPECTED_RECORD_COUNT = 606;
-const EXPECTED_PERIOD_COUNT = 4_047;
+  "INTAKE-APPROVE nhi-drug-items-2026-08-07-r2 c340830";
+const EXPECTED_RECORD_COUNT = 607;
+const EXPECTED_PERIOD_COUNT = 4_048;
 const SOURCE_FILENAME = "drug-items-lipid.csv";
 
 export const DRUG_ITEM_SOURCE_HEADERS = Object.freeze([
@@ -74,7 +74,7 @@ const defaultOutputPath = path.join(
   "domain",
   "src",
   "generated",
-  "drug-items-2026-08-06.ts"
+  "drug-items-2026-08-07.ts"
 );
 
 function sha256(bytes, encoding) {
@@ -121,7 +121,7 @@ function parseManifest(rawManifest) {
   if (manifest.revoked !== false) fail("dataset is revoked or revocation state is invalid");
   if (!isPlainObject(manifest.approvalRef)) fail("missing approval reference");
   if (
-    manifest.approvalRef.rdlId !== "RDL-020" ||
+    manifest.approvalRef.rdlId !== "RDL-023" ||
     manifest.approvalRef.approvalWording !== EXPECTED_APPROVAL_WORDING
   ) {
     fail("approval reference does not exactly match the governed-storage authorization");
@@ -438,7 +438,7 @@ export function renderDrugItemsModule(options = {}) {
   return `// GENERATED — DO NOT EDIT
 // Source dataset: ${DATASET_VERSION}
 // Dataset digest (SHA-256): ${datasetDigest}
-// Authorization: RDL-021
+// Authorization: RDL-022/023
 // Record count: ${EXPECTED_RECORD_COUNT}
 // Price-period count: ${EXPECTED_PERIOD_COUNT}
 // The two source URL columns are omitted because they account for 46% of source characters;
