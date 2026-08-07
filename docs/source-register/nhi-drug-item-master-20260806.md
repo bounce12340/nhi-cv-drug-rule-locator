@@ -2,6 +2,8 @@
 
 > runbook Stage 1。**本檔僅存 metadata**;收件 payload 留置 repo 外(RDL-007 慣例),不含任何品項代碼、品名或價格值。
 
+每月刷新管線的機器可讀權威狀態為 [`drug-item-master.registry.json`](./drug-item-master.registry.json)；本檔保留來源與治理脈絡的人類可讀敘述。
+
 ## 1. 出處宣告
 
 | 項目 | 內容 |

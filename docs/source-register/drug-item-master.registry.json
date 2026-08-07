@@ -1,0 +1,16 @@
+{
+  "schema": "source-registry/v1",
+  "endpoint": "https://info.nhi.gov.tw/api/iode0000s01/Dataset?rId=A21030000I-E41001-001",
+  "datasetPlatformId": "23715",
+  "license": "政府資料開放授權條款-第1版",
+  "current": {
+    "datasetVersion": "nhi-drug-items-2026-08-06-r1",
+    "sourceSha256": "d41cf7bf91ca1d6997ac751601548f68226a8326452aa5d8befd725e3a8d0158",
+    "sourceBytes": 96843587,
+    "sourceDataRows": 224553,
+    "subsetSha256": "e4783015aa0e84be62a9a27eff3dd6090f5019786771d389bc4498bc52b6e9f5",
+    "subsetRows": 4047,
+    "datasetDigest": "de376fec6c11203fe030389e37663b715ada502259dcd2b041020c88d996970f",
+    "fetchedAt": "2026-08-06"
+  }
+}
