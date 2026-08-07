@@ -6,6 +6,8 @@
 
 ### Added
 
+- **重新部署(2026-08-07,部署樹=merge commit `c3e5125`)**:API Worker version `c1956a62-eb6a-401e-bac8-1d92a946665f`;Web(Cloudflare Pages 專案 nhi-cv-lookup)→ `https://d1af2b39.nhi-cv-lookup.pages.dev`,對外仍為 `https://nhi.uic-ai.com` 與 `https://nhi-api.uic-ai.com`。本次為 TC-23 維運批次合併後之部署,**應用程式碼零變更**,故 Worker 上傳量與 Pages 檔案內容與前次相同(Pages 回報 3 個檔案皆已存在、上傳 0 個)。煙霧測試全過:web 200、health 200、meta 雙資料集版本正確(`nhi-drug-items-2026-08-07-r2` / `nhi-lipid-rules-structured-2026-09-01-r1`)、代碼查詢 EXACT_MATCH、近似代碼 `NOT_IN_VALIDATED_DATASET` 且 `manualReviewRequired: true`、未知欄位 400 拒絕。部署憑證僅存容器層級設定,未入 repo。
+- **TC-23 維運批次(PR #50,head `cdd73b9`;建置 Codex GPT-5.6 Sol xhigh,派發方驗收)**:建置鏈 `undici` 提版至 `>=7.29.0`,`pnpm audit` 由 1 high / 5 moderate 降為 **0 high / 1 moderate**(殘留 `uuid` 位於 iOS 原生 `xcode` 路徑,不在 web bundle 與 Worker 產物,已具名登記不動);`deploy.yml` secrets 守門改為區分「雙空/單一為空/夾帶空白」三種成因且不列印任何值;`docs/test-matrix.md` 補登 TC-22 主題與語言守護測試四列;`docs/launch-runbook.md` §6 新增自動部署 secret 契約與失敗模式對照表。**兩次退回並登記**:首輪因建置沙箱無 registry 連線而誤認 `ws` advisory 並覆寫其精確固定版本(已退回改對 `undici`);次輪同一沙箱限制使 offline 產生之 lockfile 刪去 962 行含 `optionalDependencies`,CI 因缺 `@cloudflare/workerd-linux-64` 轉紅,由派發方以具連線環境重新產生 lockfile(差異縮為 7 行)。**併同登記驗收方法瑕疵**:首次驗收之五項檢查跑在既有 `node_modules` 上,未重現 CI 全新安裝條件而漏檢,已改為 `rm -rf node_modules` + `--frozen-lockfile` 後再驗。
 - 記錄 2026-08-02 會期中收到之 Master Project Prompt v3.2 與四份候選資料檔（僅以 SHA-256 與筆數作出處記錄，未匯入任何規則或價格內容）。
 - 新增 `docs/phase1-readiness.md` Phase 1 準備度評估與決策日誌 RDL-007／RDL-008。
 - 記錄 RA 指定（RDL-009，專案負責人擔任）與需求方核准之 Model Routing ADR-001（Terra Pro ↦ Codex GPT-5.6 Sol xhigh 建置；Sol Pro ↦ Claude Fable 5 獨立驗收），RDL-008 隨之解除。
