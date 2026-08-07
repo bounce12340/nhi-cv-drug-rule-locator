@@ -1,0 +1,73 @@
+name: Deploy
+
+# Production 部署(RDL-018 授權範圍)。憑證只存在 GitHub Actions Secrets
+# (CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID),永不進 repo、對話或容器。
+# 觸發:main 有產品變更時自動(main 的每次合併都經 RA `PASS <sha7>` 閘門),
+# 或手動 workflow_dispatch。Secrets 未設定時工作流以明確訊息失敗,不做半套部署。
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Require deploy secrets
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets not configured"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Export Expo Web
+        run: pnpm export:web
+
+      - name: Deploy Worker API
+        run: pnpm --filter @nhi-cv/api exec wrangler deploy
+
+      - name: Deploy Pages web
+        run: pnpm --filter @nhi-cv/api exec wrangler pages deploy apps/clinician/dist --project-name nhi-cv-lookup --branch main --commit-dirty=true
+
+      - name: Post-deploy smoke checks
+        run: |
+          set -e
+          for i in 1 2 3 4 5; do
+            api=$(curl -s -o /dev/null -w '%{http_code}' https://nhi-api.uic-ai.com/health --max-time 20 || true)
+            web=$(curl -s -o /dev/null -w '%{http_code}' https://nhi.uic-ai.com/ --max-time 20 || true)
+            echo "attempt $i: api=$api web=$web"
+            if [ "$api" = "200" ] && [ "$web" = "200" ]; then exit 0; fi
+            sleep 10
+          done
+          echo "::error::post-deploy smoke checks failed"
+          exit 1

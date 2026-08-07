@@ -6,10 +6,31 @@ import path from "node:path";
 import process from "node:process";
 import { TextDecoder } from "node:util";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  computeDatasetDigest,
+  validateStorageManifest,
+  verifyStoredFileBytes,
+} from "../packages/source-intake/src/storage.ts";
 
 const EXPECTED_SOURCE_SHA256 =
   "d41cf7bf91ca1d6997ac751601548f68226a8326452aa5d8befd725e3a8d0158";
 const EXPECTED_SOURCE_DATA_ROWS = 224_553;
+const EXPECTED_SUBSET_SHA256 =
+  "ec6c9fdb3a047d0ad9b29db6d0ffab23f0e0bb1ddd39851a7d50619bc3529412";
+const EXPECTED_SUBSET_DATA_ROWS = 4_048;
+const EXPECTED_SUBSET_DISTINCT_CODES = 607;
+const EXPECTED_CHAPTER_SUBSET_SHA256 =
+  "e4783015aa0e84be62a9a27eff3dd6090f5019786771d389bc4498bc52b6e9f5";
+const EXPECTED_CHAPTER_SUBSET_DATA_ROWS = 4_047;
+const EXPECTED_ATTACHMENT_CODE_COUNT = 187;
+export const DEFAULT_DATASET_VERSION = "nhi-drug-items-2026-08-07-r2";
+export const ATTACHMENT_DATASET_VERSION = "nhi-lipid-2026-09-01-r1";
+export const ATTACHMENT_DECLARED_NAMES = Object.freeze([
+  "ezetimibe_3month_exception.csv",
+  "ezetimibe_statin_combo_3month_exception.csv",
+  "price_change_seed_20260901.csv",
+  "statin_table2_only_list.csv",
+]);
 export const EXPECTED_SOURCE_HEADERS = Object.freeze([
   "異動",
   "藥品代號",
@@ -37,16 +58,41 @@ const EXPECTED_HEADERS = EXPECTED_SOURCE_HEADERS;
 export const TARGET_CHAPTERS = Object.freeze(["2.6.1.", "2.6.2.", "2.6.3."]);
 const TARGET_CHAPTER_SET = new Set(TARGET_CHAPTERS);
 const TERMINAL_END_DATE = "9991231";
+const SUBSET_DECLARED_NAME = "drug-items-lipid.csv";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
 const sourcePath = path.join(repositoryRoot, "scratchpad", "intake-23715", "source.csv");
+const attachmentDirectory = path.join(
+  repositoryRoot,
+  "data",
+  "governed",
+  ATTACHMENT_DATASET_VERSION,
+);
+const attachmentManifestPath = path.join(attachmentDirectory, "storage-manifest.json");
+const chapterBaselinePath = path.join(
+  repositoryRoot,
+  "data",
+  "governed",
+  "nhi-drug-items-2026-08-06-r1",
+  "drug-items-lipid.csv",
+);
 const outputPath = path.join(
   repositoryRoot,
   "scratchpad",
   "intake-23715",
-  "subset-lipid.csv",
+  "subset-lipid-r2.csv",
 );
+
+const DEFAULT_RESULT_EXPECTATION = Object.freeze({
+  subsetSha256: EXPECTED_SUBSET_SHA256,
+  subsetDataRows: EXPECTED_SUBSET_DATA_ROWS,
+  subsetDistinctCodes: EXPECTED_SUBSET_DISTINCT_CODES,
+  chapterSubsetSha256: EXPECTED_CHAPTER_SUBSET_SHA256,
+  chapterSubsetDataRows: EXPECTED_CHAPTER_SUBSET_DATA_ROWS,
+  attachmentCodeCount: EXPECTED_ATTACHMENT_CODE_COUNT,
+  attachmentCoveredCodeCount: EXPECTED_ATTACHMENT_CODE_COUNT,
+});
 
 export class DerivationError extends Error {
   constructor(code, details = {}) {
@@ -229,6 +275,90 @@ export async function parseCsvFile(filePath, onRow) {
   return rowNumber;
 }
 
+export async function loadAttachmentCodeSet({
+  manifestPath = attachmentManifestPath,
+  directory = path.dirname(manifestPath),
+} = {}) {
+  let manifestInput;
+  try {
+    manifestInput = JSON.parse(readFileSync(manifestPath, "utf8"));
+  } catch {
+    fail("attachment_manifest_error");
+  }
+
+  const manifest = validateStorageManifest(manifestInput);
+  if (
+    manifest === null ||
+    manifest.revoked ||
+    manifest.datasetVersion !== ATTACHMENT_DATASET_VERSION ||
+    manifest.files.length !== ATTACHMENT_DECLARED_NAMES.length
+  ) {
+    fail("attachment_manifest_error");
+  }
+
+  const entriesByName = new Map(manifest.files.map((entry) => [entry.declaredName, entry]));
+  if (!ATTACHMENT_DECLARED_NAMES.every((declaredName) => entriesByName.has(declaredName))) {
+    fail("attachment_manifest_error");
+  }
+
+  const codes = new Set();
+  const files = [];
+  for (const declaredName of ATTACHMENT_DECLARED_NAMES) {
+    const entry = entriesByName.get(declaredName);
+    const filePath = path.join(directory, declaredName);
+    let rawBytes;
+    try {
+      rawBytes = readFileSync(filePath);
+    } catch {
+      fail("attachment_file_error", { declaredName });
+    }
+    if (!verifyStoredFileBytes(entry, rawBytes)) {
+      fail("attachment_hash_mismatch", { declaredName });
+    }
+
+    let headers;
+    let codeIndex = -1;
+    let dataRows = 0;
+    try {
+      await parseCsvFile(filePath, (row, csvRowNumber) => {
+        if (csvRowNumber === 1) {
+          headers = row;
+          codeIndex = row.indexOf("nhi_code");
+          if (codeIndex === -1 || row.lastIndexOf("nhi_code") !== codeIndex) {
+            fail("attachment_schema_error", { declaredName, csvRowNumber });
+          }
+          return;
+        }
+        if (row.length !== headers.length || row[codeIndex] === "") {
+          fail("attachment_schema_error", { declaredName, csvRowNumber });
+        }
+        dataRows += 1;
+        codes.add(row[codeIndex]);
+      });
+    } catch (error) {
+      if (error instanceof DerivationError && error.code === "attachment_schema_error") {
+        throw error;
+      }
+      fail("attachment_schema_error", { declaredName });
+    }
+    if (headers === undefined) {
+      fail("attachment_schema_error", { declaredName });
+    }
+    files.push({
+      declaredName,
+      sha256: entry.sha256,
+      bytes: entry.bytes,
+      dataRows,
+    });
+  }
+
+  return {
+    datasetVersion: manifest.datasetVersion,
+    codes,
+    files,
+  };
+}
+
 function encodeCsvField(value) {
   if (!/[",\r\n]/u.test(value)) {
     return value;
@@ -240,10 +370,15 @@ function encodeCsvRow(row) {
   return `${row.map(encodeCsvField).join(",")}\n`;
 }
 
-function createStatistics(headers) {
+function createStatistics(headers, attachmentCodeCount) {
   return {
     sourceDataRows: 0,
     selectedRows: 0,
+    chapterCriterionRows: 0,
+    attachmentCriterionRows: 0,
+    attachmentOnlyRows: 0,
+    attachmentCodeCount,
+    selectedAttachmentCodes: new Set(),
     distinctCodes: new Set(),
     chineseNameRows: 0,
     terminalEndDateRows: 0,
@@ -264,11 +399,18 @@ function publicStatistics(statistics) {
   return {
     sourceDataRows: statistics.sourceDataRows,
     selectedRows: statistics.selectedRows,
+    chapterCriterionRows: statistics.chapterCriterionRows,
+    attachmentCriterionRows: statistics.attachmentCriterionRows,
+    attachmentOnlyRows: statistics.attachmentOnlyRows,
+    attachmentCodeCount: statistics.attachmentCodeCount,
+    attachmentCoveredCodeCount: statistics.selectedAttachmentCodes.size,
+    attachmentMissingCodeCount:
+      statistics.attachmentCodeCount - statistics.selectedAttachmentCodes.size,
     distinctCodeCount: statistics.distinctCodes.size,
     chineseNameRows: statistics.chineseNameRows,
     terminalEndDateRows: statistics.terminalEndDateRows,
     substringRows: statistics.substringRows,
-    exactVsSubstringDifference: statistics.substringRows - statistics.selectedRows,
+    exactVsSubstringDifference: statistics.substringRows - statistics.chapterCriterionRows,
     falsePositiveRows: statistics.falsePositiveRows,
     falsePositiveChapterPatterns: Object.fromEntries(
       [...statistics.falsePositiveChapterPatterns].sort(([left], [right]) =>
@@ -285,13 +427,21 @@ function publicStatistics(statistics) {
   };
 }
 
-function observeDataRow(row, indexes, statistics, outputChunks) {
+function observeDataRow(
+  row,
+  indexes,
+  statistics,
+  attachmentCodes,
+  outputChunks,
+  chapterOutputChunks,
+) {
   statistics.sourceDataRows += 1;
   const chapterValue = row[indexes.chapter];
   const tokens = splitChapterTokens(chapterValue);
   const exactTargets = TARGET_CHAPTERS.filter((target) => tokens.includes(target));
   const exactMatch = exactTargets.length > 0;
   const substringMatch = matchesNaiveSubstring(chapterValue);
+  const attachmentMatch = attachmentCodes.has(row[indexes.code]);
 
   if (substringMatch) {
     statistics.substringRows += 1;
@@ -305,8 +455,18 @@ function observeDataRow(row, indexes, statistics, outputChunks) {
       incrementMap(statistics.falsePositiveChapterPatterns, token);
     }
   }
-  if (!exactMatch) {
+  if (exactMatch) {
+    statistics.chapterCriterionRows += 1;
+  }
+  if (attachmentMatch) {
+    statistics.attachmentCriterionRows += 1;
+    statistics.selectedAttachmentCodes.add(row[indexes.code]);
+  }
+  if (!exactMatch && !attachmentMatch) {
     return;
+  }
+  if (!exactMatch) {
+    statistics.attachmentOnlyRows += 1;
   }
 
   statistics.selectedRows += 1;
@@ -317,21 +477,28 @@ function observeDataRow(row, indexes, statistics, outputChunks) {
   if (row[indexes.endDate] === TERMINAL_END_DATE) {
     statistics.terminalEndDateRows += 1;
   }
-  for (const target of exactTargets) {
-    incrementMap(statistics.targetTokenCounts, target);
+  if (exactMatch) {
+    for (const target of exactTargets) {
+      incrementMap(statistics.targetTokenCounts, target);
+    }
+    incrementMap(statistics.targetCombinationCounts, exactTargets.join(" + "));
   }
-  incrementMap(statistics.targetCombinationCounts, exactTargets.join(" + "));
   for (let index = 0; index < row.length; index += 1) {
     if (row[index] === "") {
       incrementMap(statistics.emptyCounts, indexes.headers[index]);
     }
   }
-  outputChunks.push(encodeCsvRow(row));
+  const encodedRow = encodeCsvRow(row);
+  outputChunks.push(encodedRow);
+  if (exactMatch) {
+    chapterOutputChunks.push(encodedRow);
+  }
 }
 
-async function deriveBytes({ inputPath, expectedHeaders, expectedDataRows }) {
+async function deriveBytes({ inputPath, expectedHeaders, expectedDataRows, attachmentCodes }) {
   const outputChunks = [encodeCsvRow(expectedHeaders)];
-  const statistics = createStatistics(expectedHeaders);
+  const chapterOutputChunks = [encodeCsvRow(expectedHeaders)];
+  const statistics = createStatistics(expectedHeaders, attachmentCodes.size);
   const indexes = {
     headers: expectedHeaders,
     code: expectedHeaders.indexOf("藥品代號"),
@@ -355,7 +522,14 @@ async function deriveBytes({ inputPath, expectedHeaders, expectedDataRows }) {
     if (row.length !== expectedHeaders.length) {
       fail("schema_error", { dataRowNumber: csvRowNumber - 1 });
     }
-    observeDataRow(row, indexes, statistics, outputChunks);
+    observeDataRow(
+      row,
+      indexes,
+      statistics,
+      attachmentCodes,
+      outputChunks,
+      chapterOutputChunks,
+    );
   });
 
   if (!headerSeen || parsedRows !== statistics.sourceDataRows + 1) {
@@ -367,13 +541,17 @@ async function deriveBytes({ inputPath, expectedHeaders, expectedDataRows }) {
 
   return {
     bytes: Buffer.from(outputChunks.join(""), "utf8"),
+    chapterBytes: Buffer.from(chapterOutputChunks.join(""), "utf8"),
     statistics: publicStatistics(statistics),
   };
 }
 
-async function verifyRoundTrip(filePath, expectedHeaders) {
+async function verifyRoundTrip(filePath, expectedHeaders, attachmentCodes) {
   let dataRows = 0;
   let counterexampleRows = 0;
+  let chapterCriterionRows = 0;
+  let attachmentCriterionRows = 0;
+  const coveredAttachmentCodes = new Set();
   let headerSeen = false;
   await parseCsvFile(filePath, (row, csvRowNumber) => {
     if (!headerSeen) {
@@ -387,11 +565,48 @@ async function verifyRoundTrip(filePath, expectedHeaders) {
     if (row.length !== expectedHeaders.length) {
       fail("output_verification_error", { dataRowNumber: csvRowNumber - 1 });
     }
-    if (!hasExactTargetChapter(row[expectedHeaders.indexOf("給付規定章節")])) {
+    const chapterMatch = hasExactTargetChapter(
+      row[expectedHeaders.indexOf("給付規定章節")],
+    );
+    const code = row[expectedHeaders.indexOf("藥品代號")];
+    const attachmentMatch = attachmentCodes.has(code);
+    if (chapterMatch) {
+      chapterCriterionRows += 1;
+    }
+    if (attachmentMatch) {
+      attachmentCriterionRows += 1;
+      coveredAttachmentCodes.add(code);
+    }
+    if (!chapterMatch && !attachmentMatch) {
       counterexampleRows += 1;
     }
   });
-  return { dataRows, counterexampleRows };
+  return {
+    dataRows,
+    counterexampleRows,
+    chapterCriterionRows,
+    attachmentCriterionRows,
+    attachmentCoveredCodeCount: coveredAttachmentCodes.size,
+  };
+}
+
+function verifyExpectedResult(derived, derivedSha256, expectedResult) {
+  if (expectedResult === undefined) {
+    return;
+  }
+  const chapterSha256 = sha256(derived.chapterBytes);
+  if (
+    derivedSha256 !== expectedResult.subsetSha256 ||
+    derived.statistics.selectedRows !== expectedResult.subsetDataRows ||
+    derived.statistics.distinctCodeCount !== expectedResult.subsetDistinctCodes ||
+    chapterSha256 !== expectedResult.chapterSubsetSha256 ||
+    derived.statistics.chapterCriterionRows !== expectedResult.chapterSubsetDataRows ||
+    derived.statistics.attachmentCodeCount !== expectedResult.attachmentCodeCount ||
+    derived.statistics.attachmentCoveredCodeCount !==
+      expectedResult.attachmentCoveredCodeCount
+  ) {
+    fail("derived_expectation_mismatch");
+  }
 }
 
 export async function deriveSubsetFile({
@@ -400,6 +615,11 @@ export async function deriveSubsetFile({
   expectedSha256,
   expectedHeaders,
   expectedDataRows,
+  attachmentManifestPath: manifestPath = attachmentManifestPath,
+  attachmentDirectory: directory = path.dirname(manifestPath),
+  expectedResult,
+  chapterBaselinePath: baselinePath,
+  datasetVersion,
   check = false,
 }) {
   const source = await hashFile(inputPath);
@@ -410,8 +630,37 @@ export async function deriveSubsetFile({
     fail("schema_error");
   }
 
-  const derived = await deriveBytes({ inputPath, expectedHeaders, expectedDataRows });
+  const attachment = await loadAttachmentCodeSet({ manifestPath, directory });
+  const derived = await deriveBytes({
+    inputPath,
+    expectedHeaders,
+    expectedDataRows,
+    attachmentCodes: attachment.codes,
+  });
   const derivedSha256 = sha256(derived.bytes);
+  const chapterSha256 = sha256(derived.chapterBytes);
+  const datasetDigest = computeDatasetDigest([
+    {
+      declaredName: SUBSET_DECLARED_NAME,
+      sha256: derivedSha256,
+      bytes: derived.bytes.length,
+    },
+  ]);
+  verifyExpectedResult(derived, derivedSha256, expectedResult);
+
+  let chapterBaselineMatches;
+  if (baselinePath !== undefined) {
+    let baselineBytes;
+    try {
+      baselineBytes = readFileSync(baselinePath);
+    } catch {
+      fail("chapter_baseline_error");
+    }
+    chapterBaselineMatches = baselineBytes.equals(derived.chapterBytes);
+    if (!chapterBaselineMatches) {
+      fail("chapter_baseline_mismatch");
+    }
+  }
 
   if (check) {
     let existingBytes;
@@ -438,16 +687,25 @@ export async function deriveSubsetFile({
   if (output.hasUtf8Bom || output.sha256 !== derivedSha256 || output.bytes !== derived.bytes.length) {
     fail("output_verification_error");
   }
-  const roundTrip = await verifyRoundTrip(derivedPath, expectedHeaders);
+  const roundTrip = await verifyRoundTrip(derivedPath, expectedHeaders, attachment.codes);
   if (
     roundTrip.dataRows !== derived.statistics.selectedRows ||
-    roundTrip.counterexampleRows !== 0
+    roundTrip.counterexampleRows !== 0 ||
+    roundTrip.chapterCriterionRows !== derived.statistics.chapterCriterionRows ||
+    roundTrip.attachmentCriterionRows !== derived.statistics.attachmentCriterionRows ||
+    roundTrip.attachmentCoveredCodeCount !==
+      derived.statistics.attachmentCoveredCodeCount
   ) {
     fail("output_verification_error");
   }
 
   return {
     mode: check ? "check" : "write-once",
+    dataset: {
+      version: datasetVersion,
+      declaredName: SUBSET_DECLARED_NAME,
+      digest: datasetDigest,
+    },
     source: {
       sha256: source.sha256,
       bytes: source.bytes,
@@ -460,6 +718,21 @@ export async function deriveSubsetFile({
       bytes: output.bytes,
       dataRows: derived.statistics.selectedRows,
       utf8Bom: output.hasUtf8Bom,
+    },
+    criteria: {
+      chapter: {
+        sha256: chapterSha256,
+        bytes: derived.chapterBytes.length,
+        dataRows: derived.statistics.chapterCriterionRows,
+        baselineMatches: chapterBaselineMatches,
+      },
+      attachment: {
+        datasetVersion: attachment.datasetVersion,
+        distinctCodeCount: attachment.codes.size,
+        coveredCodeCount: derived.statistics.attachmentCoveredCodeCount,
+        missingCodeCount: derived.statistics.attachmentMissingCodeCount,
+        files: attachment.files,
+      },
     },
     statistics: derived.statistics,
     roundTrip,
@@ -474,6 +747,7 @@ function parseArguments(argv) {
     expectedSha256: EXPECTED_SOURCE_SHA256,
     expectedDataRows: EXPECTED_SOURCE_DATA_ROWS,
     out: outputPath,
+    defaultSourceProfile: true,
   };
   const seen = new Set();
 
@@ -511,6 +785,7 @@ function parseArguments(argv) {
         fail("argument_error");
       }
       parsed.expectedSha256 = value.toLowerCase();
+      parsed.defaultSourceProfile = false;
     } else if (property === "expectedDataRows") {
       if (!/^(0|[1-9]\d*)$/u.test(value)) {
         fail("argument_error");
@@ -520,11 +795,15 @@ function parseArguments(argv) {
         fail("argument_error");
       }
       parsed.expectedDataRows = rows;
+      parsed.defaultSourceProfile = false;
     } else {
       if (value.length === 0) {
         fail("argument_error");
       }
       parsed[property] = path.resolve(value);
+      if (property === "source") {
+        parsed.defaultSourceProfile = false;
+      }
     }
   }
 
@@ -546,6 +825,15 @@ export async function deriveSubsetFromArguments(argv) {
     expectedSha256,
     expectedHeaders: EXPECTED_HEADERS,
     expectedDataRows: argumentsToUse.expectedDataRows,
+    expectedResult: argumentsToUse.defaultSourceProfile
+      ? DEFAULT_RESULT_EXPECTATION
+      : undefined,
+    chapterBaselinePath: argumentsToUse.defaultSourceProfile
+      ? chapterBaselinePath
+      : undefined,
+    datasetVersion: argumentsToUse.defaultSourceProfile
+      ? DEFAULT_DATASET_VERSION
+      : undefined,
     check: argumentsToUse.check,
   });
 }

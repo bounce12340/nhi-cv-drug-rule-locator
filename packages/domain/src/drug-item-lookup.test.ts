@@ -14,7 +14,7 @@ import {
   type DrugItemMasterPricePeriod
 } from "./drug-item-lookup";
 
-const VALID_DATE = "2026-08-06";
+const VALID_DATE = "2026-08-07";
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const ELIGIBILITY_BLACKLIST = [
   "\u7b26\u5408\u7d66\u4ed8",
@@ -253,7 +253,7 @@ describe("display-only governed drug-item master lookup", () => {
       "utf8"
     );
     const generatedSource = readFileSync(
-      path.join(repositoryRoot, "packages/domain/src/generated/drug-items-2026-08-06.ts"),
+      path.join(repositoryRoot, "packages/domain/src/generated/drug-items-2026-08-07.ts"),
       "utf8"
     );
     const generatedScaffolding = `${generatedSource.split("const strings")[0]}${

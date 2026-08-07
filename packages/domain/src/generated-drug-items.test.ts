@@ -11,7 +11,7 @@ import {
   DRUG_ITEMS_DATASET_VERSION,
   DRUG_ITEM_MASTER_RECORDS,
   type DrugItemMasterRecord
-} from "./generated/drug-items-2026-08-06";
+} from "./generated/drug-items-2026-08-07";
 
 type CsvRecord = Readonly<Record<string, string>>;
 
@@ -32,7 +32,7 @@ const governedDirectory = path.join(
   repositoryRoot,
   "data",
   "governed",
-  "nhi-drug-items-2026-08-06-r1"
+  "nhi-drug-items-2026-08-07-r2"
 );
 const csvPath = path.join(governedDirectory, "drug-items-lipid.csv");
 const manifestPath = path.join(governedDirectory, "storage-manifest.json");
@@ -42,7 +42,7 @@ const committedGeneratedPath = path.join(
   "domain",
   "src",
   "generated",
-  "drug-items-2026-08-06.ts"
+  "drug-items-2026-08-07.ts"
 );
 const generatedPath = process.env.DRUG_ITEMS_GENERATED_PATH ?? committedGeneratedPath;
 
@@ -164,14 +164,14 @@ describe("generated governed drug-item master module", () => {
     expect(Buffer.from(renderDrugItemsModule(), "utf8")).toEqual(readFileSync(generatedPath));
   });
 
-  it("preserves all 606 items and all 4,047 price periods field-for-field", () => {
+  it("preserves all 607 items and all 4,048 price periods field-for-field", () => {
     const expected = readExpectedRecords();
     expect(DRUG_ITEM_MASTER_RECORDS).toEqual(expected);
-    expect(DRUG_ITEM_MASTER_RECORDS).toHaveLength(606);
+    expect(DRUG_ITEM_MASTER_RECORDS).toHaveLength(607);
     expect(
       DRUG_ITEM_MASTER_RECORDS.reduce((total, item) => total + item.priceHistory.length, 0)
-    ).toBe(4_047);
-    expect(new Set(DRUG_ITEM_MASTER_RECORDS.map((item) => item.nhiCode)).size).toBe(606);
+    ).toBe(4_048);
+    expect(new Set(DRUG_ITEM_MASTER_RECORDS.map((item) => item.nhiCode)).size).toBe(607);
   });
 
   it("sorts every complete price history by effective start and deeply freezes the graph", () => {
@@ -240,26 +240,26 @@ describe("generated governed drug-item master module", () => {
       effectiveFrom: DRUG_ITEMS_DATASET_EFFECTIVE_FROM,
       effectiveTo: DRUG_ITEMS_DATASET_EFFECTIVE_TO,
       approvalRef: {
-        rdlId: "RDL-020",
-        approvalWording: "INTAKE-APPROVE nhi-drug-items-2026-08-06-r1 de376fe"
+        rdlId: "RDL-023",
+        approvalWording: "INTAKE-APPROVE nhi-drug-items-2026-08-07-r2 c340830"
       }
     });
     expect(manifest.files).toEqual([
       {
         declaredName: "drug-items-lipid.csv",
-        sha256: "e4783015aa0e84be62a9a27eff3dd6090f5019786771d389bc4498bc52b6e9f5",
-        bytes: 1_843_720
+        sha256: "ec6c9fdb3a047d0ad9b29db6d0ffab23f0e0bb1ddd39851a7d50619bc3529412",
+        bytes: 1_844_105
       }
     ]);
-    expect(rawCsv.byteLength).toBe(1_843_720);
+    expect(rawCsv.byteLength).toBe(1_844_105);
     expect(sha256(rawCsv)).toBe(manifest.files[0]?.sha256);
     expect(sha256(manifest.files[0]!.sha256, "ascii")).toBe(
-      "de376fec6c11203fe030389e37663b715ada502259dcd2b041020c88d996970f"
+      "c340830cfff85c0d8fe067fde4033574f741d03ca3f3c9361329df05ec4c9857"
     );
     expect(generatedSource.startsWith("// GENERATED — DO NOT EDIT\n")).toBe(true);
-    expect(generatedSource).toContain("// Authorization: RDL-021\n");
-    expect(generatedSource).toContain("// Record count: 606\n");
-    expect(generatedSource).toContain("// Price-period count: 4047\n");
+    expect(generatedSource).toContain("// Authorization: RDL-022/023\n");
+    expect(generatedSource).toContain("// Record count: 607\n");
+    expect(generatedSource).toContain("// Price-period count: 4048\n");
     expect(generatedSource).toContain("The two source URL columns are omitted");
     expect(generatedSource).not.toContain("https://");
     expect(Buffer.byteLength(generatedSource)).toBeLessThanOrEqual(1_200_000);

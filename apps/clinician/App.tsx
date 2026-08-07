@@ -1,12 +1,18 @@
-import { useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import {
-  lookupDrugItem,
+  ITEM_DATASET_VERSION,
+  ITEM_WARNING,
+  NAVIGABLE_DRUG_ITEM_RULE_SECTIONS,
+  getDrugItemAnnouncementMembership,
+  getNavigableDrugItemRuleSections,
+  listDrugItemMasterRecordsByRuleSection,
   lookupDrugItemMaster,
   lookupRuleText,
+  matchesDrugItemAnnouncementFilter,
+  type DrugItemAnnouncementFilter,
   type DrugItemMasterLookupResult,
   type DrugItemMasterMatch,
-  type DrugItemLookupResult,
-  type DrugItemRecord,
+  type NavigableDrugItemRuleSection,
   type RuleTextLookupResult,
   type RuleTextUnit
 } from "@nhi-cv/domain";
@@ -17,28 +23,299 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
+  useColorScheme,
+  useWindowDimensions
 } from "react-native";
+import {
+  getClinicianLayoutMode,
+  resolveAnnouncementItemSource
+} from "./src/drug-item-ui";
+import {
+  THEME_TOKENS,
+  loadInterfaceLanguage,
+  loadThemePreference,
+  preferenceStorage,
+  preserveProtectedText,
+  resolveThemePreference,
+  saveInterfaceLanguage,
+  saveThemePreference,
+  translateMessage,
+  type InterfaceLanguage,
+  type ThemeName,
+  type ThemeTokens
+} from "./src/ui-preferences";
 
-type LookupMode = "rules" | "items" | "drugItems";
+type LookupMode = "rules" | "drugItems";
+
+const UI_COPY = Object.freeze({
+  zh: Object.freeze({
+    themeLightButton: "主題：明亮（切換至暗黑）",
+    themeDarkButton: "主題：暗黑（切換至明亮）",
+    languageControlLabel: "介面語言",
+    languageChinese: "中文",
+    languageEnglish: "English",
+    drugLookupTab: "藥品查詢",
+    ruleLookupTab: "規則逐字查詢",
+    ruleTitle: "官方規則逐字查詢",
+    ruleSubtitle: "以章節、單元編號或表名查找已驗證的逐字單元。",
+    ruleSearchLabel: "規則搜尋",
+    ruleSearchPlaceholder: "例如 2.6.1、2.6.1-002 或表一",
+    ruleDateLabel: "規則查詢日期",
+    datePlaceholder: "查詢日期 YYYY-MM-DD",
+    ruleDatasetLabel: "規則資料集版本",
+    datasetPlaceholder: "資料集版本",
+    ruleSearchButton: "查詢規則原文",
+    clausePath: "clausePath：{value}",
+    rootClause: "（根層）",
+    filterAll: "全部",
+    filterChanged: "本次公告異動",
+    filterTrial: "三個月試用清單",
+    filterTableTwo: "表二品項",
+    announcementSourceTitle: "另一資料來源：2026-09-01 公告異動明細",
+    announcementDatasetVersion: "資料集版本：{result.datasetVersion}",
+    announcementNotFound: "此主檔代碼未列於 2026-09-01 公告資料集。",
+    announcementMissingPrice: "本次公告未列異動",
+    announcementChangedTitle: "本次公告異動",
+    priceBefore: "原支付價：{value}",
+    priceAfter: "初核價格：{value}",
+    effectiveDate: "生效日：{value}",
+    tableTwoMembership: "表二歸屬：{value}",
+    trialNote: "三個月試用期註記：{value}",
+    missingField: "本資料列未提供",
+    fieldEnglishName: "英文品名：{value}",
+    fieldNhiCode: "健保代碼：{value}",
+    fieldIngredient: "成分及含量：{value}",
+    fieldSpecification: "規格：{value}",
+    fieldDosageForm: "劑型：{value}",
+    fieldVendor: "藥商：{value}",
+    fieldManufacturer: "製造廠：{value}",
+    fieldAtc: "ATC：{value}",
+    fieldCategory: "藥品分類：{value}",
+    fieldClassificationGroup: "分類分組名稱：{value}",
+    fieldSingleCompound: "單複方：{value}",
+    applicablePriceTitle: "該查詢日期適用之支付價",
+    validPeriod: "有效期間：{start} 至 {end}",
+    priceHistoryTitle: "價格沿革",
+    validPeriodHeader: "有效期間",
+    paymentPriceHeader: "支付價",
+    dateRange: "{start} 至 {end}",
+    paymentPriceValue: "支付價：{value}",
+    ruleSectionTitle: "給付規定章節",
+    openRuleLabel: "開啟規則 {section} 的逐字條文",
+    openRuleLink: "{section}（開啟逐字條文）",
+    drugTitle: "藥品查詢",
+    drugSubtitle: "以健保代碼、中文品名、英文品名或成分查找品項主檔。",
+    drugSearchLabel: "藥品主檔搜尋",
+    drugSearchPlaceholder: "輸入中文品名、健保代碼、英文品名或成分",
+    drugDateLabel: "藥品主檔查詢日期",
+    drugDatasetLabel: "藥品主檔資料集版本",
+    drugSearchButton: "查詢藥品主檔",
+    sectionFilter: "章節篩選：{section}",
+    clearSectionFilter: "清除章節篩選",
+    resultFilter: "結果篩選",
+    officialWarningTitle: "官方轉錄警語",
+    originalLanguageNote:
+      "Official warnings and rule text appear in their original Chinese wording.",
+    resultTitle: "查詢結果：{status}",
+    sectionItemsTitle: "章節品項：{section}",
+    resultMetadata: "資料集版本：{version} · 查詢日期：{date}",
+    manualReviewDrug: "此結果需要人工確認；系統不會自動選取品項或替代期別。",
+    noValidatedItems: "該查詢日期沒有已驗證資料所涵蓋的品項期別。",
+    noFilteredItems: "此結果篩選目前沒有品項。",
+    ruleResultMetadata: "資料集版本：{version} · 生效日：{date}",
+    manualReviewRule: "此結果需要人工確認；請比對健保署公告原文。",
+    viewSectionItems: "查看本章節品項（{section}）",
+    noRuleUnits: "此查詢未取得已驗證的逐字單元。",
+    statusExact: "單筆精確命中",
+    statusMultiple: "多筆命中",
+    statusUnavailable: "未在已驗證資料集取得結果",
+    privacyTitle: "此工具不接受病人資料",
+    privacyText: "請勿輸入姓名、病歷號、檢驗值、診斷或任何可識別病人資訊。",
+    footerAttribution:
+      "資料來源:衛生福利部中央健康保險署『健保用藥品項查詢項目檔』(政府資料開放平臺),依政府資料開放授權條款第1版利用",
+    footerPrivacy: "本站不設帳號、不蒐集任何個人資料;查詢內容不記錄、不儲存。"
+  }),
+  en: Object.freeze({
+    themeLightButton: "Theme: Light (switch to Dark)",
+    themeDarkButton: "Theme: Dark (switch to Light)",
+    languageControlLabel: "Interface language",
+    languageChinese: "中文",
+    languageEnglish: "English",
+    drugLookupTab: "Drug lookup",
+    ruleLookupTab: "Verbatim rule lookup",
+    ruleTitle: "Official verbatim rule lookup",
+    ruleSubtitle: "Find verified verbatim units by section, unit number, or table name.",
+    ruleSearchLabel: "Rule search",
+    ruleSearchPlaceholder: "For example, 2.6.1, 2.6.1-002, or 表一",
+    ruleDateLabel: "Rule lookup date",
+    datePlaceholder: "Lookup date YYYY-MM-DD",
+    ruleDatasetLabel: "Rule dataset version",
+    datasetPlaceholder: "Dataset version",
+    ruleSearchButton: "Search rule text",
+    clausePath: "Clause path: {value}",
+    rootClause: "(root)",
+    filterAll: "All",
+    filterChanged: "Changed in this announcement",
+    filterTrial: "3-month trial list",
+    filterTableTwo: "Table 2 items",
+    announcementSourceTitle: "Separate source: 2026-09-01 announcement change details",
+    announcementDatasetVersion: "Dataset version: {result.datasetVersion}",
+    announcementNotFound: "This master code is not listed in the 2026-09-01 announcement dataset.",
+    announcementMissingPrice: "No change listed in this announcement",
+    announcementChangedTitle: "Changed in this announcement",
+    priceBefore: "Previous payment price: {value}",
+    priceAfter: "Initial review price: {value}",
+    effectiveDate: "Effective date: {value}",
+    tableTwoMembership: "Table 2 classification: {value}",
+    trialNote: "3-month trial note: {value}",
+    missingField: "Not provided in this source row",
+    fieldEnglishName: "English product name: {value}",
+    fieldNhiCode: "NHI code: {value}",
+    fieldIngredient: "Ingredient and strength: {value}",
+    fieldSpecification: "Specification: {value}",
+    fieldDosageForm: "Dosage form: {value}",
+    fieldVendor: "Vendor: {value}",
+    fieldManufacturer: "Manufacturer: {value}",
+    fieldAtc: "ATC: {value}",
+    fieldCategory: "Drug category: {value}",
+    fieldClassificationGroup: "Classification group: {value}",
+    fieldSingleCompound: "Single or combination product: {value}",
+    applicablePriceTitle: "Payment price for the lookup date",
+    validPeriod: "Effective period: {start} to {end}",
+    priceHistoryTitle: "Price history",
+    validPeriodHeader: "Effective period",
+    paymentPriceHeader: "Payment price",
+    dateRange: "{start} to {end}",
+    paymentPriceValue: "Payment price: {value}",
+    ruleSectionTitle: "Rule section",
+    openRuleLabel: "Open the verbatim text for rule {section}",
+    openRuleLink: "{section} (open verbatim rule text)",
+    drugTitle: "Drug lookup",
+    drugSubtitle: "Find master items by NHI code, Chinese name, English name, or ingredient.",
+    drugSearchLabel: "Drug master search",
+    drugSearchPlaceholder: "Enter a Chinese name, NHI code, English name, or ingredient",
+    drugDateLabel: "Drug master lookup date",
+    drugDatasetLabel: "Drug master dataset version",
+    drugSearchButton: "Search drug master",
+    sectionFilter: "Section filter: {section}",
+    clearSectionFilter: "Clear section filter",
+    resultFilter: "Result filters",
+    officialWarningTitle: "Official transcription warning",
+    originalLanguageNote:
+      "Official warnings and rule text appear in their original Chinese wording.",
+    resultTitle: "Lookup result: {status}",
+    sectionItemsTitle: "Section items: {section}",
+    resultMetadata: "Dataset version: {version} · Lookup date: {date}",
+    manualReviewDrug: "This result requires manual review; no item or price period is selected automatically.",
+    noValidatedItems: "No item period was found in the verified data for this lookup date.",
+    noFilteredItems: "No items match the current factual filter.",
+    ruleResultMetadata: "Dataset version: {version} · Effective date: {date}",
+    manualReviewRule: "This result requires manual review; compare it with the original NHI announcement.",
+    viewSectionItems: "View items in this section ({section})",
+    noRuleUnits: "No verified verbatim unit was found for this query.",
+    statusExact: "One exact record match",
+    statusMultiple: "Multiple record matches",
+    statusUnavailable: "No result in the verified dataset",
+    privacyTitle: "This tool does not accept patient data",
+    privacyText:
+      "Do not enter names, medical record numbers, test results, diagnoses, or any identifiable patient information.",
+    footerAttribution:
+      "Source: National Health Insurance Administration, Ministry of Health and Welfare, NHI Drug Item Query File (data.gov.tw), used under the Open Government Data License, Version 1.0.",
+    footerPrivacy:
+      "This site has no accounts and collects no personal data; lookup content is neither logged nor stored."
+  })
+});
+
+type UiMessageKey = keyof (typeof UI_COPY)["zh"];
+type UiReplacements = Readonly<Record<string, string>>;
+type Translator = (key: UiMessageKey, replacements?: UiReplacements) => string;
+
+type AppStyles = ReturnType<typeof createStyles>;
+
+type UiContextValue = Readonly<{
+  language: InterfaceLanguage;
+  styles: AppStyles;
+  theme: ThemeName;
+  tokens: ThemeTokens;
+  t: Translator;
+}>;
+
+const UiContext = createContext<UiContextValue | null>(null);
+
+function useUi(): UiContextValue {
+  const context = useContext(UiContext);
+  if (context === null) throw new Error("UI context is unavailable");
+  return context;
+}
 
 const ruleTextDataset = lookupRuleText({ query: "", as_of_date: "" });
-const itemDataset = lookupDrugItem({ query: "", as_of_date: "" });
 const drugItemsDataset = lookupDrugItemMaster({ query: "", as_of_date: "" });
+const announcementFilters: readonly DrugItemAnnouncementFilter[] = Object.freeze([
+  "all",
+  "changed",
+  "trial",
+  "tableTwo"
+]);
+
+const announcementFilterKeys: Readonly<Record<DrugItemAnnouncementFilter, UiMessageKey>> =
+  Object.freeze({
+    all: "filterAll",
+    changed: "filterChanged",
+    trial: "filterTrial",
+    tableTwo: "filterTableTwo"
+  });
+
+const lookupStatusKeys = Object.freeze({
+  EXACT_MATCH: "statusExact",
+  MULTIPLE_MATCHES: "statusMultiple",
+  NOT_IN_VALIDATED_DATASET: "statusUnavailable"
+} satisfies Readonly<Record<RuleTextLookupResult["status"], UiMessageKey>>);
+
+function protectedText(language: InterfaceLanguage, value: string): string {
+  return preserveProtectedText(language, value);
+}
+
+function OfficialOriginalLanguageNote({
+  announcement = false
+}: {
+  announcement?: boolean;
+}): React.JSX.Element | null {
+  const { language, styles, t } = useUi();
+  if (language !== "en") return null;
+  return (
+    <Text
+      style={announcement ? styles.announcementOriginalLanguageNote : styles.originalLanguageNote}
+    >
+      {t("originalLanguageNote")}
+    </Text>
+  );
+}
 
 function RuleUnitCard({ unit }: { unit: RuleTextUnit }): React.JSX.Element {
+  const { language, styles, t } = useUi();
+  const clausePath =
+    unit.clausePath.length > 0
+      ? protectedText(language, unit.clausePath.join(" › "))
+      : t("rootClause");
+
   return (
     <View style={styles.ruleCard} accessibilityRole="summary">
-      <Text style={styles.ruleUnitId}>{unit.unitId}</Text>
-      <Text style={styles.rulePath}>
-        clausePath：{unit.clausePath.length > 0 ? unit.clausePath.join(" › ") : "（根層）"}
-      </Text>
+      <Text style={styles.ruleUnitId}>{protectedText(language, unit.unitId)}</Text>
+      <Text style={styles.rulePath}>{t("clausePath", { value: clausePath })}</Text>
       <Text style={styles.verbatimText}>{unit.verbatimText}</Text>
     </View>
   );
 }
 
-function RuleLookupMode({ initialQuery = "" }: { initialQuery?: string }): React.JSX.Element {
+function RuleLookupMode({
+  initialQuery = "",
+  onOpenDrugItemsForSection
+}: {
+  initialQuery?: string;
+  onOpenDrugItemsForSection: (section: NavigableDrugItemRuleSection) => void;
+}): React.JSX.Element {
+  const { styles, t, tokens } = useUi();
   const [query, setQuery] = useState(initialQuery);
   const [asOfDate, setAsOfDate] = useState<string>(ruleTextDataset.effectiveFrom);
   const [datasetVersion, setDatasetVersion] = useState<string>(ruleTextDataset.datasetVersion);
@@ -64,274 +341,275 @@ function RuleLookupMode({ initialQuery = "" }: { initialQuery?: string }): React
 
   return (
     <View style={styles.modeContent}>
-      <Text style={styles.title}>官方規則逐字查詢</Text>
-      <Text style={styles.subtitle}>以章節、單元編號或表名查找已驗證的逐字單元。</Text>
+      <Text style={styles.title}>{t("ruleTitle")}</Text>
+      <Text style={styles.subtitle}>{t("ruleSubtitle")}</Text>
 
       <TextInput
         autoFocus
-        accessibilityLabel="規則搜尋"
+        accessibilityLabel={t("ruleSearchLabel")}
         autoCapitalize="none"
         autoCorrect={false}
         onChangeText={setQuery}
         onSubmitEditing={performLookup}
-        placeholder="例如 2.6.1、2.6.1-002 或表一"
+        placeholder={t("ruleSearchPlaceholder")}
+        placeholderTextColor={tokens.color.textMuted}
         returnKeyType="search"
         style={styles.input}
         value={query}
       />
       <TextInput
-        accessibilityLabel="規則查詢日期"
+        accessibilityLabel={t("ruleDateLabel")}
         autoCapitalize="none"
         autoCorrect={false}
         onChangeText={setAsOfDate}
-        placeholder="查詢日期 YYYY-MM-DD"
+        placeholder={t("datePlaceholder")}
+        placeholderTextColor={tokens.color.textMuted}
         style={styles.input}
         value={asOfDate}
       />
       <TextInput
-        accessibilityLabel="規則資料集版本"
+        accessibilityLabel={t("ruleDatasetLabel")}
         autoCapitalize="none"
         autoCorrect={false}
         onChangeText={setDatasetVersion}
-        placeholder="資料集版本"
+        placeholder={t("datasetPlaceholder")}
+        placeholderTextColor={tokens.color.textMuted}
         style={styles.input}
         value={datasetVersion}
       />
       <Pressable accessibilityRole="button" onPress={performLookup} style={styles.ruleButton}>
-        <Text style={styles.buttonText}>查詢規則原文</Text>
+        <Text style={styles.buttonText}>{t("ruleSearchButton")}</Text>
       </Pressable>
-
-      <PrivacyNotice />
-
-      {result ? <RuleLookupResult result={result} /> : null}
-    </View>
-  );
-}
-
-function DrugItemCard({
-  record,
-  onOpenRuleText
-}: {
-  record: DrugItemRecord;
-  onOpenRuleText: (coverageRule: string) => void;
-}): React.JSX.Element {
-  const missingField = "本資料列未提供";
-  const missingPrice = "本次公告未列異動";
-  const priceComparison =
-    record.priceBefore === undefined && record.priceAfter === undefined
-      ? missingPrice
-      : `${record.priceBefore ?? missingPrice} → ${record.priceAfter ?? missingPrice}`;
-
-  return (
-    <View style={styles.itemCard} accessibilityRole="summary">
-      <Text style={styles.code}>{record.nhiCode}</Text>
-      <Text style={styles.productName}>{record.drugNameEn}</Text>
-      <Text style={styles.detail}>成分及含量：{record.ingredient ?? missingField}</Text>
-      <Text style={styles.detail}>成分類別：{record.ingredientCategory ?? missingField}</Text>
-      <Text style={styles.detail}>藥商：{record.manufacturer ?? missingField}</Text>
-      <Text style={styles.itemPrice}>原支付價 → 初核價格：{priceComparison}</Text>
-      <Text style={styles.detail}>生效日期：{record.effectiveDate ?? missingField}</Text>
-      <View style={styles.itemFieldRow}>
-        <Text style={styles.detail}>公告所載給付規定條號：</Text>
-        {record.coverageRule === undefined ? (
-          <Text style={styles.detail}>{missingField}</Text>
-        ) : (
-          <Pressable
-            accessibilityLabel={`開啟規則 ${record.coverageRule} 的逐字條文`}
-            accessibilityRole="button"
-            onPress={() => onOpenRuleText(record.coverageRule!)}
-          >
-            <Text style={styles.coverageLink}>{record.coverageRule}（開啟逐字條文）</Text>
-          </Pressable>
-        )}
-      </View>
-      <Text style={styles.detail}>表別分類：{record.tableClassification ?? missingField}</Text>
-      <Text style={styles.detail}>例外註記：{record.exceptionNote ?? missingField}</Text>
-    </View>
-  );
-}
-
-function DrugItemLookupMode({
-  onOpenRuleText
-}: {
-  onOpenRuleText: (coverageRule: string) => void;
-}): React.JSX.Element {
-  const [query, setQuery] = useState("");
-  const [asOfDate, setAsOfDate] = useState<string>(itemDataset.effectiveFrom);
-  const [datasetVersion, setDatasetVersion] = useState<string>(itemDataset.datasetVersion);
-  const [result, setResult] = useState<DrugItemLookupResult | null>(null);
-
-  function performLookup(): void {
-    setResult(
-      lookupDrugItem({
-        query,
-        as_of_date: asOfDate,
-        ...(datasetVersion.trim().length > 0 ? { dataset_version: datasetVersion } : {})
-      })
-    );
-  }
-
-  return (
-    <View style={styles.modeContent}>
-      <Text style={styles.title}>藥品品項查詢</Text>
-      <Text style={styles.subtitle}>以健保代碼、英文品名或成分查找公告所載品項。</Text>
-
-      <TextInput
-        autoFocus
-        accessibilityLabel="藥品品項搜尋"
-        autoCapitalize="characters"
-        autoCorrect={false}
-        onChangeText={setQuery}
-        onSubmitEditing={performLookup}
-        placeholder="輸入健保代碼、英文品名或成分"
-        returnKeyType="search"
-        style={styles.input}
-        value={query}
-      />
-      <TextInput
-        accessibilityLabel="品項查詢日期"
-        autoCapitalize="none"
-        autoCorrect={false}
-        onChangeText={setAsOfDate}
-        placeholder="查詢日期 YYYY-MM-DD"
-        style={styles.input}
-        value={asOfDate}
-      />
-      <TextInput
-        accessibilityLabel="品項資料集版本"
-        autoCapitalize="none"
-        autoCorrect={false}
-        onChangeText={setDatasetVersion}
-        placeholder="資料集版本"
-        style={styles.input}
-        value={datasetVersion}
-      />
-      <Pressable accessibilityRole="button" onPress={performLookup} style={styles.itemButton}>
-        <Text style={styles.buttonText}>查詢藥品品項</Text>
-      </Pressable>
-
-      <PrivacyNotice />
 
       {result ? (
-        <View style={styles.results}>
-          <View style={styles.officialItemWarning} accessibilityRole="alert">
-            <Text style={styles.officialWarningTitle}>官方轉錄警語</Text>
-            <Text style={styles.officialWarningText}>{result.warning}</Text>
-          </View>
-          <Text style={styles.resultTitle}>查詢結果：{result.status}</Text>
-          <Text style={styles.resultText}>
-            資料集版本：{result.datasetVersion} · 生效日：{result.effectiveFrom}
-          </Text>
-          {result.manualReviewRequired ? (
-            <Text style={styles.review}>此結果需要人工確認；系統不會自動選取品項。</Text>
-          ) : null}
-          {result.items.map((record) => (
-            <DrugItemCard key={record.nhiCode} record={record} onOpenRuleText={onOpenRuleText} />
-          ))}
-          {result.items.length === 0 ? (
-            <Text style={styles.empty}>此查詢未取得已驗證的品項資料。</Text>
-          ) : null}
-        </View>
+        <RuleLookupResult
+          result={result}
+          onOpenDrugItemsForSection={onOpenDrugItemsForSection}
+        />
       ) : null}
     </View>
   );
 }
 
-function AnnouncementItemSourceBlock({ nhiCode }: { nhiCode: string }): React.JSX.Element | null {
-  const result = lookupDrugItem({
-    query: nhiCode,
-    as_of_date: itemDataset.effectiveFrom,
-    dataset_version: itemDataset.datasetVersion
-  });
-  const announcementItem = result.items[0];
-  if (result.status !== "EXACT_MATCH" || announcementItem === undefined) return null;
+function AnnouncementTags({ nhiCode }: { nhiCode: string }): React.JSX.Element | null {
+  const { styles, t } = useUi();
+  const membership = getDrugItemAnnouncementMembership(nhiCode);
+  const tags: readonly UiMessageKey[] = [
+    membership.changed ? "filterChanged" : undefined,
+    membership.trial ? "filterTrial" : undefined,
+    membership.tableTwo ? "filterTableTwo" : undefined
+  ].filter((key): key is UiMessageKey => key !== undefined);
+  if (tags.length === 0) return null;
 
-  const missingPrice = "本次公告未列異動";
+  return (
+    <View style={styles.tagRow}>
+      {tags.map((key) => (
+        <View key={key} style={styles.factTag}>
+          <Text style={styles.factTagText}>{t(key)}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function AnnouncementItemSourceBlock({ nhiCode }: { nhiCode: string }): React.JSX.Element {
+  const { language, styles, t } = useUi();
+  const source = resolveAnnouncementItemSource(nhiCode);
+  const result = {
+    datasetVersion: ITEM_DATASET_VERSION,
+    warning: ITEM_WARNING
+  } as const;
+  const missingPrice = t("announcementMissingPrice");
+  const missingField = t("missingField");
+
   return (
     <View style={styles.announcementSourceBlock}>
-      <Text style={styles.sourceBlockTitle}>另一資料來源：2026-09-01 公告異動明細</Text>
-      <Text style={styles.sourceBlockMeta}>資料集版本：{result.datasetVersion}</Text>
+      <Text style={styles.sourceBlockTitle}>{t("announcementSourceTitle")}</Text>
+      <Text style={styles.sourceBlockMeta}>
+        {t("announcementDatasetVersion", {
+          "result.datasetVersion": protectedText(language, result.datasetVersion)
+        })}
+      </Text>
       <Text style={styles.sourceBlockWarning}>{result.warning}</Text>
-      <Text style={styles.detail}>
-        原支付價：{announcementItem.priceBefore ?? missingPrice}
-      </Text>
-      <Text style={styles.detail}>
-        初核價格：{announcementItem.priceAfter ?? missingPrice}
-      </Text>
-      <Text style={styles.detail}>
-        生效日：{announcementItem.effectiveDate ?? "本資料列未提供"}
-      </Text>
+      <OfficialOriginalLanguageNote announcement />
+      {source.status === "NOT_FOUND" ? (
+        <Text style={styles.detail}>{t("announcementNotFound")}</Text>
+      ) : (
+        <>
+          {source.membership.changed ? (
+            <View style={styles.announcementFactBlock}>
+              <Text style={styles.announcementFactTitle}>{t("announcementChangedTitle")}</Text>
+              <Text style={styles.detail}>
+                {t("priceBefore", {
+                  value: protectedText(language, source.item.priceBefore ?? missingPrice)
+                })}
+              </Text>
+              <Text style={styles.detail}>
+                {t("priceAfter", {
+                  value: protectedText(language, source.item.priceAfter ?? missingPrice)
+                })}
+              </Text>
+              <Text style={styles.detail}>
+                {t("effectiveDate", {
+                  value: protectedText(language, source.item.effectiveDate ?? missingField)
+                })}
+              </Text>
+            </View>
+          ) : null}
+          {source.membership.tableTwo ? (
+            <Text style={styles.detail}>
+              {t("tableTwoMembership", {
+                value: protectedText(language, source.item.tableClassification ?? missingField)
+              })}
+            </Text>
+          ) : null}
+          {source.membership.trial ? (
+            <Text style={styles.detail}>
+              {t("trialNote", {
+                value: protectedText(language, source.item.exceptionNote ?? missingField)
+              })}
+            </Text>
+          ) : null}
+        </>
+      )}
+    </View>
+  );
+}
+
+function MasterDetailCell({
+  children,
+  isDesktop
+}: {
+  children: React.ReactNode;
+  isDesktop: boolean;
+}): React.JSX.Element {
+  const { styles } = useUi();
+  return (
+    <View style={[styles.masterDetailCell, isDesktop ? styles.masterDetailCellDesktop : null]}>
+      {children}
     </View>
   );
 }
 
 function DrugItemMasterCard({
   match,
-  onOpenRuleText
+  onOpenRuleText,
+  isDesktop
 }: {
   match: DrugItemMasterMatch;
   onOpenRuleText: (coverageRule: string) => void;
+  isDesktop: boolean;
 }): React.JSX.Element {
+  const { language, styles, t } = useUi();
   const { item, applicablePricePeriod } = match;
-  const missingField = "本資料列未提供";
+  const missingField = t("missingField");
   const specification = [item.specificationAmount, item.specificationUnit]
     .filter((value) => value.length > 0)
     .join(" ");
-  const linkedRuleSections = ["2.6.1", "2.6.2", "2.6.3"].filter((section) =>
-    item.coverageRuleSection.includes(section)
-  );
+  const linkedRuleSections = getNavigableDrugItemRuleSections(item.coverageRuleSection);
+  const sourceValue = (value: string): string => protectedText(language, value || missingField);
 
   return (
     <View style={styles.masterItemCard} accessibilityRole="summary">
-      <Text style={styles.masterProductName}>{item.drugNameZh}</Text>
-      <Text style={styles.detail}>英文品名：{item.drugNameEn}</Text>
-      <Text style={styles.code}>健保代碼：{item.nhiCode}</Text>
-      <Text style={styles.detail}>成分及含量：{item.ingredient || missingField}</Text>
-      <Text style={styles.detail}>規格：{specification || missingField}</Text>
-      <Text style={styles.detail}>劑型：{item.dosageForm || missingField}</Text>
-      <Text style={styles.detail}>藥商：{item.vendor || missingField}</Text>
-      <Text style={styles.detail}>製造廠：{item.manufacturer || missingField}</Text>
-      <Text style={styles.detail}>ATC：{item.atcCode || missingField}</Text>
-      <Text style={styles.detail}>藥品分類：{item.drugCategory || missingField}</Text>
-      <Text style={styles.detail}>
-        分類分組名稱：{item.classificationGroupName || missingField}
-      </Text>
-      <Text style={styles.detail}>單複方：{item.singleOrCompound || missingField}</Text>
+      <Text style={styles.masterProductName}>{protectedText(language, item.drugNameZh)}</Text>
+      <AnnouncementTags nhiCode={item.nhiCode} />
+
+      <View style={styles.masterDetailsGrid}>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>{t("fieldEnglishName", { value: sourceValue(item.drugNameEn) })}</Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.code}>{t("fieldNhiCode", { value: sourceValue(item.nhiCode) })}</Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>{t("fieldIngredient", { value: sourceValue(item.ingredient) })}</Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>{t("fieldSpecification", { value: sourceValue(specification) })}</Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>{t("fieldDosageForm", { value: sourceValue(item.dosageForm) })}</Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>{t("fieldVendor", { value: sourceValue(item.vendor) })}</Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>{t("fieldManufacturer", { value: sourceValue(item.manufacturer) })}</Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>{t("fieldAtc", { value: sourceValue(item.atcCode) })}</Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>{t("fieldCategory", { value: sourceValue(item.drugCategory) })}</Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>
+            {t("fieldClassificationGroup", { value: sourceValue(item.classificationGroupName) })}
+          </Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>{t("fieldSingleCompound", { value: sourceValue(item.singleOrCompound) })}</Text>
+        </MasterDetailCell>
+      </View>
 
       <View style={styles.applicablePriceBlock}>
-        <Text style={styles.sourceBlockTitle}>該查詢日期適用之支付價</Text>
-        <Text style={styles.masterPrice}>{applicablePricePeriod.paymentPriceRaw}</Text>
+        <Text style={styles.sourceBlockTitle}>{t("applicablePriceTitle")}</Text>
+        <Text style={styles.masterPrice}>
+          {protectedText(language, applicablePricePeriod.paymentPriceRaw)}
+        </Text>
         <Text style={styles.sourceBlockMeta}>
-          有效期間：{applicablePricePeriod.startDateIso} 至 {applicablePricePeriod.endDateIso}
+          {t("validPeriod", {
+            start: protectedText(language, applicablePricePeriod.startDateIso),
+            end: protectedText(language, applicablePricePeriod.endDateIso)
+          })}
         </Text>
       </View>
 
       <View style={styles.priceHistoryBlock}>
-        <Text style={styles.sourceBlockTitle}>價格沿革</Text>
-        <Text style={styles.sourceBlockMeta}>有效期間 → 支付價</Text>
+        <Text style={styles.sourceBlockTitle}>{t("priceHistoryTitle")}</Text>
+        <View style={[styles.priceHistoryHeader, isDesktop ? styles.priceHistoryRowDesktop : null]}>
+          <Text style={[styles.sourceBlockMeta, isDesktop ? styles.pricePeriodDesktop : null]}>
+            {t("validPeriodHeader")}
+          </Text>
+          <Text style={[styles.sourceBlockMeta, isDesktop ? styles.priceValueDesktop : null]}>
+            {t("paymentPriceHeader")}
+          </Text>
+        </View>
         {item.priceHistory.map((period) => (
           <View
             key={`${period.effectiveStartRaw}-${period.effectiveEndRaw}`}
-            style={styles.priceHistoryRow}
+            style={[styles.priceHistoryRow, isDesktop ? styles.priceHistoryRowDesktop : null]}
           >
-            <Text style={styles.detail}>
-              {period.startDateIso} 至 {period.endDateIso} → {period.paymentPriceRaw}
+            <Text style={[styles.detail, isDesktop ? styles.pricePeriodDesktop : null]}>
+              {t("dateRange", {
+                start: protectedText(language, period.startDateIso),
+                end: protectedText(language, period.endDateIso)
+              })}
+            </Text>
+            <Text style={[styles.detail, isDesktop ? styles.priceValueDesktop : null]}>
+              {t("paymentPriceValue", {
+                value: protectedText(language, period.paymentPriceRaw)
+              })}
             </Text>
           </View>
         ))}
       </View>
 
       <View style={styles.coverageSectionBlock}>
-        <Text style={styles.sourceBlockTitle}>給付規定章節</Text>
-        <Text style={styles.detail}>{item.coverageRuleSection || missingField}</Text>
+        <Text style={styles.sourceBlockTitle}>{t("ruleSectionTitle")}</Text>
+        <Text style={styles.detail}>{sourceValue(item.coverageRuleSection)}</Text>
         {linkedRuleSections.map((section) => (
           <Pressable
-            accessibilityLabel={`開啟規則 ${section} 的逐字條文`}
+            accessibilityLabel={t("openRuleLabel", {
+              section: protectedText(language, section)
+            })}
             accessibilityRole="button"
             key={section}
             onPress={() => onOpenRuleText(section)}
           >
-            <Text style={styles.coverageLink}>{section}（開啟逐字條文）</Text>
+            <Text style={styles.coverageLink}>
+              {t("openRuleLink", { section: protectedText(language, section) })}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -342,16 +620,46 @@ function DrugItemMasterCard({
 }
 
 function DrugItemMasterLookupMode({
-  onOpenRuleText
+  onOpenRuleText,
+  sectionFilter,
+  onClearSectionFilter,
+  isDesktop
 }: {
   onOpenRuleText: (coverageRule: string) => void;
+  sectionFilter: NavigableDrugItemRuleSection | undefined;
+  onClearSectionFilter: () => void;
+  isDesktop: boolean;
 }): React.JSX.Element {
+  const { language, styles, t, tokens } = useUi();
   const [query, setQuery] = useState("");
   const [asOfDate, setAsOfDate] = useState<string>(drugItemsDataset.effectiveFrom);
   const [datasetVersion, setDatasetVersion] = useState<string>(drugItemsDataset.datasetVersion);
   const [result, setResult] = useState<DrugItemMasterLookupResult | null>(null);
+  const [announcementFilter, setAnnouncementFilter] =
+    useState<DrugItemAnnouncementFilter>("all");
+
+  const sectionMatches = useMemo<readonly DrugItemMasterMatch[]>(() => {
+    if (sectionFilter === undefined) return Object.freeze([]);
+    return Object.freeze(
+      listDrugItemMasterRecordsByRuleSection(sectionFilter).flatMap(
+        (item) =>
+          lookupDrugItemMaster({
+            query: item.nhiCode,
+            as_of_date: asOfDate,
+            dataset_version: datasetVersion
+          }).matches
+      )
+    );
+  }, [asOfDate, datasetVersion, sectionFilter]);
+
+  const unfilteredMatches = sectionFilter === undefined ? (result?.matches ?? []) : sectionMatches;
+  const visibleMatches = unfilteredMatches.filter((match) =>
+    matchesDrugItemAnnouncementFilter(match.item.nhiCode, announcementFilter)
+  );
+  const hasResult = result !== null || sectionFilter !== undefined;
 
   function performLookup(): void {
+    onClearSectionFilter();
     setResult(
       lookupDrugItemMaster({
         query,
@@ -363,67 +671,125 @@ function DrugItemMasterLookupMode({
 
   return (
     <View style={styles.modeContent}>
-      <Text style={styles.title}>藥品查詢（中文品名與價格沿革）</Text>
-      <Text style={styles.subtitle}>以健保代碼、中文品名、英文品名或成分查找品項主檔。</Text>
+      <Text style={styles.title}>{t("drugTitle")}</Text>
+      <Text style={styles.subtitle}>{t("drugSubtitle")}</Text>
 
       <TextInput
         autoFocus
-        accessibilityLabel="藥品主檔搜尋"
+        accessibilityLabel={t("drugSearchLabel")}
         autoCapitalize="characters"
         autoCorrect={false}
         onChangeText={setQuery}
         onSubmitEditing={performLookup}
-        placeholder="輸入中文品名、健保代碼、英文品名或成分"
+        placeholder={t("drugSearchPlaceholder")}
+        placeholderTextColor={tokens.color.textMuted}
         returnKeyType="search"
         style={styles.input}
         value={query}
       />
       <TextInput
-        accessibilityLabel="藥品主檔查詢日期"
+        accessibilityLabel={t("drugDateLabel")}
         autoCapitalize="none"
         autoCorrect={false}
         onChangeText={setAsOfDate}
-        placeholder="查詢日期 YYYY-MM-DD"
+        placeholder={t("datePlaceholder")}
+        placeholderTextColor={tokens.color.textMuted}
         style={styles.input}
         value={asOfDate}
       />
       <TextInput
-        accessibilityLabel="藥品主檔資料集版本"
+        accessibilityLabel={t("drugDatasetLabel")}
         autoCapitalize="none"
         autoCorrect={false}
         onChangeText={setDatasetVersion}
-        placeholder="資料集版本"
+        placeholder={t("datasetPlaceholder")}
+        placeholderTextColor={tokens.color.textMuted}
         style={styles.input}
         value={datasetVersion}
       />
       <Pressable accessibilityRole="button" onPress={performLookup} style={styles.masterItemButton}>
-        <Text style={styles.buttonText}>查詢藥品主檔</Text>
+        <Text style={styles.buttonText}>{t("drugSearchButton")}</Text>
       </Pressable>
 
-      <PrivacyNotice />
+      {sectionFilter === undefined ? null : (
+        <View style={styles.sectionFilterNotice}>
+          <Text style={styles.sectionFilterText}>
+            {t("sectionFilter", { section: protectedText(language, sectionFilter) })}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onClearSectionFilter}
+            style={styles.clearSectionButton}
+          >
+            <Text style={styles.clearSectionButtonText}>{t("clearSectionFilter")}</Text>
+          </Pressable>
+        </View>
+      )}
 
-      {result ? (
+      <View style={styles.filterBlock}>
+        <Text style={styles.filterTitle}>{t("resultFilter")}</Text>
+        <View style={styles.filterRow}>
+          {announcementFilters.map((filter) => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: announcementFilter === filter }}
+              key={filter}
+              onPress={() => setAnnouncementFilter(filter)}
+              style={[
+                styles.filterButton,
+                announcementFilter === filter ? styles.filterButtonSelected : null
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  announcementFilter === filter ? styles.filterButtonTextSelected : null
+                ]}
+              >
+                {t(announcementFilterKeys[filter])}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      {hasResult ? (
         <View style={styles.results}>
           <View style={styles.masterItemWarning} accessibilityRole="alert">
-            <Text style={styles.officialWarningTitle}>官方轉錄警語</Text>
-            <Text style={styles.officialWarningText}>{result.warning}</Text>
+            <Text style={styles.officialWarningTitle}>{t("officialWarningTitle")}</Text>
+            <Text style={styles.officialWarningText}>{drugItemsDataset.warning}</Text>
+            <OfficialOriginalLanguageNote />
           </View>
-          <Text style={styles.resultTitle}>查詢結果：{result.status}</Text>
-          <Text style={styles.resultText}>
-            資料集版本：{result.datasetVersion} · 查詢日期：{result.asOfDate}
+          <Text style={styles.resultTitle}>
+            {sectionFilter === undefined
+              ? t("resultTitle", {
+                  status: t(lookupStatusKeys[result?.status ?? "NOT_IN_VALIDATED_DATASET"])
+                })
+              : t("sectionItemsTitle", {
+                  section: protectedText(language, sectionFilter)
+                })}
           </Text>
-          {result.manualReviewRequired ? (
-            <Text style={styles.review}>此結果需要人工確認；系統不會自動選取品項或替代期別。</Text>
+          <Text style={styles.resultText}>
+            {t("resultMetadata", {
+              version: protectedText(language, drugItemsDataset.datasetVersion),
+              date: protectedText(language, asOfDate)
+            })}
+          </Text>
+          {sectionFilter === undefined && result?.manualReviewRequired ? (
+            <Text style={styles.review}>{t("manualReviewDrug")}</Text>
           ) : null}
-          {result.matches.map((match) => (
+          {visibleMatches.map((match) => (
             <DrugItemMasterCard
+              isDesktop={isDesktop}
               key={match.item.nhiCode}
               match={match}
               onOpenRuleText={onOpenRuleText}
             />
           ))}
-          {result.matches.length === 0 ? (
-            <Text style={styles.empty}>該查詢日期沒有已驗證資料所涵蓋的品項期別。</Text>
+          {unfilteredMatches.length === 0 ? (
+            <Text style={styles.empty}>{t("noValidatedItems")}</Text>
+          ) : visibleMatches.length === 0 ? (
+            <Text style={styles.empty}>{t("noFilteredItems")}</Text>
           ) : null}
         </View>
       ) : null}
@@ -431,209 +797,503 @@ function DrugItemMasterLookupMode({
   );
 }
 
-function RuleLookupResult({ result }: { result: RuleTextLookupResult }): React.JSX.Element {
+function RuleLookupResult({
+  result,
+  onOpenDrugItemsForSection
+}: {
+  result: RuleTextLookupResult;
+  onOpenDrugItemsForSection: (section: NavigableDrugItemRuleSection) => void;
+}): React.JSX.Element {
+  const { language, styles, t } = useUi();
+  const resultSections = NAVIGABLE_DRUG_ITEM_RULE_SECTIONS.filter((section) =>
+    result.units.some((unit) => unit.section === section)
+  );
+
   return (
     <View style={styles.results}>
       <View style={styles.officialWarning} accessibilityRole="alert">
-        <Text style={styles.officialWarningTitle}>官方轉錄警語</Text>
+        <Text style={styles.officialWarningTitle}>{t("officialWarningTitle")}</Text>
         <Text style={styles.officialWarningText}>{result.warning}</Text>
+        <OfficialOriginalLanguageNote />
       </View>
-      <Text style={styles.resultTitle}>查詢結果：{result.status}</Text>
+      <Text style={styles.resultTitle}>
+        {t("resultTitle", { status: t(lookupStatusKeys[result.status]) })}
+      </Text>
       <Text style={styles.resultText}>
-        資料集版本：{result.datasetVersion} · 生效日：{result.effectiveFrom}
+        {t("ruleResultMetadata", {
+          version: protectedText(language, result.datasetVersion),
+          date: protectedText(language, result.effectiveFrom)
+        })}
       </Text>
       {result.manualReviewRequired ? (
-        <Text style={styles.review}>此結果需要人工確認；請比對健保署公告原文。</Text>
+        <Text style={styles.review}>{t("manualReviewRule")}</Text>
       ) : null}
+      {resultSections.map((section) => (
+        <Pressable
+          accessibilityRole="button"
+          key={section}
+          onPress={() => onOpenDrugItemsForSection(section)}
+          style={styles.sectionItemsButton}
+        >
+          <Text style={styles.sectionItemsButtonText}>
+            {t("viewSectionItems", { section: protectedText(language, section) })}
+          </Text>
+        </Pressable>
+      ))}
       {result.units.map((unit) => (
         <RuleUnitCard key={unit.unitId} unit={unit} />
       ))}
-      {result.units.length === 0 ? (
-        <Text style={styles.empty}>此查詢未取得已驗證的逐字單元。</Text>
-      ) : null}
+      {result.units.length === 0 ? <Text style={styles.empty}>{t("noRuleUnits")}</Text> : null}
     </View>
   );
 }
 
 function PrivacyNotice(): React.JSX.Element {
+  const { styles, t } = useUi();
   return (
     <View style={styles.privacyNotice}>
-      <Text style={styles.privacyNoticeTitle}>此工具不接受病人資料</Text>
-      <Text style={styles.privacyNoticeText}>請勿輸入姓名、病歷號、檢驗值、診斷或任何可識別病人資訊。</Text>
+      <Text style={styles.privacyNoticeTitle}>{t("privacyTitle")}</Text>
+      <Text style={styles.privacyNoticeText}>{t("privacyText")}</Text>
+    </View>
+  );
+}
+
+function Footer(): React.JSX.Element {
+  const { styles, t } = useUi();
+  return (
+    <View style={styles.footer}>
+      <Text style={styles.footerText}>{t("footerAttribution")}</Text>
+      <Text style={styles.footerText}>{t("footerPrivacy")}</Text>
+      <PrivacyNotice />
     </View>
   );
 }
 
 export default function App(): React.JSX.Element {
+  const { width } = useWindowDimensions();
+  const systemTheme = useColorScheme();
+  const isDesktop = getClinicianLayoutMode(width) === "desktop";
   const [mode, setMode] = useState<LookupMode>("drugItems");
   const [ruleQuerySeed, setRuleQuerySeed] = useState("");
+  const [masterSectionFilter, setMasterSectionFilter] =
+    useState<NavigableDrugItemRuleSection>();
+  const [themePreference, setThemePreference] = useState(() =>
+    loadThemePreference(preferenceStorage)
+  );
+  const [language, setLanguage] = useState<InterfaceLanguage>(() =>
+    loadInterfaceLanguage(preferenceStorage)
+  );
+  const theme = resolveThemePreference(themePreference, systemTheme === "dark" ? "dark" : "light");
+  const tokens = THEME_TOKENS[theme];
+  const styles = useMemo(() => createStyles(tokens), [tokens]);
+  const t = useMemo<Translator>(
+    () => (key, replacements) =>
+      translateMessage(UI_COPY, language, key, UI_COPY.zh[key], replacements),
+    [language]
+  );
+  const uiContextValue = useMemo<UiContextValue>(
+    () => ({ language, styles, t, theme, tokens }),
+    [language, styles, t, theme, tokens]
+  );
 
   function openRuleText(coverageRule: string): void {
     setRuleQuerySeed(coverageRule);
     setMode("rules");
   }
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <View accessibilityRole="tablist" style={styles.modeTabs}>
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: mode === "rules" }}
-            onPress={() => setMode("rules")}
-            style={[styles.modeTab, mode === "rules" ? styles.modeTabSelected : null]}
-          >
-            <Text style={[styles.modeTabText, mode === "rules" ? styles.modeTabTextSelected : null]}>
-              規則逐字查詢
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: mode === "items" }}
-            onPress={() => setMode("items")}
-            style={[styles.modeTab, mode === "items" ? styles.modeTabSelected : null]}
-          >
-            <Text style={[styles.modeTabText, mode === "items" ? styles.modeTabTextSelected : null]}>
-              藥品品項查詢
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: mode === "drugItems" }}
-            onPress={() => setMode("drugItems")}
-            style={[styles.modeTab, mode === "drugItems" ? styles.modeTabSelected : null]}
-          >
-            <Text
-              style={[styles.modeTabText, mode === "drugItems" ? styles.modeTabTextSelected : null]}
-            >
-              藥品查詢(中文品名)
-            </Text>
-          </Pressable>
-        </View>
+  function openDrugItemsForSection(section: NavigableDrugItemRuleSection): void {
+    setMasterSectionFilter(section);
+    setMode("drugItems");
+  }
 
-        {mode === "rules" ? (
-          <RuleLookupMode initialQuery={ruleQuerySeed} />
-        ) : mode === "items" ? (
-          <DrugItemLookupMode onOpenRuleText={openRuleText} />
-        ) : (
-          <DrugItemMasterLookupMode onOpenRuleText={openRuleText} />
-        )}
-      </ScrollView>
-    </SafeAreaView>
+  function toggleTheme(): void {
+    const nextTheme: ThemeName = theme === "light" ? "dark" : "light";
+    setThemePreference(nextTheme);
+    saveThemePreference(preferenceStorage, nextTheme);
+  }
+
+  function selectLanguage(nextLanguage: InterfaceLanguage): void {
+    setLanguage(nextLanguage);
+    saveInterfaceLanguage(preferenceStorage, nextLanguage);
+  }
+
+  return (
+    <UiContext.Provider value={uiContextValue}>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.container,
+            isDesktop ? styles.containerDesktop : styles.containerMobile
+          ]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.settingsRow}>
+            <Pressable
+              accessibilityLabel={t(theme === "light" ? "themeLightButton" : "themeDarkButton")}
+              accessibilityRole="button"
+              onPress={toggleTheme}
+              style={styles.themeButton}
+            >
+              <Text style={styles.themeButtonText}>
+                {t(theme === "light" ? "themeLightButton" : "themeDarkButton")}
+              </Text>
+            </Pressable>
+            <View accessibilityLabel={t("languageControlLabel")} style={styles.languageControls}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: language === "zh" }}
+                onPress={() => selectLanguage("zh")}
+                style={[
+                  styles.languageButton,
+                  language === "zh" ? styles.languageButtonSelected : null
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.languageButtonText,
+                    language === "zh" ? styles.languageButtonTextSelected : null
+                  ]}
+                >
+                  {t("languageChinese")}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: language === "en" }}
+                onPress={() => selectLanguage("en")}
+                style={[
+                  styles.languageButton,
+                  language === "en" ? styles.languageButtonSelected : null
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.languageButtonText,
+                    language === "en" ? styles.languageButtonTextSelected : null
+                  ]}
+                >
+                  {t("languageEnglish")}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View accessibilityRole="tablist" style={styles.modeTabs}>
+            <Pressable
+              accessibilityRole="tab"
+              accessibilityState={{ selected: mode === "drugItems" }}
+              onPress={() => setMode("drugItems")}
+              style={[styles.modeTab, mode === "drugItems" ? styles.modeTabSelected : null]}
+            >
+              <Text
+                style={[
+                  styles.modeTabText,
+                  mode === "drugItems" ? styles.modeTabTextSelected : null
+                ]}
+              >
+                {t("drugLookupTab")}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="tab"
+              accessibilityState={{ selected: mode === "rules" }}
+              onPress={() => setMode("rules")}
+              style={[styles.modeTab, mode === "rules" ? styles.modeTabSelected : null]}
+            >
+              <Text
+                style={[styles.modeTabText, mode === "rules" ? styles.modeTabTextSelected : null]}
+              >
+                {t("ruleLookupTab")}
+              </Text>
+            </Pressable>
+          </View>
+
+          {mode === "rules" ? (
+            <RuleLookupMode
+              initialQuery={ruleQuerySeed}
+              onOpenDrugItemsForSection={openDrugItemsForSection}
+            />
+          ) : (
+            <DrugItemMasterLookupMode
+              isDesktop={isDesktop}
+              onClearSectionFilter={() => setMasterSectionFilter(undefined)}
+              onOpenRuleText={openRuleText}
+              sectionFilter={masterSectionFilter}
+            />
+          )}
+
+          <Footer />
+        </ScrollView>
+      </SafeAreaView>
+    </UiContext.Provider>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#f7f9fc" },
-  container: { width: "100%", maxWidth: 720, alignSelf: "center", padding: 20, gap: 16 },
-  modeTabs: {
-    backgroundColor: "#e8eef5",
-    borderRadius: 12,
-    flexDirection: "row",
-    gap: 4,
-    padding: 4
-  },
-  modeTab: { alignItems: "center", borderRadius: 9, flex: 1, minHeight: 46, justifyContent: "center" },
-  modeTabSelected: { backgroundColor: "#ffffff" },
-  modeTabText: { color: "#486581", fontSize: 16, fontWeight: "700" },
-  modeTabTextSelected: { color: "#102a43" },
-  modeContent: { gap: 14 },
-  title: { color: "#102a43", fontSize: 26, fontWeight: "800", marginTop: 6 },
-  subtitle: { color: "#486581", fontSize: 16, lineHeight: 23 },
-  input: {
-    backgroundColor: "#ffffff",
-    borderColor: "#829ab1",
-    borderRadius: 10,
-    borderWidth: 1,
-    color: "#102a43",
-    fontSize: 18,
-    minHeight: 52,
-    paddingHorizontal: 14
-  },
-  ruleButton: {
-    alignItems: "center",
-    backgroundColor: "#334e68",
-    borderRadius: 10,
-    minHeight: 50,
-    justifyContent: "center"
-  },
-  itemButton: {
-    alignItems: "center",
-    backgroundColor: "#146356",
-    borderRadius: 10,
-    minHeight: 50,
-    justifyContent: "center"
-  },
-  masterItemButton: {
-    alignItems: "center",
-    backgroundColor: "#5b3a29",
-    borderRadius: 10,
-    minHeight: 50,
-    justifyContent: "center"
-  },
-  buttonText: { color: "#ffffff", fontSize: 17, fontWeight: "700" },
-  privacyNotice: { backgroundColor: "#e6f6ff", borderRadius: 10, borderWidth: 1, borderColor: "#9fb3c8", padding: 14 },
-  privacyNoticeTitle: { color: "#102a43", fontWeight: "800", marginBottom: 4 },
-  privacyNoticeText: { color: "#334e68", lineHeight: 21 },
-  results: { gap: 10, marginTop: 8 },
-  resultTitle: { color: "#102a43", fontSize: 18, fontWeight: "800" },
-  resultText: { color: "#486581" },
-  review: { backgroundColor: "#fff3c4", borderRadius: 8, color: "#5f370e", lineHeight: 21, padding: 12 },
-  code: { color: "#0f609b", fontFamily: "monospace", fontWeight: "800" },
-  productName: { color: "#102a43", fontSize: 17, fontWeight: "800" },
-  detail: { color: "#334e68", lineHeight: 20 },
-  empty: { color: "#486581", fontStyle: "italic", lineHeight: 21 },
-  officialWarning: { backgroundColor: "#3f3a68", borderRadius: 10, padding: 14 },
-  officialWarningTitle: { color: "#f5f3ff", fontWeight: "800", marginBottom: 4 },
-  officialWarningText: { color: "#f5f3ff", fontSize: 15, lineHeight: 22 },
-  officialItemWarning: { backgroundColor: "#285943", borderRadius: 10, padding: 14 },
-  masterItemWarning: { backgroundColor: "#5b3a29", borderRadius: 10, padding: 14 },
-  itemCard: {
-    backgroundColor: "#ffffff",
-    borderColor: "#b8d8cf",
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 6,
-    padding: 14
-  },
-  itemPrice: { color: "#146356", fontSize: 16, fontWeight: "700", marginTop: 4 },
-  itemFieldRow: { alignItems: "baseline", flexDirection: "row", flexWrap: "wrap" },
-  masterItemCard: {
-    backgroundColor: "#ffffff",
-    borderColor: "#d6c4b8",
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 7,
-    padding: 14
-  },
-  masterProductName: { color: "#102a43", fontSize: 20, fontWeight: "800" },
-  masterPrice: { color: "#7c2d12", fontSize: 20, fontWeight: "800" },
-  applicablePriceBlock: { backgroundColor: "#fff7ed", borderRadius: 8, gap: 4, padding: 12 },
-  priceHistoryBlock: { borderTopColor: "#d9e2ec", borderTopWidth: 1, gap: 5, paddingTop: 10 },
-  priceHistoryRow: { borderBottomColor: "#edf2f7", borderBottomWidth: 1, paddingVertical: 4 },
-  coverageSectionBlock: { borderTopColor: "#d9e2ec", borderTopWidth: 1, gap: 5, paddingTop: 10 },
-  announcementSourceBlock: {
-    backgroundColor: "#eef8f4",
-    borderColor: "#9bc4b6",
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 5,
-    marginTop: 6,
-    padding: 12
-  },
-  sourceBlockTitle: { color: "#102a43", fontWeight: "800" },
-  sourceBlockMeta: { color: "#627d98", fontSize: 13 },
-  sourceBlockWarning: { color: "#285943", fontSize: 13, lineHeight: 19 },
-  coverageLink: { color: "#0f609b", fontWeight: "700", textDecorationLine: "underline" },
-  ruleCard: {
-    backgroundColor: "#ffffff",
-    borderColor: "#bcccdc",
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 8,
-    padding: 14
-  },
-  ruleUnitId: { color: "#334e68", fontFamily: "monospace", fontWeight: "800" },
-  rulePath: { color: "#627d98", fontSize: 13 },
-  verbatimText: { color: "#102a43", fontFamily: "monospace", lineHeight: 22 }
-});
+function createStyles(theme: ThemeTokens) {
+  return StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: theme.color.background },
+    container: { width: "100%", alignSelf: "center" },
+    containerDesktop: { maxWidth: 960, padding: 24, gap: 20 },
+    containerMobile: { maxWidth: 767, padding: 16, gap: 16 },
+    settingsRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      justifyContent: "space-between"
+    },
+    themeButton: {
+      alignItems: "center",
+      backgroundColor: theme.color.ruleAction,
+      borderRadius: 10,
+      justifyContent: "center",
+      minHeight: 48,
+      paddingHorizontal: 14
+    },
+    themeButtonText: { color: theme.color.actionText, fontWeight: "800" },
+    languageControls: {
+      backgroundColor: theme.color.tabSurface,
+      borderRadius: 10,
+      flexDirection: "row",
+      gap: 4,
+      padding: 4
+    },
+    languageButton: {
+      alignItems: "center",
+      borderRadius: 7,
+      justifyContent: "center",
+      minHeight: 44,
+      minWidth: 82,
+      paddingHorizontal: 12
+    },
+    languageButtonSelected: { backgroundColor: theme.color.controlSelectedSurface },
+    languageButtonText: { color: theme.color.textMuted, fontWeight: "700" },
+    languageButtonTextSelected: { color: theme.color.actionText },
+    modeTabs: {
+      backgroundColor: theme.color.tabSurface,
+      borderRadius: 12,
+      flexDirection: "row",
+      gap: 4,
+      padding: 4
+    },
+    modeTab: {
+      alignItems: "center",
+      borderRadius: 9,
+      flex: 1,
+      minHeight: 48,
+      justifyContent: "center"
+    },
+    modeTabSelected: { backgroundColor: theme.color.surface },
+    modeTabText: { color: theme.color.textMuted, fontSize: 16, fontWeight: "700" },
+    modeTabTextSelected: { color: theme.color.textStrong },
+    modeContent: { gap: 14 },
+    title: { color: theme.color.textStrong, fontSize: 26, fontWeight: "800", marginTop: 6 },
+    subtitle: { color: theme.color.textMuted, fontSize: 16, lineHeight: 23 },
+    input: {
+      backgroundColor: theme.color.surface,
+      borderColor: theme.color.inputBorder,
+      borderRadius: 10,
+      borderWidth: 1,
+      color: theme.color.textStrong,
+      fontSize: 18,
+      minHeight: 52,
+      paddingHorizontal: 14
+    },
+    ruleButton: {
+      alignItems: "center",
+      backgroundColor: theme.color.ruleAction,
+      borderRadius: 10,
+      minHeight: 50,
+      justifyContent: "center"
+    },
+    masterItemButton: {
+      alignItems: "center",
+      backgroundColor: theme.color.masterAction,
+      borderRadius: 10,
+      minHeight: 50,
+      justifyContent: "center"
+    },
+    buttonText: { color: theme.color.actionText, fontSize: 17, fontWeight: "700" },
+    privacyNotice: {
+      backgroundColor: theme.color.privacySurface,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.color.privacyBorder,
+      padding: 14
+    },
+    privacyNoticeTitle: {
+      color: theme.color.privacyText,
+      fontWeight: "800",
+      marginBottom: 4
+    },
+    privacyNoticeText: { color: theme.color.privacyText, lineHeight: 21 },
+    footer: {
+      borderTopColor: theme.color.divider,
+      borderTopWidth: 1,
+      gap: 10,
+      marginTop: 12,
+      paddingTop: 18
+    },
+    footerText: { color: theme.color.textMuted, fontSize: 13, lineHeight: 20 },
+    results: { gap: 10, marginTop: 8 },
+    resultTitle: { color: theme.color.textStrong, fontSize: 18, fontWeight: "800" },
+    resultText: { color: theme.color.textMuted },
+    review: {
+      backgroundColor: theme.color.reviewSurface,
+      borderRadius: 8,
+      color: theme.color.reviewText,
+      lineHeight: 21,
+      padding: 12
+    },
+    code: { color: theme.color.codeText, fontFamily: "monospace", fontWeight: "800" },
+    detail: { color: theme.color.detailText, lineHeight: 20 },
+    empty: { color: theme.color.textMuted, fontStyle: "italic", lineHeight: 21 },
+    officialWarning: {
+      backgroundColor: theme.color.ruleWarningSurface,
+      borderRadius: 10,
+      padding: 14
+    },
+    officialWarningTitle: { color: theme.color.warningText, fontWeight: "800", marginBottom: 4 },
+    officialWarningText: { color: theme.color.warningText, fontSize: 15, lineHeight: 22 },
+    originalLanguageNote: {
+      color: theme.color.warningText,
+      fontSize: 13,
+      fontStyle: "italic",
+      lineHeight: 19,
+      marginTop: 6
+    },
+    masterItemWarning: {
+      backgroundColor: theme.color.masterWarningSurface,
+      borderRadius: 10,
+      padding: 14
+    },
+    masterItemCard: {
+      backgroundColor: theme.color.surface,
+      borderColor: theme.color.cardBorder,
+      borderRadius: 10,
+      borderWidth: 1,
+      gap: 9,
+      padding: 14
+    },
+    masterProductName: { color: theme.color.textStrong, fontSize: 20, fontWeight: "800" },
+    masterDetailsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    masterDetailCell: { width: "100%" },
+    masterDetailCellDesktop: { width: "49%" },
+    masterPrice: { color: theme.color.priceText, fontSize: 20, fontWeight: "800" },
+    applicablePriceBlock: {
+      backgroundColor: theme.color.priceSurface,
+      borderRadius: 8,
+      gap: 4,
+      padding: 12
+    },
+    priceHistoryBlock: {
+      borderTopColor: theme.color.subtleDivider,
+      borderTopWidth: 1,
+      gap: 5,
+      paddingTop: 10
+    },
+    priceHistoryHeader: { gap: 4, paddingBottom: 3 },
+    priceHistoryRow: {
+      borderBottomColor: theme.color.rowDivider,
+      borderBottomWidth: 1,
+      gap: 3,
+      paddingVertical: 6
+    },
+    priceHistoryRowDesktop: { alignItems: "center", flexDirection: "row" },
+    pricePeriodDesktop: { flex: 3 },
+    priceValueDesktop: { flex: 1 },
+    coverageSectionBlock: {
+      borderTopColor: theme.color.subtleDivider,
+      borderTopWidth: 1,
+      gap: 5,
+      paddingTop: 10
+    },
+    announcementSourceBlock: {
+      backgroundColor: theme.color.announcementSurface,
+      borderColor: theme.color.announcementBorder,
+      borderRadius: 8,
+      borderWidth: 1,
+      gap: 7,
+      marginTop: 6,
+      padding: 12
+    },
+    announcementFactBlock: { gap: 4 },
+    announcementFactTitle: { color: theme.color.announcementText, fontWeight: "800" },
+    sourceBlockTitle: { color: theme.color.textStrong, fontWeight: "800" },
+    sourceBlockMeta: { color: theme.color.textMuted, fontSize: 13 },
+    sourceBlockWarning: { color: theme.color.announcementText, fontSize: 13, lineHeight: 19 },
+    announcementOriginalLanguageNote: {
+      color: theme.color.announcementText,
+      fontSize: 13,
+      fontStyle: "italic",
+      lineHeight: 19
+    },
+    tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+    factTag: {
+      backgroundColor: theme.color.tagSurface,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 5
+    },
+    factTagText: { color: theme.color.announcementText, fontSize: 13, fontWeight: "700" },
+    filterBlock: { gap: 8 },
+    filterTitle: { color: theme.color.detailText, fontWeight: "800" },
+    filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    filterButton: {
+      borderColor: theme.color.controlBorder,
+      borderRadius: 999,
+      borderWidth: 1,
+      minHeight: 44,
+      justifyContent: "center",
+      paddingHorizontal: 14
+    },
+    filterButtonSelected: {
+      backgroundColor: theme.color.controlSelectedSurface,
+      borderColor: theme.color.controlSelectedSurface
+    },
+    filterButtonText: { color: theme.color.detailText, fontWeight: "700" },
+    filterButtonTextSelected: { color: theme.color.actionText },
+    sectionFilterNotice: {
+      alignItems: "center",
+      backgroundColor: theme.color.sectionFilterSurface,
+      borderRadius: 9,
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      justifyContent: "space-between",
+      padding: 10
+    },
+    sectionFilterText: { color: theme.color.textStrong, fontWeight: "800" },
+    clearSectionButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
+    clearSectionButtonText: { color: theme.color.linkText, fontWeight: "700" },
+    sectionItemsButton: {
+      alignItems: "center",
+      backgroundColor: theme.color.sectionFilterSurface,
+      borderRadius: 9,
+      minHeight: 46,
+      justifyContent: "center",
+      paddingHorizontal: 12
+    },
+    sectionItemsButtonText: { color: theme.color.linkText, fontWeight: "800" },
+    coverageLink: {
+      color: theme.color.linkText,
+      fontWeight: "700",
+      textDecorationLine: "underline"
+    },
+    ruleCard: {
+      backgroundColor: theme.color.surface,
+      borderColor: theme.color.divider,
+      borderRadius: 10,
+      borderWidth: 1,
+      gap: 8,
+      padding: 14
+    },
+    ruleUnitId: { color: theme.color.detailText, fontFamily: "monospace", fontWeight: "800" },
+    rulePath: { color: theme.color.textMuted, fontSize: 13 },
+    verbatimText: {
+      color: theme.color.textStrong,
+      fontFamily: "monospace",
+      lineHeight: 22
+    }
+  });
+}

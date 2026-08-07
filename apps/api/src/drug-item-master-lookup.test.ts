@@ -8,8 +8,8 @@ import worker from "./index";
 const env = { DATASET_MODE: "DEMO_DATA_ONLY" } as Env;
 const validRequest = {
   query: DRUG_ITEM_MASTER_RECORDS[0]!.nhiCode,
-  as_of_date: "2026-08-06",
-  dataset_version: "nhi-drug-items-2026-08-06-r1"
+  as_of_date: "2026-08-07",
+  dataset_version: "nhi-drug-items-2026-08-07-r2"
 };
 
 async function call(path: string, init?: RequestInit): Promise<Response> {
@@ -50,8 +50,8 @@ describe("drug-item master lookup API", () => {
     expect(body.result.sourceTag).toBe("OFFICIAL_TEXT_TRANSCRIBED");
     expect(body.result.warning).toBe(DRUG_ITEM_MASTER_WARNING);
     expect(body.result.manualReviewRequired).toBe(false);
-    expect(body.result.datasetVersion).toBe("nhi-drug-items-2026-08-06-r1");
-    expect(body.result.asOfDate).toBe("2026-08-06");
+    expect(body.result.datasetVersion).toBe("nhi-drug-items-2026-08-07-r2");
+    expect(body.result.asOfDate).toBe("2026-08-07");
     expect(body.result.matches).toHaveLength(1);
     expect(body.result.matches[0]?.item.nhiCode).toBe(DRUG_ITEM_MASTER_RECORDS[0]!.nhiCode);
     expect(body.result.matches[0]?.item.priceHistory).toHaveLength(
@@ -111,7 +111,7 @@ describe("drug-item master lookup API", () => {
   it.each([
     ["before the first covered interval", DRUG_ITEM_MASTER_RECORDS[0]!.priceHistory[0]!.startDateIso],
     ["invalid date", "2026-02-29"],
-    ["unknown version", "2026-08-06"]
+    ["unknown version", "2026-08-07"]
   ])("keeps %s fail closed with no fallback", async (name, date) => {
     const asOfDate =
       name === "before the first covered interval"
@@ -156,8 +156,8 @@ describe("drug-item master lookup API", () => {
     expect(body.rulesDataset.version).toBe("nhi-lipid-rules-structured-2026-09-01-r1");
     expect(body.itemsDataset.version).toBe("nhi-lipid-2026-09-01-r1");
     expect(body.drugItemsDataset).toEqual({
-      version: "nhi-drug-items-2026-08-06-r1",
-      effectiveFrom: "2026-08-06",
+      version: "nhi-drug-items-2026-08-07-r2",
+      effectiveFrom: "2026-08-07",
       effectiveTo: "9999-12-31"
     });
   });
