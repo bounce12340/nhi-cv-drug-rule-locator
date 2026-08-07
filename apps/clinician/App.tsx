@@ -28,8 +28,12 @@ import {
   useWindowDimensions
 } from "react-native";
 import {
+  DRUG_ITEM_MASTER_SNAPSHOT_DATE,
   getClinicianLayoutMode,
-  resolveAnnouncementItemSource
+  resolveAnnouncementItemSource,
+  resolveAnnouncementPriceComparison,
+  shouldShowMasterSnapshotNotice,
+  type AnnouncementPriceComparison
 } from "./src/drug-item-ui";
 import {
   THEME_TOKENS,
@@ -75,11 +79,12 @@ const UI_COPY = Object.freeze({
     announcementSourceTitle: "另一資料來源：2026-09-01 公告異動明細",
     announcementDatasetVersion: "資料集版本：{result.datasetVersion}",
     announcementNotFound: "此主檔代碼未列於 2026-09-01 公告資料集。",
-    announcementMissingPrice: "本次公告未列異動",
-    announcementChangedTitle: "本次公告異動",
+    announcementChangedTitle: "2026-09-01 公告價格對照",
+    priceComparison: "原支付價 {priceBefore} → 初核價格 {priceAfter}",
     priceBefore: "原支付價：{value}",
     priceAfter: "初核價格：{value}",
     effectiveDate: "生效日：{value}",
+    announcementRuleSection: "給付規定章節：{value}",
     tableTwoMembership: "表二歸屬：{value}",
     trialNote: "三個月試用期註記：{value}",
     missingField: "本資料列未提供",
@@ -96,7 +101,11 @@ const UI_COPY = Object.freeze({
     fieldSingleCompound: "單複方：{value}",
     applicablePriceTitle: "該查詢日期適用之支付價",
     validPeriod: "有效期間：{start} 至 {end}",
+    masterSnapshotNotice:
+      "主檔資料集版本 {version} 為 {snapshotDate} 時點快照；主檔最新價格期間為 {start} 至 {end}。上方公告價格對照另載該快照日之後、生效日 {effectiveDate} 的異動。",
     priceHistoryTitle: "價格沿革",
+    expandPriceHistory: "展開價格沿革（{count} 筆，目前已收合）",
+    collapsePriceHistory: "收合價格沿革（{count} 筆，目前已展開）",
     validPeriodHeader: "有效期間",
     paymentPriceHeader: "支付價",
     dateRange: "{start} 至 {end}",
@@ -162,11 +171,13 @@ const UI_COPY = Object.freeze({
     announcementSourceTitle: "Separate source: 2026-09-01 announcement change details",
     announcementDatasetVersion: "Dataset version: {result.datasetVersion}",
     announcementNotFound: "This master code is not listed in the 2026-09-01 announcement dataset.",
-    announcementMissingPrice: "No change listed in this announcement",
-    announcementChangedTitle: "Changed in this announcement",
+    announcementChangedTitle: "2026-09-01 announcement price comparison",
+    priceComparison:
+      "Previous payment price {priceBefore} → Initial review price {priceAfter}",
     priceBefore: "Previous payment price: {value}",
     priceAfter: "Initial review price: {value}",
     effectiveDate: "Effective date: {value}",
+    announcementRuleSection: "Rule section: {value}",
     tableTwoMembership: "Table 2 classification: {value}",
     trialNote: "3-month trial note: {value}",
     missingField: "Not provided in this source row",
@@ -183,7 +194,11 @@ const UI_COPY = Object.freeze({
     fieldSingleCompound: "Single or combination product: {value}",
     applicablePriceTitle: "Payment price for the lookup date",
     validPeriod: "Effective period: {start} to {end}",
+    masterSnapshotNotice:
+      "Master dataset version {version} is a snapshot dated {snapshotDate}. Its latest price period runs from {start} to {end}. The announcement price comparison above separately records a change after that snapshot date, effective {effectiveDate}.",
     priceHistoryTitle: "Price history",
+    expandPriceHistory: "Expand price history ({count} entries, currently collapsed)",
+    collapsePriceHistory: "Collapse price history ({count} entries, currently expanded)",
     validPeriodHeader: "Effective period",
     paymentPriceHeader: "Payment price",
     dateRange: "{start} to {end}",
@@ -412,14 +427,19 @@ function AnnouncementTags({ nhiCode }: { nhiCode: string }): React.JSX.Element |
   );
 }
 
-function AnnouncementItemSourceBlock({ nhiCode }: { nhiCode: string }): React.JSX.Element {
+function AnnouncementItemSourceBlock({
+  comparison,
+  nhiCode
+}: {
+  comparison: AnnouncementPriceComparison | undefined;
+  nhiCode: string;
+}): React.JSX.Element {
   const { language, styles, t } = useUi();
   const source = resolveAnnouncementItemSource(nhiCode);
   const result = {
     datasetVersion: ITEM_DATASET_VERSION,
     warning: ITEM_WARNING
   } as const;
-  const missingPrice = t("announcementMissingPrice");
   const missingField = t("missingField");
 
   return (
@@ -436,22 +456,30 @@ function AnnouncementItemSourceBlock({ nhiCode }: { nhiCode: string }): React.JS
         <Text style={styles.detail}>{t("announcementNotFound")}</Text>
       ) : (
         <>
-          {source.membership.changed ? (
+          {comparison !== undefined ? (
             <View style={styles.announcementFactBlock}>
               <Text style={styles.announcementFactTitle}>{t("announcementChangedTitle")}</Text>
-              <Text style={styles.detail}>
-                {t("priceBefore", {
-                  value: protectedText(language, source.item.priceBefore ?? missingPrice)
-                })}
-              </Text>
-              <Text style={styles.detail}>
-                {t("priceAfter", {
-                  value: protectedText(language, source.item.priceAfter ?? missingPrice)
+              <Text
+                accessibilityLabel={`${t("priceBefore", {
+                  value: protectedText(language, comparison.priceBefore)
+                })} ${t("priceAfter", {
+                  value: protectedText(language, comparison.priceAfter)
+                })}`}
+                style={styles.announcementPriceComparison}
+              >
+                {t("priceComparison", {
+                  priceBefore: protectedText(language, comparison.priceBefore),
+                  priceAfter: protectedText(language, comparison.priceAfter)
                 })}
               </Text>
               <Text style={styles.detail}>
                 {t("effectiveDate", {
-                  value: protectedText(language, source.item.effectiveDate ?? missingField)
+                  value: protectedText(language, comparison.effectiveDate)
+                })}
+              </Text>
+              <Text style={styles.detail}>
+                {t("announcementRuleSection", {
+                  value: protectedText(language, comparison.coverageRule)
                 })}
               </Text>
             </View>
@@ -493,14 +521,17 @@ function MasterDetailCell({
 
 function DrugItemMasterCard({
   match,
+  lookupAsOfDate,
   onOpenRuleText,
   isDesktop
 }: {
   match: DrugItemMasterMatch;
+  lookupAsOfDate: string;
   onOpenRuleText: (coverageRule: string) => void;
   isDesktop: boolean;
 }): React.JSX.Element {
   const { language, styles, t } = useUi();
+  const [priceHistoryExpanded, setPriceHistoryExpanded] = useState(false);
   const { item, applicablePricePeriod } = match;
   const missingField = t("missingField");
   const specification = [item.specificationAmount, item.specificationUnit]
@@ -508,11 +539,25 @@ function DrugItemMasterCard({
     .join(" ");
   const linkedRuleSections = getNavigableDrugItemRuleSections(item.coverageRuleSection);
   const sourceValue = (value: string): string => protectedText(language, value || missingField);
+  const announcementComparison = resolveAnnouncementPriceComparison(item.nhiCode);
+  const latestPricePeriod = item.priceHistory[item.priceHistory.length - 1];
+  const showMasterSnapshotNotice = shouldShowMasterSnapshotNotice(
+    lookupAsOfDate,
+    item.nhiCode
+  );
+  const priceHistoryControlKey = priceHistoryExpanded
+    ? "collapsePriceHistory"
+    : "expandPriceHistory";
+  const priceHistoryCount = String(item.priceHistory.length);
 
   return (
     <View style={styles.masterItemCard} accessibilityRole="summary">
       <Text style={styles.masterProductName}>{protectedText(language, item.drugNameZh)}</Text>
       <AnnouncementTags nhiCode={item.nhiCode} />
+      <AnnouncementItemSourceBlock
+        comparison={announcementComparison}
+        nhiCode={item.nhiCode}
+      />
 
       <View style={styles.masterDetailsGrid}>
         <MasterDetailCell isDesktop={isDesktop}>
@@ -565,34 +610,68 @@ function DrugItemMasterCard({
         </Text>
       </View>
 
+      {showMasterSnapshotNotice &&
+      announcementComparison !== undefined &&
+      latestPricePeriod !== undefined ? (
+        <Text style={styles.masterSnapshotNotice}>
+          {t("masterSnapshotNotice", {
+            version: protectedText(language, drugItemsDataset.datasetVersion),
+            snapshotDate: DRUG_ITEM_MASTER_SNAPSHOT_DATE,
+            start: protectedText(language, latestPricePeriod.startDateIso),
+            end: protectedText(language, latestPricePeriod.endDateIso),
+            effectiveDate: protectedText(language, announcementComparison.effectiveDate)
+          })}
+        </Text>
+      ) : null}
+
       <View style={styles.priceHistoryBlock}>
-        <Text style={styles.sourceBlockTitle}>{t("priceHistoryTitle")}</Text>
-        <View style={[styles.priceHistoryHeader, isDesktop ? styles.priceHistoryRowDesktop : null]}>
-          <Text style={[styles.sourceBlockMeta, isDesktop ? styles.pricePeriodDesktop : null]}>
-            {t("validPeriodHeader")}
+        <Pressable
+          accessibilityLabel={t(priceHistoryControlKey, { count: priceHistoryCount })}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: priceHistoryExpanded }}
+          onPress={() => setPriceHistoryExpanded((expanded) => !expanded)}
+          style={styles.priceHistoryToggle}
+        >
+          <Text style={styles.sourceBlockTitle}>{t("priceHistoryTitle")}</Text>
+          <Text style={styles.priceHistoryToggleText}>
+            {t(priceHistoryControlKey, { count: priceHistoryCount })}
           </Text>
-          <Text style={[styles.sourceBlockMeta, isDesktop ? styles.priceValueDesktop : null]}>
-            {t("paymentPriceHeader")}
-          </Text>
-        </View>
-        {item.priceHistory.map((period) => (
-          <View
-            key={`${period.effectiveStartRaw}-${period.effectiveEndRaw}`}
-            style={[styles.priceHistoryRow, isDesktop ? styles.priceHistoryRowDesktop : null]}
-          >
-            <Text style={[styles.detail, isDesktop ? styles.pricePeriodDesktop : null]}>
-              {t("dateRange", {
-                start: protectedText(language, period.startDateIso),
-                end: protectedText(language, period.endDateIso)
-              })}
-            </Text>
-            <Text style={[styles.detail, isDesktop ? styles.priceValueDesktop : null]}>
-              {t("paymentPriceValue", {
-                value: protectedText(language, period.paymentPriceRaw)
-              })}
-            </Text>
-          </View>
-        ))}
+        </Pressable>
+        {priceHistoryExpanded ? (
+          <>
+            <View
+              style={[
+                styles.priceHistoryHeader,
+                isDesktop ? styles.priceHistoryRowDesktop : null
+              ]}
+            >
+              <Text style={[styles.sourceBlockMeta, isDesktop ? styles.pricePeriodDesktop : null]}>
+                {t("validPeriodHeader")}
+              </Text>
+              <Text style={[styles.sourceBlockMeta, isDesktop ? styles.priceValueDesktop : null]}>
+                {t("paymentPriceHeader")}
+              </Text>
+            </View>
+            {item.priceHistory.map((period) => (
+              <View
+                key={`${period.effectiveStartRaw}-${period.effectiveEndRaw}`}
+                style={[styles.priceHistoryRow, isDesktop ? styles.priceHistoryRowDesktop : null]}
+              >
+                <Text style={[styles.detail, isDesktop ? styles.pricePeriodDesktop : null]}>
+                  {t("dateRange", {
+                    start: protectedText(language, period.startDateIso),
+                    end: protectedText(language, period.endDateIso)
+                  })}
+                </Text>
+                <Text style={[styles.detail, isDesktop ? styles.priceValueDesktop : null]}>
+                  {t("paymentPriceValue", {
+                    value: protectedText(language, period.paymentPriceRaw)
+                  })}
+                </Text>
+              </View>
+            ))}
+          </>
+        ) : null}
       </View>
 
       <View style={styles.coverageSectionBlock}>
@@ -614,7 +693,6 @@ function DrugItemMasterCard({
         ))}
       </View>
 
-      <AnnouncementItemSourceBlock nhiCode={item.nhiCode} />
     </View>
   );
 }
@@ -657,6 +735,8 @@ function DrugItemMasterLookupMode({
     matchesDrugItemAnnouncementFilter(match.item.nhiCode, announcementFilter)
   );
   const hasResult = result !== null || sectionFilter !== undefined;
+  const renderedLookupAsOfDate =
+    sectionFilter === undefined ? (result?.asOfDate ?? asOfDate) : asOfDate;
 
   function performLookup(): void {
     onClearSectionFilter();
@@ -782,6 +862,7 @@ function DrugItemMasterLookupMode({
             <DrugItemMasterCard
               isDesktop={isDesktop}
               key={match.item.nhiCode}
+              lookupAsOfDate={renderedLookupAsOfDate}
               match={match}
               onOpenRuleText={onOpenRuleText}
             />
@@ -1186,11 +1267,32 @@ function createStyles(theme: ThemeTokens) {
       gap: 4,
       padding: 12
     },
+    masterSnapshotNotice: {
+      backgroundColor: theme.color.masterWarningSurface,
+      borderRadius: 8,
+      color: theme.color.warningText,
+      lineHeight: 21,
+      padding: 12
+    },
     priceHistoryBlock: {
       borderTopColor: theme.color.subtleDivider,
       borderTopWidth: 1,
       gap: 5,
       paddingTop: 10
+    },
+    priceHistoryToggle: {
+      alignItems: "center",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      justifyContent: "space-between",
+      minHeight: 44
+    },
+    priceHistoryToggleText: {
+      color: theme.color.linkText,
+      flexShrink: 1,
+      fontWeight: "700",
+      lineHeight: 20
     },
     priceHistoryHeader: { gap: 4, paddingBottom: 3 },
     priceHistoryRow: {
@@ -1217,8 +1319,19 @@ function createStyles(theme: ThemeTokens) {
       marginTop: 6,
       padding: 12
     },
-    announcementFactBlock: { gap: 4 },
-    announcementFactTitle: { color: theme.color.announcementText, fontWeight: "800" },
+    announcementFactBlock: { gap: 6 },
+    announcementFactTitle: {
+      color: theme.color.announcementText,
+      fontSize: 16,
+      fontWeight: "800"
+    },
+    announcementPriceComparison: {
+      color: theme.color.announcementText,
+      flexShrink: 1,
+      fontSize: 21,
+      fontWeight: "900",
+      lineHeight: 30
+    },
     sourceBlockTitle: { color: theme.color.textStrong, fontWeight: "800" },
     sourceBlockMeta: { color: theme.color.textMuted, fontSize: 13 },
     sourceBlockWarning: { color: theme.color.announcementText, fontSize: 13, lineHeight: 19 },
