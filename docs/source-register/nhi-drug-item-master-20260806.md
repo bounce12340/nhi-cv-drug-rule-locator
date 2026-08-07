@@ -50,3 +50,7 @@
 - 狀態:**PROVENANCE_DECLARED**(Stage 1 完成;payload 在隔離區,未入 governed 儲存)
 - 後續:Stage 3 子集推導與統計式驗證(專屬派工)→ RA `INTAKE-APPROVE` → RDL 窄幅解除 → `data/governed/` 入庫 → 引擎消費另需其自身裁決
 - **每月自動更新管線**(RA 2026-08-06「D3可以執行每個月自動更新」):排程取得 → 雜湊 → 與現行版本差異比對 → 自動開 PR 待 RA `INTAKE-APPROVE`;版本 append-only(RDL-013),舊版永久保留以支援 as-of-date 回溯
+
+## 5. r2 追記(2026-08-07)
+
+F2 準則擴充(TC-20260807-20):納入條件改為「章節 token 精確匹配 或 代碼列名於公告附帶清單(經 manifest 雜湊驗證)」。r2 子集 4,048 列/607 代碼(SHA-256 `ec6c9fdb…9412`,digest `c340830c…9857`),與 r1 差異恰 +1 代碼(含斥性機器驗證:移除後與 r1 逐位元組相同)。RA `INTAKE-APPROVE nhi-drug-items-2026-08-07-r2 c340830` 入庫(RDL-023);registry `current` 指向 r2。

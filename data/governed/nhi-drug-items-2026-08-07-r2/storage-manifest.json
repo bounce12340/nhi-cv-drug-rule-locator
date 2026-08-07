@@ -1,0 +1,25 @@
+{
+  "schema": "storage-manifest/v1",
+  "datasetVersion": "nhi-drug-items-2026-08-07-r2",
+  "approvalRef": {
+    "rdlId": "RDL-023",
+    "approvalWording": "INTAKE-APPROVE nhi-drug-items-2026-08-07-r2 c340830"
+  },
+  "sourceRegisterRefs": [
+    "docs/source-register/nhi-drug-item-master-20260806.md",
+    "docs/source-register/drug-item-master.registry.json",
+    "docs/stage3/drug-item-subset-r2-report.md",
+    "docs/task-contracts/TC-20260807-20.md",
+    "docs/TC-20260807-20-self-check.md"
+  ],
+  "effectiveFrom": "2026-08-07",
+  "effectiveTo": "9999-12-31",
+  "files": [
+    {
+      "declaredName": "drug-items-lipid.csv",
+      "sha256": "ec6c9fdb3a047d0ad9b29db6d0ffab23f0e0bb1ddd39851a7d50619bc3529412",
+      "bytes": 1844105
+    }
+  ],
+  "revoked": false
+}
