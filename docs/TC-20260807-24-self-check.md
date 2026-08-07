@@ -30,7 +30,7 @@
 - 區塊位於主檔詳細欄位之前；非公告異動代碼的 `comparison` 為 `undefined`，不會渲染價格對照內容，也不以主檔值產生新價。
 - 主檔的 `applicablePricePeriod.paymentPriceRaw` 僅留在獨立的「該查詢日期適用之支付價」區塊。
 
-負向測試特別使用 `AC47928100` 驗證治理界線：主檔值與公告 `priceBefore` 恰同為 `2.93`，測試再把主檔 applicable price 置換成 sentinel；公告 resolver 仍只回公告列的 `2.93`／`2.78`，回傳物件沒有 `paymentPriceRaw`，helper 原始碼也沒有該識別字。這釘死了「即使數值相同，也不得把主檔價格與公告 `priceAfter` 配對」。
+負向測試特別使用一筆主檔現價與公告原支付價數值相同之異動品項驗證治理界線：主檔值與公告 `priceBefore` 恰同為 `2.93`，測試再把主檔 applicable price 置換成 sentinel；公告 resolver 仍只回公告列的 `2.93`／`2.78`，回傳物件沒有 `paymentPriceRaw`，helper 原始碼也沒有該識別字。這釘死了「即使數值相同，也不得把主檔價格與公告 `priceAfter` 配對」。
 
 ## 3. §2 主檔快照提示
 
@@ -50,7 +50,7 @@
 - 該主檔品項最後一筆價格期間的 ISO 起迄日；
 - 上方公告對照另載快照日後、生效日為公告 `effectiveDate` 的異動。
 
-提示不含價格值，不推算、不替換、不合併資料；`AC47928100` 在 `2026-09-02` 的主檔 `applicablePricePeriod.paymentPriceRaw` 測試仍為逐字 `2.93`。提示中英文文案的「正確／現行／應適用」與 eligibility 黑名單掃描均為 0。
+提示不含價格值，不推算、不替換、不合併資料；該異動品項在 `2026-09-02` 的主檔 `applicablePricePeriod.paymentPriceRaw` 測試仍為逐字 `2.93`。提示中英文文案的「正確／現行／應適用」與 eligibility 黑名單掃描均為 0。
 
 ## 4. §3 價格沿革收合
 
@@ -78,7 +78,7 @@
 3. 主檔 applicable price 不得與公告 `priceAfter` 配對的 sentinel 負向測試。
 4. 對照區塊位於主檔詳細欄位前，且版本、警語與四欄位標籤齊備。
 5. 快照提示四格條件矩陣。
-6. `AC47928100` 的主檔 `2.93`、最後價格期間與提示引用欄位維持不變。
+6. 資料集推導之異動品項的主檔 `2.93`、最後價格期間與提示引用欄位維持不變。
 7. 快照提示中英文禁語掃描。
 8. 每卡預設收合、無障礙狀態、筆數、中英控制標籤、不持久化。
 9. 展開內容仍逐字取自完整 `priceHistory`，applicable price 永遠在條件外。

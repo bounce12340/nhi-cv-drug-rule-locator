@@ -3,7 +3,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   ITEM_RECORDS,
-  findAnnouncementItemByExactCode,
   getDrugItemAnnouncementMembership,
   lookupDrugItemMaster
 } from "@nhi-cv/domain";
@@ -18,8 +17,15 @@ import {
 const sourceDirectory = path.dirname(fileURLToPath(import.meta.url));
 const appSource = readFileSync(path.resolve(sourceDirectory, "../App.tsx"), "utf8");
 const helperSource = readFileSync(path.resolve(sourceDirectory, "./drug-item-ui.ts"), "utf8");
-const changedCode = "AC47928100";
-const changedAnnouncementItem = findAnnouncementItemByExactCode(changedCode)!;
+const changedAnnouncementItem = ITEM_RECORDS.find(
+  (item) =>
+    getDrugItemAnnouncementMembership(item.nhiCode).changed &&
+    item.priceBefore !== undefined &&
+    item.priceBefore.length > 0 &&
+    item.priceAfter !== undefined &&
+    item.priceAfter.length > 0
+)!;
+const changedCode = changedAnnouncementItem.nhiCode;
 const unchangedAnnouncementItem = ITEM_RECORDS.find(
   (item) => !getDrugItemAnnouncementMembership(item.nhiCode).changed
 )!;
@@ -133,14 +139,14 @@ describe("master snapshot notice", () => {
 
     const authoredNoticeCopy = noticeCopies.join("\n").toLocaleLowerCase("en-US");
     for (const prohibited of [
-      "正確",
-      "現行",
-      "應適用",
-      "符合給付",
-      "不符合給付",
-      "可申報",
-      "准予給付",
-      "不予給付",
+      "\u6b63\u78ba",
+      "\u73fe\u884c",
+      "\u61c9\u9069\u7528",
+      "\u7b26\u5408\u7d66\u4ed8",
+      "\u4e0d\u7b26\u5408\u7d66\u4ed8",
+      "\u53ef\u7533\u5831",
+      "\u51c6\u4e88\u7d66\u4ed8",
+      "\u4e0d\u4e88\u7d66\u4ed8",
       "eligible",
       "covered",
       "reimbursable",
