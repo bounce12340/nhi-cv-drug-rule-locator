@@ -13,6 +13,7 @@ on:
       - "apps/**"
       - "packages/**"
       - "pnpm-lock.yaml"
+      - ".github/workflows/deploy.yml"
 
 permissions:
   contents: read
@@ -57,7 +58,9 @@ jobs:
         run: pnpm --filter @nhi-cv/api exec wrangler deploy
 
       - name: Deploy Pages web
-        run: pnpm --filter @nhi-cv/api exec wrangler pages deploy apps/clinician/dist --project-name nhi-cv-lookup --branch main --commit-dirty=true
+        # pnpm --filter 會以 apps/api 為工作目錄執行,相對路徑會解析成
+        # apps/api/apps/clinician/dist(首跑即因此 ENOENT)。必須用絕對路徑。
+        run: pnpm --filter @nhi-cv/api exec wrangler pages deploy "${{ github.workspace }}/apps/clinician/dist" --project-name nhi-cv-lookup --branch main --commit-dirty=true
 
       - name: Post-deploy smoke checks
         run: |
