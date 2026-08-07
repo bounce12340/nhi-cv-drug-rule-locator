@@ -152,3 +152,29 @@ Worker 原始碼使用平台 `crypto.randomUUID()`，它不是 `uuid` npm 套件
 | 自我檢查報告 | **PASS**；檔案、audit 基準與限制、殘留理由、測試數、五項檢查均已列明 |
 
 本報告為建置者自我檢查，不取代派發方／驗收方的獨立覆核。唯一未能在本沙箱閉合的項目是 registry 回傳的正式 `pnpm audit` after 計數；本輪依 §7 未再嘗試連線，並保留「不可將無回應視為漏洞檢查成功」的原則。
+
+## 附記:lockfile 由驗收方重新產生(2026-08-07,派發方追記)
+
+建置者交件之 `pnpm-lock.yaml` 係在**無 registry 連線**之沙箱以 disposable offline cache 產出,結果**刪去 962 行**,其中包含 `workerd` 與其他 15 處之 `optionalDependencies` 區塊(全檔由 31 處降為 15 處)。平台二進位 `@cloudflare/workerd-linux-64` 因此未登錄於 lockfile,CI 全新安裝時取不到該套件,`wrangler types` 於 `apps/api typecheck` 階段崩潰(PR #50 首次 CI 失敗,run 31162279248)。
+
+**成因非建置者判斷失誤,而是沙箱能力限制**:lockfile 之 optional 平台相依必須由具 registry 連線之 pnpm 解析產生,建置者環境無此能力。
+
+處置(派發方執行,屬工具產生之機械步驟,非人為撰寫):
+
+1. `git checkout <main>:pnpm-lock.yaml` 還原 lockfile,保留建置者所撰之 `package.json` override
+2. 於具連線環境執行 `pnpm install --lockfile-only` 重新解析
+3. 結果:`optionalDependencies` 區塊回復 31 處;lockfile 相對 main 之差異縮為 **7 行**,且全部與 `undici@7.28.0 → 7.29.0` 有關,無其他漂移
+
+### 驗收方法之缺陷與修正(誠實登記)
+
+首次驗收之五項檢查係對**既有 `node_modules`** 執行,該目錄仍留有先前安裝之 workerd 平台二進位,因此本地全綠而 CI 全紅——**驗收方法本身漏檢**,非建置產物在本地與 CI 行為不一致。已修正為:先 `rm -rf node_modules`、`pnpm install --frozen-lockfile`,再跑五項檢查,以重現 CI 之全新安裝條件。修正後結果:
+
+| 檢查 | 結果 |
+| --- | --- |
+| 全新 `--frozen-lockfile` 安裝 | PASS;`@cloudflare/workerd-linux-64` 存在 |
+| `pnpm typecheck` | PASS |
+| `pnpm test` | PASS,32 files / 292 tests |
+| `pnpm export:web` | PASS |
+| `pnpm worker:types` | PASS |
+| `pnpm worker:dry-run` | PASS,503.64 KiB / gzip 66.22 KiB |
+| `pnpm audit` | 0 high / 0 critical / 1 moderate(`uuid`,理由見 §3.3) |
