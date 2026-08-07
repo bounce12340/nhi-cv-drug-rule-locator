@@ -1,16 +1,12 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
-  DEMO_WARNING,
   lookupDrugItem,
   lookupDrugItemMaster,
-  lookupMedication,
   lookupRuleText,
   type DrugItemMasterLookupResult,
   type DrugItemMasterMatch,
   type DrugItemLookupResult,
   type DrugItemRecord,
-  type LookupResult,
-  type MedicationRecord,
   type RuleTextLookupResult,
   type RuleTextUnit
 } from "@nhi-cv/domain";
@@ -24,87 +20,11 @@ import {
   View
 } from "react-native";
 
-type LookupMode = "demo" | "rules" | "items" | "drugItems";
+type LookupMode = "rules" | "items" | "drugItems";
 
 const ruleTextDataset = lookupRuleText({ query: "", as_of_date: "" });
 const itemDataset = lookupDrugItem({ query: "", as_of_date: "" });
 const drugItemsDataset = lookupDrugItemMaster({ query: "", as_of_date: "" });
-
-function ResultCard({ record }: { record: MedicationRecord }): React.JSX.Element {
-  return (
-    <View style={styles.card} accessibilityRole="summary">
-      <Text style={styles.code}>{record.nhiCode}</Text>
-      <Text style={styles.productName}>{record.brandName}</Text>
-      <Text style={styles.detail}>{record.genericName}</Text>
-      <Text style={styles.detail}>{record.ingredients.join("；")}</Text>
-      <Text style={styles.detail}>
-        {record.strength} · {record.dosageForm}
-      </Text>
-      <Text style={styles.price}>示範支付價：NT$ {record.demoPaymentPriceNtd.toFixed(2)}</Text>
-      <Text style={styles.meta}>版本 {record.datasetVersion} · 資料日期 {record.priceAsOfDate}</Text>
-    </View>
-  );
-}
-
-function DemoLookupMode(): React.JSX.Element {
-  const [query, setQuery] = useState("");
-  const [submittedQuery, setSubmittedQuery] = useState<string | null>(null);
-  const result = useMemo<LookupResult | null>(
-    () => (submittedQuery === null ? null : lookupMedication({ query: submittedQuery })),
-    [submittedQuery]
-  );
-
-  function performLookup(): void {
-    setSubmittedQuery(query);
-  }
-
-  return (
-    <View style={styles.modeContent}>
-      <View style={styles.warning} accessibilityRole="alert">
-        <Text style={styles.warningTitle}>DEMO_DATA_ONLY</Text>
-        <Text style={styles.warningText}>{DEMO_WARNING}</Text>
-      </View>
-
-      <Text style={styles.title}>心血管／降血脂藥品查詢</Text>
-      <Text style={styles.subtitle}>以藥碼、商品名、學名或成分搜尋示範藥品資料。</Text>
-
-      <TextInput
-        autoFocus
-        accessibilityLabel="藥品搜尋"
-        autoCapitalize="characters"
-        autoCorrect={false}
-        onChangeText={setQuery}
-        onSubmitEditing={performLookup}
-        placeholder="輸入藥碼、商品名、學名或成分"
-        returnKeyType="search"
-        style={styles.input}
-        value={query}
-      />
-      <Pressable accessibilityRole="button" onPress={performLookup} style={styles.button}>
-        <Text style={styles.buttonText}>查詢示範資料</Text>
-      </Pressable>
-
-      <PrivacyNotice />
-
-      {result ? (
-        <View style={styles.results}>
-          <Text style={styles.resultTitle}>查詢結果：{result.status}</Text>
-          <Text style={styles.resultText}>查詢日期：{result.asOfDate} · 資料狀態：{result.priceDataStatus}</Text>
-          {result.manualReviewRequired ? (
-            <Text style={styles.review}>此結果需要人工確認；系統不會自動選擇候選藥品，也不判定給付資格。</Text>
-          ) : null}
-          {result.candidates.map((record) => (
-            <ResultCard key={record.nhiCode} record={record} />
-          ))}
-          {result.candidates.length === 0 ? (
-            <Text style={styles.empty}>未在此可追溯的示範資料集找到可用結果。</Text>
-          ) : null}
-          <Text style={styles.resultWarning}>{result.warning}</Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
 
 function RuleUnitCard({ unit }: { unit: RuleTextUnit }): React.JSX.Element {
   return (
@@ -559,16 +479,6 @@ export default function App(): React.JSX.Element {
         <View accessibilityRole="tablist" style={styles.modeTabs}>
           <Pressable
             accessibilityRole="tab"
-            accessibilityState={{ selected: mode === "demo" }}
-            onPress={() => setMode("demo")}
-            style={[styles.modeTab, mode === "demo" ? styles.modeTabSelected : null]}
-          >
-            <Text style={[styles.modeTabText, mode === "demo" ? styles.modeTabTextSelected : null]}>
-              示範藥品
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="tab"
             accessibilityState={{ selected: mode === "rules" }}
             onPress={() => setMode("rules")}
             style={[styles.modeTab, mode === "rules" ? styles.modeTabSelected : null]}
@@ -601,9 +511,7 @@ export default function App(): React.JSX.Element {
           </Pressable>
         </View>
 
-        {mode === "demo" ? (
-          <DemoLookupMode />
-        ) : mode === "rules" ? (
+        {mode === "rules" ? (
           <RuleLookupMode initialQuery={ruleQuerySeed} />
         ) : mode === "items" ? (
           <DrugItemLookupMode onOpenRuleText={openRuleText} />
@@ -630,9 +538,6 @@ const styles = StyleSheet.create({
   modeTabText: { color: "#486581", fontSize: 16, fontWeight: "700" },
   modeTabTextSelected: { color: "#102a43" },
   modeContent: { gap: 14 },
-  warning: { backgroundColor: "#7c2d12", borderRadius: 10, padding: 14 },
-  warningTitle: { color: "#fff7ed", fontWeight: "800", marginBottom: 4 },
-  warningText: { color: "#fff7ed", fontSize: 15, lineHeight: 22 },
   title: { color: "#102a43", fontSize: 26, fontWeight: "800", marginTop: 6 },
   subtitle: { color: "#486581", fontSize: 16, lineHeight: 23 },
   input: {
@@ -645,7 +550,6 @@ const styles = StyleSheet.create({
     minHeight: 52,
     paddingHorizontal: 14
   },
-  button: { alignItems: "center", backgroundColor: "#0f609b", borderRadius: 10, minHeight: 50, justifyContent: "center" },
   ruleButton: {
     alignItems: "center",
     backgroundColor: "#334e68",
@@ -675,14 +579,10 @@ const styles = StyleSheet.create({
   resultTitle: { color: "#102a43", fontSize: 18, fontWeight: "800" },
   resultText: { color: "#486581" },
   review: { backgroundColor: "#fff3c4", borderRadius: 8, color: "#5f370e", lineHeight: 21, padding: 12 },
-  card: { backgroundColor: "#ffffff", borderColor: "#d9e2ec", borderRadius: 10, borderWidth: 1, gap: 4, padding: 14 },
   code: { color: "#0f609b", fontFamily: "monospace", fontWeight: "800" },
   productName: { color: "#102a43", fontSize: 17, fontWeight: "800" },
   detail: { color: "#334e68", lineHeight: 20 },
-  price: { color: "#0f609b", fontSize: 16, fontWeight: "700", marginTop: 4 },
-  meta: { color: "#627d98", fontSize: 12, marginTop: 2 },
   empty: { color: "#486581", fontStyle: "italic", lineHeight: 21 },
-  resultWarning: { color: "#9c2c0c", fontWeight: "700", lineHeight: 21 },
   officialWarning: { backgroundColor: "#3f3a68", borderRadius: 10, padding: 14 },
   officialWarningTitle: { color: "#f5f3ff", fontWeight: "800", marginBottom: 4 },
   officialWarningText: { color: "#f5f3ff", fontSize: 15, lineHeight: 22 },
