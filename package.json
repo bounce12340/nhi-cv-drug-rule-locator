@@ -16,6 +16,11 @@
     "worker:types": "pnpm --filter @nhi-cv/api types:check",
     "worker:dry-run": "pnpm --filter @nhi-cv/api deploy:dry-run"
   },
+  "pnpm": {
+    "overrides": {
+      "undici@>=7.0.0 <7.29.0": "^7.29.0"
+    }
+  },
   "devDependencies": {
     "@types/node": "^25.0.3",
     "typescript": "^5.9.3",
