@@ -80,3 +80,18 @@ Cloudflare token 輪替、到期或疑似外洩時，先在 Cloudflare dashboard
 ## 5. 界線(不因上線改變)
 
 真實支付價不顯示(無 governed 主檔);無帳號;無 eligibility;查詢內容不落日誌;B 軌閘門效力不變(Phase 2/送審)。
+
+## 7. 建置鏈依賴衛生(S3)之處置準則
+
+`pnpm audit` 之公告持續由上游新增,故此節記錄**判準**而非某次快照的計數。
+
+| 判準 | 處置 |
+| --- | --- |
+| 本環境五項檢查可完整驗證,且不跨主版本 | 以 pnpm `overrides` **範圍限定**提版(`<修補版`→`^修補版`),不做無範圍的整包固定 |
+| 上游消費者以**精確版本**固定,提版即跨主版本 | **不動**,登記理由;無法驗證者不得憑臆測變更 |
+| 上游尚無修補版 | **不動**,登記並持續追蹤 |
+| 一律 | 以實掃 web bundle 與 Worker 產物佐證是否進入出貨路徑,不得臆測 |
+
+**工具選用教訓(2026-08-07 實測)**:`pnpm update <pkg> --recursive` 會連鎖重新解析範圍內的其他相依——一次針對單一套件的更新意外連帶提版了打包器與其平台綁定,並移除數個 optional 套件。**範圍限定 override + `pnpm install --lockfile-only` 才是最小變更**(實測:override 法 lockfile 僅 9 行、全部關於目標套件;update 法 207 行、波及打包器)。
+
+**lockfile 產生規則**:必須在**具 registry 連線**之環境產生。離線快取產生之 lockfile 會掉失 `optionalDependencies`(平台二進位),CI 全新安裝時取不到而失敗(TC-23 實例)。驗收時應檢查 `optionalDependencies:` 區塊數未減少,並以 `rm -rf node_modules && pnpm install --frozen-lockfile` 重現 CI 條件後再跑五項檢查。
