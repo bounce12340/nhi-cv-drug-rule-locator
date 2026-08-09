@@ -19,7 +19,7 @@ Tracks the 36 pre-implementation outputs that Master Project Prompt v3.2 §30 re
 | 13 | Analytics／Logging Privacy ADR | DONE | docs/adr/ADR-004-analytics-logging-privacy.md(生效;保存期間數值 Phase 5 前定案) |
 | 14 | App Store／Google Play Compliance Matrix | DONE | docs/store-compliance-matrix.md(法律定性與聲明文案【待核】;送審前逐條轉 PASS/N-A) |
 | 15 | API Version Compatibility 與 Mobile Release Strategy | DONE | docs/adr/ADR-007-api-compat-mobile-release.md(策略定案;數值 Phase 4 前定案) |
-| 16 | GitHub Repository 與 Ruleset 設計 | PARTIAL | CONTRIBUTING.md + CI(六項檢查)exist;branch protection/rulesets、CODEOWNERS、docs/runbooks/、docs/acceptance/ 未建(v3.2 §21.2/§21.4;見 docs/v32-alignment-review.md #3/#4) |
+| 16 | GitHub Repository 與 Ruleset 設計 | PARTIAL | CONTRIBUTING.md + CI(六項檢查)、.github/CODEOWNERS、docs/runbooks/、docs/acceptance/ exist;branch protection/rulesets 仍未於 GitHub 設定,落差 #4 維持開放,須由 RA 於 repository 介面裁量設定;不得因檔案存在宣稱 §21.2 已全部完成 |
 | 17 | Monorepo 與 Shared Contract 設計 | DONE | docs/architecture.md + docs/monorepo-reconciliation.md(現行佈局為 §17.9 合法前綴;缺項對應各 Phase 建立) |
 | 18 | Phase Branch Strategy | DONE(R6 已裁決) | 規劃/治理期維持現行單分支逐 PR(核准之階段性偏離);實作期切換 v3.2 §21.3 三層模型(docs/v32-alignment-review.md #1);§24 Phase 編號對照表另待建(alignment #6);2026-08-05 A7(RDL-017)再確認維持現制、無變更結案 |
 | 19 | Milestones 及 Issues | DONE | docs/milestones-and-issues.md(M0–M5 結構+Labels/Issue 規則;GitHub 實際建立為合併後執行動作,建立後回寫連結) |

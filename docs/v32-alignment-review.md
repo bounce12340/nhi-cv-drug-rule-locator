@@ -19,7 +19,7 @@
 
 1. **【R6|已裁決 2026-08-02】§21.3 三層分支模型**:RA 裁示——規劃/治理期(現階段)維持單一工作分支逐 PR 進 main 之現行模式(核准之階段性偏離);進入正式功能實作期(v3.2 Phase 1+ 編碼工作)時切換三層模型(`main`/`phase/*`/`agent/*`,每 Phase 單一 Squash Release PR)。切換時點由派發方於首個實作派工前提報確認。
 2. **【R7|已結案 2026-08-02】§21.1 Repository Private**:RA 確認 repository 自始即為 Private——完全符合 §21.1,無偏離需記錄。
-3. **§21.2 必要檔案缺項**:`CODEOWNERS`、`docs/runbooks/`、`docs/acceptance/` 尚未建立(tracker #16/#35 涵蓋,列入後續派工)。
+3. **§21.2 必要檔案缺項(已依 TC-20260809-25 補入前置檔案,整體仍 PARTIAL)**:`docs/acceptance/` 已存在;`.github/CODEOWNERS` 與 `docs/runbooks/` 已補入。此項只記錄檔案現況,不代表 §21.2 已全部完成;§21.4 branch protection/rulesets 仍為落差 #4。
 4. **§21.4 main 保護**:branch protection/rulesets 尚未於 GitHub 設定(tracker #16)。
 5. **§21.5.4 attestation 欄位**:現行 task-contract/v1 缺 `prompt_or_task_contract_hash`;自 TC-20260802-04 起補記派工單雜湊,舊紀錄不追溯。名為 `terra-pro-build-attestation`/`sol-pro-acceptance` 的 GitHub Required Checks 尚未實作(tracker #22)。
 6. **§24 Phase 編號體系不一致**:v3.2 的 Phase 0–7 與現行 docs/phase-plan.md 的 Phase 0/0.5/1–3 為兩套編號。對應關係:現行「Phase 1 governed intake」≈ v3.2 Phase 1 的資料治理前段;v3.2 Phase 1 另含 Schema/Migration/D1 等實作,屬現行體系的 Phase 2 範疇。需一份對照表並統一用語(列入規劃工作,不影響當前進行中工作)。
