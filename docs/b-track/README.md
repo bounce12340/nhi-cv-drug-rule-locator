@@ -30,3 +30,15 @@
 | (尚無收件) | | | | | | | |
 
 > 台帳規則:append-only;出具者記角色與身分(法律事務所/個資顧問/資安審查者/工程執行者);「結論」僅記 PASS/條件通過/不通過+一句話,全文以檔案為準。
+
+## 4. 委任前產品事實時效檢查
+
+每次將 B1–B5 任一委任包交付外部專業前,必須重新確認其所載產品事實為最新現況。逐句核對下列權威來源:
+
+- `docs/regulatory-decision-log.md`(特別是 RDL-018 至 RDL-023)
+- `CHANGELOG.md`
+- `docs/launch-runbook.md`
+- `docs/source-register/drug-item-master.registry.json`
+- `apps/clinician/App.tsx`
+
+若產品狀態、介面、資料集、呈現內容或上線範圍已變更,先校正委任包再交付;若來源之間衝突或無法佐證,停止交付並回報 RA,不得臆測填補。
