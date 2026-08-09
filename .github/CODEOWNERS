@@ -1,0 +1,13 @@
+# CODEOWNERS 標示哪些變更應由 repository 擁有者審查。
+# 本檔本身不強制審查；實際強制力來自 branch protection / rulesets。
+# 該保護目前尚未設定，仍為 docs/v32-alignment-review.md 落差 #4。
+
+* @bounce12340
+
+/data/governed/** @bounce12340
+/packages/domain/src/generated/** @bounce12340
+/docs/regulatory-decision-log.md @bounce12340
+/docs/spec-source-status.md @bounce12340
+/scripts/governance-scan.sh @bounce12340
+/.github/workflows/** @bounce12340
+/docs/task-contracts/** @bounce12340
