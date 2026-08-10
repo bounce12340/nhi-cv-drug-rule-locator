@@ -145,4 +145,57 @@ describe("rule-text drug-master identification UI", () => {
       expect(authoredCopy).not.toContain(prohibited);
     }
   });
+
+  it("does not render the identification block when the lookup has no verbatim units", () => {
+    const result = lookupRuleText({ query: "unknown", as_of_date: "2026-09-01" });
+    const resultStart = appSource.indexOf("function RuleLookupResult");
+    const resultSource = appSource.slice(resultStart, blockStart);
+
+    expect(result.status).toBe("NOT_IN_VALIDATED_DATASET");
+    expect(result.units).toHaveLength(0);
+    expect(resultSource.match(/<RuleDrugMasterIdentificationBlock/g)).toHaveLength(1);
+    expect(resultSource).toMatch(
+      /\{result\.units\.length > 0 \? \(\s*<RuleDrugMasterIdentificationBlock/
+    );
+  });
+
+  it("renders a bilingual non-interactive notice when units exist but contain no codes", () => {
+    const result = lookupRuleText({ query: "2.6.1-002", as_of_date: "2026-09-01" });
+    const identifications = identifyRuleDrugMasterRecords(
+      result.units.map((unit) => unit.verbatimText)
+    );
+    const emptyBranchStart = blockSource.indexOf("if (identifications.length === 0)");
+    const populatedBranchStart = blockSource.indexOf("\n\n  return (", emptyBranchStart);
+    const emptyBranchSource = blockSource.slice(emptyBranchStart, populatedBranchStart);
+
+    expect(result.units.length).toBeGreaterThan(0);
+    expect(identifications).toHaveLength(0);
+    expect(appSource).toContain("本次結果之條文中未出現符合代碼格式之字串。");
+    expect(appSource).toContain(
+      "No strings matching the code format appear in the rule text for this result."
+    );
+    expect(emptyBranchSource).toContain('t("ruleDrugMasterNoCodes")');
+    expect(emptyBranchSource).toContain('t("ruleDrugMasterTitle", { count })');
+    expect(emptyBranchSource).toContain("protectedText(language, DRUG_ITEMS_DATASET_VERSION)");
+    expect(emptyBranchSource).toContain(">{DRUG_ITEM_MASTER_WARNING}</Text>");
+    expect(emptyBranchSource).not.toContain("<Pressable");
+  });
+
+  it("preserves the existing expandable behavior when at least one code is present", () => {
+    const result = lookupRuleText({ query: "2.6.1-001", as_of_date: "2026-09-01" });
+    const identifications = identifyRuleDrugMasterRecords(
+      result.units.map((unit) => unit.verbatimText)
+    );
+    const emptyBranchStart = blockSource.indexOf("if (identifications.length === 0)");
+    const populatedBranchStart = blockSource.indexOf("\n\n  return (", emptyBranchStart);
+    const populatedBranchSource = blockSource.slice(populatedBranchStart);
+
+    expect(result.units.length).toBeGreaterThan(0);
+    expect(identifications).toHaveLength(116);
+    expect(populatedBranchSource).toContain("<Pressable");
+    expect(populatedBranchSource).toContain("accessibilityState={{ expanded }}");
+    expect(populatedBranchSource).toContain("onPress={() => setExpanded((current) => !current)}");
+    expect(populatedBranchSource).toContain("{expanded ? (");
+    expect(populatedBranchSource).toContain("identifications.map((identification)");
+  });
 });

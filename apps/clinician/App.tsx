@@ -144,6 +144,7 @@ const UI_COPY = Object.freeze({
     viewSectionItems: "查看本章節品項（{section}）",
     noRuleUnits: "此查詢未取得已驗證的逐字單元。",
     ruleDrugMasterTitle: "條文中出現之代碼在藥品主檔的記錄（{count} 筆）",
+    ruleDrugMasterNoCodes: "本次結果之條文中未出現符合代碼格式之字串。",
     expandRuleDrugMaster: "展開主檔辨識記錄（{count} 筆，目前已收合）",
     collapseRuleDrugMaster: "收合主檔辨識記錄（{count} 筆，目前已展開）",
     ruleDrugMasterDatasetVersion: "藥品主檔資料集版本：{version}",
@@ -249,6 +250,8 @@ const UI_COPY = Object.freeze({
     viewSectionItems: "View items in this section ({section})",
     noRuleUnits: "No verified verbatim unit was found for this query.",
     ruleDrugMasterTitle: "Drug-master records for codes appearing in the rule text ({count} entries)",
+    ruleDrugMasterNoCodes:
+      "No strings matching the code format appear in the rule text for this result.",
     expandRuleDrugMaster:
       "Expand drug-master identification records ({count} entries, currently collapsed)",
     collapseRuleDrugMaster:
@@ -974,7 +977,9 @@ function RuleLookupResult({
         <RuleUnitCard key={unit.unitId} unit={unit} />
       ))}
       {result.units.length === 0 ? <Text style={styles.empty}>{t("noRuleUnits")}</Text> : null}
-      <RuleDrugMasterIdentificationBlock isDesktop={isDesktop} units={result.units} />
+      {result.units.length > 0 ? (
+        <RuleDrugMasterIdentificationBlock isDesktop={isDesktop} units={result.units} />
+      ) : null}
     </View>
   );
 }
@@ -1055,6 +1060,29 @@ function RuleDrugMasterIdentificationBlock({
   );
   const count = String(identifications.length);
   const controlKey = expanded ? "collapseRuleDrugMaster" : "expandRuleDrugMaster";
+
+  if (identifications.length === 0) {
+    return (
+      <View style={styles.ruleDrugIdentificationBlock}>
+        <Text style={styles.ruleDrugIdentificationTitle}>
+          {t("ruleDrugMasterTitle", { count })}
+        </Text>
+        <View style={styles.ruleDrugIdentificationContent}>
+          <Text style={styles.empty}>{t("ruleDrugMasterNoCodes")}</Text>
+          <Text style={styles.sourceBlockMeta}>
+            {t("ruleDrugMasterDatasetVersion", {
+              version: protectedText(language, DRUG_ITEMS_DATASET_VERSION)
+            })}
+          </Text>
+          <View style={styles.masterItemWarning} accessibilityRole="alert">
+            <Text style={styles.officialWarningTitle}>{t("officialWarningTitle")}</Text>
+            <Text style={styles.officialWarningText}>{DRUG_ITEM_MASTER_WARNING}</Text>
+            <OfficialOriginalLanguageNote />
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.ruleDrugIdentificationBlock}>

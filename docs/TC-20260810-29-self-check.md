@@ -88,3 +88,38 @@
 - 全程未執行任何 git 指令。
 - 未執行 `scripts/governance-scan.sh`；該腳本內部會使用 git，與派工紅線衝突。本報告不宣稱其結果，須由驗收方補跑並獨立判定。
 - 本報告是建置者自我檢查，不取代派發方／驗收方在精確 head SHA 上的獨立驗收。
+
+## 10. §10 驗收發現之補正
+
+### 10.1 補正內容
+
+- `result.units.length === 0` 時，`RuleLookupResult` 仍顯示既有查無文案，但不再掛載 `RuleDrugMasterIdentificationBlock`。
+- `units` 非空且辨識代碼數為 0 時，區塊以非互動形式顯示標題、固定雙語文案「本次結果之條文中未出現符合代碼格式之字串。」／`No strings matching the code format appear in the rule text for this result.`、主檔資料集版本與原樣主檔警語；此分支沒有 `Pressable` 或展開狀態控制。
+- 代碼數至少 1 時，沿用原有預設收合、筆數標題、雙語展開／收合標籤、無障礙狀態及展開後清單；該既有分支的文案與互動未更動。
+- 逐字單元的 `result.units.map` 與 `RuleUnitCard` 渲染路徑未更動，仍先完整渲染逐字卡片，再依條件呈現主檔辨識區塊。
+
+本次只寫入 `apps/clinician/App.tsx`、在既有 `apps/clinician/src/rule-drug-identification-ui.test.ts` 尾端新增測試，以及追加本節。原有 7 項 UI 測試的測試本體與斷言均未修改或放寬；新增 3 項分別釘死查無、有條文但零代碼、至少一個代碼三種情形。
+
+### 10.2 測試數與五項檢查
+
+- 補正前驗收基準：36 files／321 tests。
+- 補正後：36 files／324 tests；增量為同一 UI 測試檔新增 3 tests，原有 321 tests 全數通過。
+- 定向結果：`apps/clinician/src/rule-drug-identification-ui.test.ts` 10／10。
+
+| 檢查 | 結果 | 證據摘要 |
+| --- | --- | --- |
+| `pnpm typecheck` | PASS（exit 0） | 7 個 workspace projects 完成；clinician strict TypeScript 通過 |
+| `pnpm test` | PASS（exit 0） | 36 files passed；324 tests passed |
+| `pnpm export:web` | PASS（exit 0） | Expo Web export 完成；單一 bundle 839,165 bytes |
+| `pnpm worker:types` | PASS（exit 0） | 使用獨立 `/tmp` Wrangler 日誌；`worker-configuration.d.ts` 為最新 |
+| `pnpm worker:dry-run` | PASS（exit 0） | 使用獨立 `/tmp` Wrangler 日誌；輸出 `--dry-run: exiting now.`，未部署 |
+
+### 10.3 Bundle 與紅線複核
+
+- Web bundle 為 `AppEntry-e8896e3d7c816c85443cab76ee5227a6.js`，839,165 bytes，SHA-256 `a6edd74433b922e3def6da7f2476190b0eb5c6438b621cdb868f8b429bc59491`。
+- 相較補正前已驗收 bundle 838,146 bytes，本次增量 +1,019 bytes（約 +0.122%）；未新增套件。
+- 解碼 bundle 的 Unicode escape 後，新增中英文零代碼文案各命中 1 次；既有中英文展開標籤仍各命中 1 次。eligibility 黑名單中文 5 詞與英文 4 詞全部 0 命中。
+- `App.tsx` 收尾 SHA-256 為 `98b3f86affa6969fb67416960eaa9d362fcc4232347cbbb3430e61ff214234a1`；UI 測試檔為 `a15f293017240cb564c70671ab3d91e7c216bab9947efee93f9b5cce7f8c7551`。
+- §9.1 三檔未寫入，SHA-256 仍分別為 `7d6f52385466ba26649ecb7807ba93c1819c25166f53c807b1757561f3988609`、`fb670205c33d8843a1227b920545f5e427c0d2baf2725fa51a9c87797db29586`、`a09927b86496e8dba3989d77799962c7afd8340d2bd74c9f13f326df89a9791a`。
+- 未對 `data/governed/**`、`packages/domain/src/generated/**`、`scripts/**`、`apps/api/**` 或 `.github/**` 施作內容變更；未執行任何 git 指令。
+- 本次仍未執行 `scripts/governance-scan.sh`，亦不宣稱 governance-scan 結果；依 §10.4 由驗收方補跑。
