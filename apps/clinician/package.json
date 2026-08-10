@@ -2,24 +2,24 @@
   "name": "@nhi-cv/clinician",
   "version": "0.1.0",
   "private": true,
-  "main": "node_modules/expo/AppEntry.js",
+  "type": "module",
   "scripts": {
-    "start": "expo start",
-    "start:web": "expo start --web",
-    "export:web": "expo export --platform web --output-dir dist",
+    "dev": "vite",
+    "export:web": "vite build",
+    "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@expo/metro-runtime": "~57.0.8",
-    "@nhi-cv/contracts": "workspace:*",
     "@nhi-cv/domain": "workspace:*",
-    "expo": "^57.0.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-native": "0.86.2",
     "react-native-web": "^0.21.0"
   },
   "devDependencies": {
-    "@types/react": "^19.0.0"
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.14"
   }
 }

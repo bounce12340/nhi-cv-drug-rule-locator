@@ -1,19 +1,13 @@
 name: Deploy
 
-# Production 部署(RDL-018 授權範圍)。憑證只存在 GitHub Actions Secrets
-# (CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID),永不進 repo、對話或容器。
-# 觸發:main 有產品變更時自動(main 的每次合併都經 RA `PASS <sha7>` 閘門),
-# 或手動 workflow_dispatch。Secrets 未設定時工作流以明確訊息失敗,不做半套部署。
+# Cloudflare credentials live only as repository Actions secrets
+# (CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID).
+# The site is a static bundle on Cloudflare Pages — there is no Worker and no API.
 
 on:
-  workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - "apps/**"
-      - "packages/**"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -31,40 +25,12 @@ jobs:
     steps:
       - name: Require deploy secrets
         run: |
-          set -eu
-
-          token_state=present
-          account_state=present
-          [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || token_state=empty
-          [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] || account_state=empty
-
-          if [ "$token_state" = empty ] && [ "$account_state" = empty ]; then
-            echo "::error::Both CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are empty or unavailable. Add both as repository Actions secrets; Environment and Dependabot secrets are not supplied to this workflow. Confirm both names and capitalization exactly."
-            exit 1
-          fi
-          if [ "$token_state" = empty ]; then
-            echo "::error::CLOUDFLARE_API_TOKEN is empty or unavailable. Add it as a repository Actions secret; Environment and Dependabot secrets are not supplied to this workflow. Confirm the name and capitalization exactly."
-            exit 1
-          fi
-          if [ "$account_state" = empty ]; then
-            echo "::error::CLOUDFLARE_ACCOUNT_ID is empty or unavailable. Add it as a repository Actions secret; Environment and Dependabot secrets are not supplied to this workflow. Confirm the name and capitalization exactly."
-            exit 1
-          fi
-
-          whitespace_state=clean
-          case "$CLOUDFLARE_API_TOKEN" in
-            *[[:space:]]*)
-              echo "::error::CLOUDFLARE_API_TOKEN contains whitespace. Re-copy it without leading or trailing spaces or line breaks, then update the repository Actions secret."
-              whitespace_state=invalid
-              ;;
-          esac
-          case "$CLOUDFLARE_ACCOUNT_ID" in
-            *[[:space:]]*)
-              echo "::error::CLOUDFLARE_ACCOUNT_ID contains whitespace. Re-copy it without leading or trailing spaces or line breaks, then update the repository Actions secret."
-              whitespace_state=invalid
-              ;;
-          esac
-          if [ "$whitespace_state" = invalid ]; then
+          set -euo pipefail
+          missing=""
+          [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || missing="CLOUDFLARE_API_TOKEN"
+          [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] || missing="${missing:+$missing and }CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::$missing is empty or unavailable. Add it as a repository Actions secret (Environment and Dependabot secrets are not supplied to this workflow)."
             exit 1
           fi
 
@@ -83,26 +49,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Export Expo Web
+      - name: Build web
         run: pnpm export:web
 
-      - name: Deploy Worker API
-        run: pnpm --filter @nhi-cv/api exec wrangler deploy
+      - name: Deploy to Cloudflare Pages
+        run: >
+          pnpm exec wrangler pages deploy "${{ github.workspace }}/apps/clinician/dist"
+          --project-name nhi-cv-lookup --branch main --commit-dirty=true
 
-      - name: Deploy Pages web
-        # pnpm --filter 會以 apps/api 為工作目錄執行,相對路徑會解析成
-        # apps/api/apps/clinician/dist(首跑即因此 ENOENT)。必須用絕對路徑。
-        run: pnpm --filter @nhi-cv/api exec wrangler pages deploy "${{ github.workspace }}/apps/clinician/dist" --project-name nhi-cv-lookup --branch main --commit-dirty=true
-
-      - name: Post-deploy smoke checks
+      - name: Post-deploy smoke check
         run: |
-          set -e
-          for i in 1 2 3 4 5; do
-            api=$(curl -s -o /dev/null -w '%{http_code}' https://nhi-api.uic-ai.com/health --max-time 20 || true)
-            web=$(curl -s -o /dev/null -w '%{http_code}' https://nhi.uic-ai.com/ --max-time 20 || true)
-            echo "attempt $i: api=$api web=$web"
-            if [ "$api" = "200" ] && [ "$web" = "200" ]; then exit 0; fi
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://nhi.uic-ai.com/ --max-time 20 || true)
+            [ "$code" = "200" ] && echo "web OK ($code)" && exit 0
+            echo "attempt $attempt: HTTP $code, retrying"
             sleep 10
           done
-          echo "::error::post-deploy smoke checks failed"
+          echo "::error::post-deploy smoke check failed (last HTTP $code)"
           exit 1
