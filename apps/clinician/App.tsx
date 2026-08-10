@@ -85,9 +85,8 @@ const UI_COPY = Object.freeze({
     clausePath: "clausePath：{value}",
     rootClause: "（根層）",
     filterAll: "全部",
-    filterChanged: "本次公告異動",
-    filterTrial: "三個月試用清單",
-    filterTableTwo: "表二品項",
+    filterPriceChanged: "本次調價",
+    filterPriceUnchanged: "本次未調價",
     announcementSourceTitle: "另一資料來源：2026-09-01 公告異動明細",
     announcementDatasetVersion: "資料集版本：{result.datasetVersion}",
     announcementNotFound: "此主檔代碼未列於 2026-09-01 公告資料集。",
@@ -217,9 +216,8 @@ const UI_COPY = Object.freeze({
     clausePath: "Clause path: {value}",
     rootClause: "(root)",
     filterAll: "All",
-    filterChanged: "Changed in this announcement",
-    filterTrial: "3-month trial list",
-    filterTableTwo: "Table 2 items",
+    filterPriceChanged: "Price changed",
+    filterPriceUnchanged: "Price not changed",
     announcementSourceTitle: "Separate source: 2026-09-01 announcement change details",
     announcementDatasetVersion: "Dataset version: {result.datasetVersion}",
     announcementNotFound: "This master code is not listed in the 2026-09-01 announcement dataset.",
@@ -365,17 +363,15 @@ const ruleTextDataset = lookupRuleText({ query: "", as_of_date: "" });
 const drugItemsDataset = lookupDrugItemMaster({ query: "", as_of_date: "" });
 const announcementFilters: readonly DrugItemAnnouncementFilter[] = Object.freeze([
   "all",
-  "changed",
-  "trial",
-  "tableTwo"
+  "priceChanged",
+  "priceUnchanged"
 ]);
 
 const announcementFilterKeys: Readonly<Record<DrugItemAnnouncementFilter, UiMessageKey>> =
   Object.freeze({
     all: "filterAll",
-    changed: "filterChanged",
-    trial: "filterTrial",
-    tableTwo: "filterTableTwo"
+    priceChanged: "filterPriceChanged",
+    priceUnchanged: "filterPriceUnchanged"
   });
 
 const lookupStatusKeys = Object.freeze({
@@ -632,9 +628,7 @@ function AnnouncementTags({ nhiCode }: { nhiCode: string }): React.JSX.Element |
   const { styles, t } = useUi();
   const membership = getDrugItemAnnouncementMembership(nhiCode);
   const tags: readonly UiMessageKey[] = [
-    membership.changed ? "filterChanged" : undefined,
-    membership.trial ? "filterTrial" : undefined,
-    membership.tableTwo ? "filterTableTwo" : undefined
+    membership.priceChanged ? "filterPriceChanged" : undefined
   ].filter((key): key is UiMessageKey => key !== undefined);
   if (tags.length === 0) return null;
 
@@ -706,14 +700,14 @@ function AnnouncementItemSourceBlock({
               </Text>
             </View>
           ) : null}
-          {source.membership.tableTwo ? (
+          {source.item.tableClassification !== undefined ? (
             <Text style={styles.detail}>
               {t("tableTwoMembership", {
                 value: protectedText(language, source.item.tableClassification ?? missingField)
               })}
             </Text>
           ) : null}
-          {source.membership.trial ? (
+          {source.item.exceptionNote !== undefined ? (
             <Text style={styles.detail}>
               {t("trialNote", {
                 value: protectedText(language, source.item.exceptionNote ?? missingField)

@@ -15,35 +15,53 @@ import {
 } from "./drug-item-integration";
 
 describe("drug-item master and announcement display integration", () => {
-  it("derives the three factual memberships from exact announcement rows", () => {
-    const changed = ITEM_RECORDS.find((item) => item.priceAfter !== undefined)!;
-    const trial = ITEM_RECORDS.find((item) => item.exceptionNote === "3個月")!;
-    const tableTwo = ITEM_RECORDS.find((item) => item.tableClassification === "表二")!;
+  it("marks an item as price-changed only when the announcement gives both prices", () => {
+    const priced = ITEM_RECORDS.find(
+      (item) => item.priceBefore !== undefined && item.priceAfter !== undefined
+    )!;
+    const unpriced = ITEM_RECORDS.find(
+      (item) => item.priceBefore === undefined && item.priceAfter === undefined
+    )!;
 
-    expect(getDrugItemAnnouncementMembership(changed.nhiCode).changed).toBe(true);
-    expect(getDrugItemAnnouncementMembership(trial.nhiCode).trial).toBe(true);
-    expect(getDrugItemAnnouncementMembership(tableTwo.nhiCode).tableTwo).toBe(true);
-    expect(matchesDrugItemAnnouncementFilter(changed.nhiCode, "changed")).toBe(true);
-    expect(matchesDrugItemAnnouncementFilter(trial.nhiCode, "trial")).toBe(true);
-    expect(matchesDrugItemAnnouncementFilter(tableTwo.nhiCode, "tableTwo")).toBe(true);
+    expect(getDrugItemAnnouncementMembership(priced.nhiCode).priceChanged).toBe(true);
+    expect(getDrugItemAnnouncementMembership(unpriced.nhiCode).priceChanged).toBe(false);
+    expect(matchesDrugItemAnnouncementFilter(priced.nhiCode, "priceChanged")).toBe(true);
+    expect(matchesDrugItemAnnouncementFilter(priced.nhiCode, "priceUnchanged")).toBe(false);
+    expect(matchesDrugItemAnnouncementFilter(unpriced.nhiCode, "priceUnchanged")).toBe(true);
   });
 
-  it("keeps all three membership sets aligned to their governed source fields", () => {
-    const counts = { changed: 0, trial: 0, tableTwo: 0 };
+  it("counts 57 price changes among the 187 announcement records", () => {
+    let changed = 0;
     for (const item of ITEM_RECORDS) {
       const membership = getDrugItemAnnouncementMembership(item.nhiCode);
-      expect(membership.changed).toBe(
-        item.priceBefore !== undefined ||
-          item.priceAfter !== undefined ||
-          item.effectiveDate !== undefined
+      expect(membership.priceChanged).toBe(
+        item.priceBefore !== undefined && item.priceAfter !== undefined
       );
-      expect(membership.trial).toBe(item.exceptionNote === "3個月");
-      expect(membership.tableTwo).toBe(item.tableClassification === "表二");
-      if (membership.changed) counts.changed += 1;
-      if (membership.trial) counts.trial += 1;
-      if (membership.tableTwo) counts.tableTwo += 1;
+      if (membership.priceChanged) changed += 1;
     }
-    expect(counts).toEqual({ changed: 57, trial: 14, tableTwo: 116 });
+    expect(ITEM_RECORDS).toHaveLength(187);
+    expect(changed).toBe(57);
+  });
+
+  it("treats a code absent from the announcement as price-unchanged, never as unknown", () => {
+    const absent = DRUG_ITEM_MASTER_RECORDS.map((record) => record.nhiCode).find(
+      (code) => !ITEM_RECORDS.some((item) => item.nhiCode === code)
+    )!;
+    expect(getDrugItemAnnouncementMembership(absent).priceChanged).toBe(false);
+    expect(matchesDrugItemAnnouncementFilter(absent, "priceUnchanged")).toBe(true);
+    expect(matchesDrugItemAnnouncementFilter(absent, "priceChanged")).toBe(false);
+  });
+
+  it("partitions the master exactly: 57 changed + 550 unchanged = 607", () => {
+    let changed = 0;
+    let unchanged = 0;
+    for (const record of DRUG_ITEM_MASTER_RECORDS) {
+      if (matchesDrugItemAnnouncementFilter(record.nhiCode, "priceChanged")) changed += 1;
+      if (matchesDrugItemAnnouncementFilter(record.nhiCode, "priceUnchanged")) unchanged += 1;
+    }
+    expect(changed).toBe(57);
+    expect(unchanged).toBe(550);
+    expect(changed + unchanged).toBe(DRUG_ITEM_MASTER_RECORDS.length);
   });
 
   it("joins the announcement dataset only by an exact code", () => {
@@ -51,11 +69,7 @@ describe("drug-item master and announcement display integration", () => {
     const nearCode = `${item.nhiCode.slice(0, -1)}${item.nhiCode.endsWith("0") ? "1" : "0"}`;
     expect(findAnnouncementItemByExactCode(item.nhiCode)).toBe(item);
     expect(findAnnouncementItemByExactCode(nearCode)).toBeUndefined();
-    expect(getDrugItemAnnouncementMembership(nearCode)).toEqual({
-      changed: false,
-      trial: false,
-      tableTwo: false
-    });
+    expect(getDrugItemAnnouncementMembership(nearCode)).toEqual({ priceChanged: false });
   });
 
   it("keeps membership results and section result arrays frozen", () => {
@@ -104,7 +118,8 @@ describe("drug-item master and announcement display integration", () => {
     });
     expect(lookup.status).toBe("EXACT_MATCH");
     expect(lookup.matches[0]?.item).toBe(item);
+    // The announcement row keeps every field it was transcribed with, including
+    // exceptionNote — the UI no longer filters on it, but the data is not altered.
     expect(findAnnouncementItemByExactCode(item.nhiCode)?.exceptionNote).toBe("3個月");
-    expect(getDrugItemAnnouncementMembership(item.nhiCode).trial).toBe(true);
   });
 });

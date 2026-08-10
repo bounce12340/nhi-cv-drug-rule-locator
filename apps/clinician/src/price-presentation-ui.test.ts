@@ -19,7 +19,7 @@ const appSource = readFileSync(path.resolve(sourceDirectory, "../App.tsx"), "utf
 const helperSource = readFileSync(path.resolve(sourceDirectory, "./drug-item-ui.ts"), "utf8");
 const changedAnnouncementItem = ITEM_RECORDS.find(
   (item) =>
-    getDrugItemAnnouncementMembership(item.nhiCode).changed &&
+    getDrugItemAnnouncementMembership(item.nhiCode).priceChanged &&
     item.priceBefore !== undefined &&
     item.priceBefore.length > 0 &&
     item.priceAfter !== undefined &&
@@ -27,13 +27,13 @@ const changedAnnouncementItem = ITEM_RECORDS.find(
 )!;
 const changedCode = changedAnnouncementItem.nhiCode;
 const unchangedAnnouncementItem = ITEM_RECORDS.find(
-  (item) => !getDrugItemAnnouncementMembership(item.nhiCode).changed
+  (item) => !getDrugItemAnnouncementMembership(item.nhiCode).priceChanged
 )!;
 
 describe("announcement-only price comparison presentation", () => {
   it("copies all four comparison values from each changed announcement row", () => {
     const changedItems = ITEM_RECORDS.filter(
-      (item) => getDrugItemAnnouncementMembership(item.nhiCode).changed
+      (item) => getDrugItemAnnouncementMembership(item.nhiCode).priceChanged
     );
     expect(changedItems).toHaveLength(57);
 
@@ -50,7 +50,7 @@ describe("announcement-only price comparison presentation", () => {
   });
 
   it("does not create a comparison for a code outside the announcement change set", () => {
-    expect(getDrugItemAnnouncementMembership(unchangedAnnouncementItem.nhiCode).changed).toBe(
+    expect(getDrugItemAnnouncementMembership(unchangedAnnouncementItem.nhiCode).priceChanged).toBe(
       false
     );
     expect(resolveAnnouncementPriceComparison(unchangedAnnouncementItem.nhiCode)).toBeUndefined();

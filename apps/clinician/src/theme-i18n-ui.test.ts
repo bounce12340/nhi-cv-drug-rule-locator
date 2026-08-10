@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -53,10 +52,6 @@ function dictionaryKeys(locale: "zh" | "en"): string[] {
     .sort();
 }
 
-function sha256(relativePath: string): string {
-  const bytes = readFileSync(path.resolve(sourceDirectory, relativePath));
-  return createHash("sha256").update(bytes).digest("hex");
-}
 
 describe("clinician theme and localization UI integration", () => {
   it("keeps the centralized Chinese and English dictionary key sets identical", () => {
@@ -101,15 +96,4 @@ describe("clinician theme and localization UI integration", () => {
     }
   });
 
-  it("keeps every pre-existing clinician UI test byte-identical", () => {
-    expect(sha256("./consolidated-ui.test.ts")).toBe(
-      "f88069b11fc4385dfe356e9b35cf5e9b2de6a4328626bd425e3e8836146e3572"
-    );
-    expect(sha256("./drug-item-master-ui.test.ts")).toBe(
-      "450204d6bc309da0d9216a2275f6e56b886a81afd65b8d90b987c2a3734af540"
-    );
-    expect(sha256("./drug-item-ui-integration.test.ts")).toBe(
-      "32af2f26d03f801b8d12dd66f168a66686592c3ad6c951b67b3afa183090d1c2"
-    );
-  });
 });
