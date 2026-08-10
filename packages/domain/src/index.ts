@@ -4,3 +4,4 @@ export * from "./drug-item-lookup";
 export * from "./drug-item-integration";
 export * from "./rule-drug-identification";
 export * from "./rule-comparison";
+export * from "./rule-diff";
