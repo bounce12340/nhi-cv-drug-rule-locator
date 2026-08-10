@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Demo-only NHI cardiovascular and lipid medication rule locator foundation.",
+  "description": "NHI lipid-lowering medication and coverage-rule lookup for clinicians. Static site on Cloudflare Pages.",
   "packageManager": "pnpm@10.30.1",
   "engines": {
     "node": ">=22.0.0"
@@ -12,9 +12,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
-    "export:web": "pnpm --filter @nhi-cv/clinician export:web",
-    "worker:types": "pnpm --filter @nhi-cv/api types:check",
-    "worker:dry-run": "pnpm --filter @nhi-cv/api deploy:dry-run"
+    "export:web": "pnpm --filter @nhi-cv/clinician export:web"
   },
   "pnpm": {
     "overrides": {
@@ -25,6 +23,7 @@
   "devDependencies": {
     "@types/node": "^25.0.3",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.17"
+    "vitest": "^4.0.17",
+    "wrangler": "^4.118.0"
   }
 }

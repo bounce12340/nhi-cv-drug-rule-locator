@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { DEMO_DATA_ONLY, lookupMedication } from "./index";
 import {
   OFFICIAL_TEXT_TRANSCRIBED,
   RULE_TEXT_WARNING,
@@ -148,19 +147,6 @@ describe("display-only governed rule-text lookup", () => {
     );
     expect(result.datasetVersion).toBe("nhi-lipid-rules-structured-2026-09-01-r1");
     expect(result.effectiveFrom).toBe("2026-09-01");
-  });
-
-  it("keeps demo medication and official rule-text results isolated in both directions", () => {
-    const demoResult = lookupMedication({ query: "D3M0A00001" });
-    const ruleResult = lookupRuleText({ query: "2.6.1-002", as_of_date: "2026-09-01" });
-    const demoOutput = JSON.stringify(demoResult);
-    const ruleOutput = JSON.stringify(ruleResult);
-    expect(demoOutput).not.toContain(OFFICIAL_TEXT_TRANSCRIBED);
-    expect(demoOutput).not.toContain("verbatimText");
-    expect(demoOutput).not.toContain("2.6.1-002");
-    expect(ruleOutput).not.toContain(DEMO_DATA_ONLY);
-    expect(ruleOutput).not.toContain("D3M0A00001");
-    expect(ruleOutput).not.toContain("demoPaymentPriceNtd");
   });
 
   it("excludes verbatim official fields while blacklisting engine-authored vocabulary", () => {

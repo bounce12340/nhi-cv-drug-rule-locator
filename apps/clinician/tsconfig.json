@@ -1,9 +1,13 @@
 {
-  "extends": "expo/tsconfig.base",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "strict": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2023", "DOM"],
+    "moduleResolution": "Bundler",
     "noEmit": true,
-    "moduleResolution": "Bundler"
+    "paths": { "react-native": ["../../node_modules/react-native-web"] },
+    "strict": true,
+    "types": ["vite/client"]
   },
-  "include": ["App.tsx", "src/**/*.ts", "src/**/*.tsx"]
+  "include": ["App.tsx", "main.tsx", "src/**/*.ts", "src/**/*.tsx", "vite.config.ts"]
 }

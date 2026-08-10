@@ -1,65 +1,43 @@
-# NHI CV Drug Rule Locator — Phase 0
+# 健保降血脂藥品查詢
 
-> **DEMO_DATA_ONLY — 示範資料，非健保署核定資料／不可作為申報依據。**
+醫師診間用的健保降血脂藥品與給付規定查詢工具。線上位置:<https://nhi.uic-ai.com/>
 
-這是一個醫師診間快速查詢系統的基礎版本。單一 Expo 應用程式支援 Web、iOS、Android，並共用 deterministic 藥品查詢核心。它只查詢藥品資料；不收集、傳送或保存病人姓名、病歷號、檢驗值、診斷或其他病人資料，也不會輸出任何病人「符合／不符合給付」結論。
+一個靜態網站,掛在 Cloudflare Pages。沒有伺服器、沒有 API、沒有資料庫、沒有帳號。所有資料編譯進前端,查詢全部在瀏覽器裡完成——輸入的內容不會送到任何地方,也不會被記錄。
 
-## 現在可以做什麼
+## 可以查什麼
 
-- 以健保藥品代碼、商品名、學名或成分搜尋**虛構示範資料**。
-- 以 NFKC、去首尾空白、英文字大寫、移除空白和連字號正規化 10 碼藥碼；只做精確比對，絕不自動校正一碼之差。
-- 多筆候選永不自動選第一筆；資料日期或版本無法驗證時 fail closed。
-- 查詢資料的版本、日期、價格資料狀態與人工覆核需求可追溯。
+- **藥品**:以健保代碼、中文品名、英文品名或成分查主檔 607 筆品項,含支付價與完整價格沿革(4,048 個價格區間)。
+- **2026-09-01 公告異動**:該次公告異動的 187 筆品項,含原支付價與初核價格對照;未列於公告者會明白標示。
+- **給付規定原文**:2.6.1–2.6.3 的官方逐字轉錄,共 67 個單元。條文中出現的健保代碼會自動比對主檔,補上藥品辨識資訊。
 
-## 不可使用於
+## 資料來源
 
-- 健保申報、支付價確認、給付資格判定或臨床決策。
-- 正式法規或官方支付價查詢。原始 Master Project Prompt v3.2 及官方／RA 核定資料尚未進入此工作區，詳見 [docs/spec-source-status.md](docs/spec-source-status.md)。
+| 資料集 | 來源 |
+| --- | --- |
+| `nhi-drug-items-2026-08-07-r2` | 衛福部中央健保署「健保用藥品項查詢項目檔」(政府資料開放平臺) |
+| `nhi-lipid-2026-09-01-r1` | 2026-09-01 公告「藥品已收載品目異動明細表」 |
+| `nhi-lipid-rules-structured-2026-09-01-r1` | 藥品給付規定 2.6.1–2.6.3 |
 
-## 本機啟動
+價格全部取自健保署公開資料,不是自行產生的。每份來源的出處與 SHA-256 記在 [`docs/source-register/`](docs/source-register/)。
+
+主檔 607 筆裡有 370 筆目前支付價為 `0.00`——那是該品項最後一段、無結束日的價格區間,且之前都有過真實價格。主檔收錄歷史品項,不是「現行有給付」清單。
+
+## 這不是什麼
+
+不是健保署系統。查詢結果不可作為申報依據,實際規定與價格以健保署公告為準。工具不判斷任何病人是否符合給付,也不接受任何病人資料。
+
+## 開發
 
 ```bash
 pnpm install
 pnpm typecheck
 pnpm test
-pnpm --filter @nhi-cv/clinician start:web
+pnpm export:web                      # → apps/clinician/dist
+pnpm --filter @nhi-cv/clinician dev  # 本機開發
 ```
 
-產生 Web 靜態匯出：
+- `packages/domain` — 查詢邏輯與編譯後的資料集
+- `apps/clinician` — 介面(Vite + React,零網路呼叫)
+- `scripts/*-codegen.mjs` — 健保署更新資料時,從 `data/governed/` 重新產生資料集
 
-```bash
-pnpm export:web
-```
-
-Worker 的檢查（不部署）：
-
-```bash
-pnpm worker:types
-pnpm worker:dry-run
-```
-
-## 架構
-
-```mermaid
-flowchart LR
-  C["Clinician app\nExpo: Web / iOS / Android"] --> D["@nhi-cv/domain\npure deterministic lookup"]
-  A["Cloudflare Worker API\n/health · /v1/meta · /v1/lookup"] --> D
-  A --> K["@nhi-cv/contracts\ntransport validation"]
-  D --> M["DEMO_DATA_ONLY\ntraceable invented records"]
-```
-
-## 目錄
-
-- `apps/clinician`：mobile-first Expo 介面，搜尋欄為開啟後的第一焦點。
-- `apps/api`：Cloudflare Worker；只提供 health、metadata、lookup，且不部署。
-- `packages/domain`：無 I/O、無病人模型的 deterministic 查詢與示範資料。
-- `packages/contracts`：API 輸入驗證與錯誤合約。
-- `docs`：資料、隱私、法規、威脅模型、測試與 Phase 計畫。
-
-## 平台限制
-
-可於本機驗證 TypeScript、單元測試、Web 靜態匯出及 Worker dry-run。此環境沒有完整 Xcode，也沒有 Android `adb`，因此 iOS／Android 模擬器或實機啟動均為 **BLOCKED**，不能視為已驗證。
-
-## 授權與貢獻
-
-請先閱讀 [CONTRIBUTING.md](CONTRIBUTING.md)、[SECURITY.md](SECURITY.md) 與 [docs/regulatory-decision-log.md](docs/regulatory-decision-log.md)。禁止加入未核定規則、真實支付價、病人資料或硬編碼 secret。
+改動查詢行為前請看 [CLAUDE.md](CLAUDE.md) 的「Rules that protect correctness」,以及 [CONTRIBUTING.md](CONTRIBUTING.md)。
