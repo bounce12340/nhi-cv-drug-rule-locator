@@ -91,16 +91,30 @@ fails closed). That is how these stay true.
 
 ## Comparing rule versions
 
-`compareRuleSectionVersions(section)` puts the prior and current text side by side and lists
-**mechanically extracted quantitative terms** — treatment/follow-up intervals and lipid thresholds —
-that appear in only one version. It deliberately does not align sentences: the prior 2.6.1 is 2,034
-characters against 8,045 in the current one, so any alignment would be a guess, and a wrong guess
-reads as a rule change that did not happen. Wording changes are therefore not listed, and the UI
-says so.
+`compareRuleSectionVersions(section)` returns both texts, a summary of quantitative terms that
+appear in only one version, and `diff` — a token-level side-by-side comparison built by
+`diffRuleSectionText`.
 
-Whitespace, dash variants and full/half-width comparison operators are folded when matching, so the
-PDF's line-broken `6-\n8週` and the current `6~8 週` compare equal. Display always uses the source
-text.
+The diff is a **derived view, not official text**. It aligns the two versions with a
+longest-common-subsequence over tokens, which is deterministic; what it does not do is claim that a
+paired row means the regulator rewrote the left into the right. The UI says so, because that
+misreading is the real risk — not the algorithm.
+
+Three decisions in `rule-diff.ts` were measured against the real sections, and undoing any of them
+makes the output wrong rather than merely uglier:
+
+1. **Line breaks are dropped before comparison.** They are layout artifacts in both sources — the
+   prior text wraps at the PDF's column width, the current text at its transcription unit
+   boundaries. Segmenting on them produced one useless 49-vs-593 hunk for 2.6.1.
+2. **Latin runs stay whole as tokens.** Character-level comparison split `statins` into `s` +
+   `tatins` and reported the tail as unchanged.
+3. **Equal runs shorter than `MIN_EQUAL_RUN` fold into the surrounding change.** Otherwise a single
+   「合」 or 「表」 shared by two unrelated sentences is reported as unchanged, which reads as a claim
+   that the sentence survived. 2.6.1 goes from 150 shredded hunks to 20.
+
+Case and full/half-width punctuation fold for matching, but both columns are always rendered, so a
+row marked unchanged still shows `Statins` beside `statins`. The only display transform is a line
+break after each full stop; a wholesale replacement otherwise arrives as one unbroken paragraph.
 
 The prior text comes from the three official PDFs via `pdftotext -layout -enc UTF-8`, with the
 trailing page-number line and trailing blank lines dropped; each record carries the source PDF's
