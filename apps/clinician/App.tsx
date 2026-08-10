@@ -5,6 +5,8 @@ import {
   ITEM_DATASET_VERSION,
   ITEM_WARNING,
   NAVIGABLE_DRUG_ITEM_RULE_SECTIONS,
+  PRIOR_RULE_WARNING,
+  compareRuleSectionVersions,
   getDrugItemAnnouncementMembership,
   getNavigableDrugItemRuleSections,
   identifyRuleDrugMasterRecords,
@@ -16,6 +18,7 @@ import {
   type DrugItemMasterLookupResult,
   type DrugItemMasterMatch,
   type NavigableDrugItemRuleSection,
+  type RuleSectionComparison,
   type RuleDrugMasterIdentification,
   type RuleTextLookupResult,
   type RuleTextUnit
@@ -158,6 +161,22 @@ const UI_COPY = Object.freeze({
     ruleUnitTableLabel: "表別：{value}",
     expandRuleUnit: "展開單元 {unitId}（目前已收合）",
     collapseRuleUnit: "收合單元 {unitId}（目前已展開）",
+    ruleComparisonTitle: "新舊制對照（{section}）",
+    expandRuleComparison: "展開新舊制對照（{section}，目前已收合）",
+    collapseRuleComparison: "收合新舊制對照（{section}，目前已展開）",
+    ruleComparisonPriorMeta: "舊制：最後修訂 {revision}；修訂沿革 {history}",
+    ruleComparisonPriorDataset: "舊制資料集：{version}（適用至 {effectiveTo}）",
+    ruleComparisonCurrentDataset: "新制資料集：{version}（{effectiveFrom} 生效，{count} 個單元）",
+    ruleComparisonSourcePdf: "舊制來源 PDF：{name}（{bytes} bytes，SHA-256 {hash}）",
+    ruleComparisonMethod:
+      "以下比對僅就機械擷取之量化條件（療程與追蹤期間、血脂數值門檻）列出兩制差異，未做逐句比對；文字敘述之增刪不在此列，仍須自行閱讀兩制全文。",
+    ruleComparisonRemoved: "僅見於舊制（{count}）",
+    ruleComparisonAdded: "僅見於新制（{count}）",
+    ruleComparisonRetained: "兩制皆有（{count}）",
+    ruleComparisonNone: "本節未擷取到可比對之量化條件。",
+    ruleComparisonPriorTextTitle: "舊制條文全文",
+    expandPriorRuleText: "展開舊制條文全文（目前已收合）",
+    collapsePriorRuleText: "收合舊制條文全文（目前已展開）",
     ruleDrugMasterTitle: "條文中出現之代碼在藥品主檔的記錄（{count} 筆）",
     ruleDrugMasterNoCodes: "本次結果之條文中未出現符合代碼格式之字串。",
     expandRuleDrugMaster: "展開主檔辨識記錄（{count} 筆，目前已收合）",
@@ -275,6 +294,23 @@ const UI_COPY = Object.freeze({
     ruleUnitTableLabel: "Table label: {value}",
     expandRuleUnit: "Expand unit {unitId} (currently collapsed)",
     collapseRuleUnit: "Collapse unit {unitId} (currently expanded)",
+    ruleComparisonTitle: "Prior version compared with current ({section})",
+    expandRuleComparison: "Expand prior/current comparison ({section}, currently collapsed)",
+    collapseRuleComparison: "Collapse prior/current comparison ({section}, currently expanded)",
+    ruleComparisonPriorMeta: "Prior version: last revised {revision}; revision history {history}",
+    ruleComparisonPriorDataset: "Prior dataset: {version} (in force until {effectiveTo})",
+    ruleComparisonCurrentDataset:
+      "Current dataset: {version} (effective {effectiveFrom}, {count} units)",
+    ruleComparisonSourcePdf: "Prior source PDF: {name} ({bytes} bytes, SHA-256 {hash})",
+    ruleComparisonMethod:
+      "This comparison lists only mechanically extracted quantitative terms (treatment and follow-up intervals, lipid value thresholds) that differ between the two versions. Sentences are not aligned and wording changes are not listed, so both full texts still need to be read.",
+    ruleComparisonRemoved: "Only in the prior version ({count})",
+    ruleComparisonAdded: "Only in the current version ({count})",
+    ruleComparisonRetained: "In both versions ({count})",
+    ruleComparisonNone: "No comparable quantitative term was extracted for this section.",
+    ruleComparisonPriorTextTitle: "Prior version, full text",
+    expandPriorRuleText: "Expand prior version full text (currently collapsed)",
+    collapsePriorRuleText: "Collapse prior version full text (currently expanded)",
     ruleDrugMasterTitle: "Drug-master records for codes appearing in the rule text ({count} entries)",
     ruleDrugMasterNoCodes:
       "No strings matching the code format appear in the rule text for this result.",
@@ -1128,6 +1164,9 @@ function RuleLookupResult({
       {result.units.length > 0 ? (
         <RuleDrugMasterIdentificationBlock isDesktop={isDesktop} units={result.units} />
       ) : null}
+      {ruleTextSections.map(({ section }) => (
+        <RuleVersionComparisonBlock key={`comparison:${section}`} section={section} />
+      ))}
       <View style={styles.ruleTextTree}>
         <Text accessibilityRole="header" style={styles.officialRuleTextTitle}>
           {t("officialRuleTextTitle")}
@@ -1141,6 +1180,143 @@ function RuleLookupResult({
         ))}
         {result.units.length === 0 ? <Text style={styles.empty}>{t("noRuleUnits")}</Text> : null}
       </View>
+    </View>
+  );
+}
+
+function ComparedTermList({
+  labelKey,
+  terms
+}: {
+  labelKey: UiMessageKey;
+  terms: RuleSectionComparison["termsOnlyInPrior"];
+}): React.JSX.Element | null {
+  const { language, styles, t } = useUi();
+  if (terms.length === 0) return null;
+  return (
+    <View style={styles.comparisonTermGroup}>
+      <Text style={styles.comparisonTermGroupTitle}>
+        {t(labelKey, { count: String(terms.length) })}
+      </Text>
+      <View style={styles.comparisonTermRow}>
+        {terms.map((term) => (
+          <Text key={`${term.kind}:${term.text}`} style={styles.comparisonTerm}>
+            {/* Chip display only: the PDF's column layout breaks terms across lines, so
+                inner whitespace is collapsed to keep "6-\n8週" from reading as a typo. The
+                authoritative text is the unmodified full text below, and the domain layer
+                returns the term exactly as written. */}
+            {protectedText(language, term.text.replace(/\s+/g, ""))}
+          </Text>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function PriorRuleTextDisclosure({
+  comparison
+}: {
+  comparison: RuleSectionComparison;
+}): React.JSX.Element {
+  const { styles, t } = useUi();
+  const [expanded, setExpanded] = useState(false);
+  const controlKey = expanded ? "collapsePriorRuleText" : "expandPriorRuleText";
+
+  return (
+    <View style={styles.priorRuleTextBlock}>
+      <Pressable
+        accessibilityLabel={t(controlKey)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={() => setExpanded((current) => !current)}
+        style={styles.ruleSectionToggle}
+      >
+        <Text style={styles.comparisonTermGroupTitle}>{t("ruleComparisonPriorTextTitle")}</Text>
+        <Text style={styles.ruleSectionToggleText}>{t(controlKey)}</Text>
+      </Pressable>
+      {expanded ? (
+        <Text style={styles.verbatimText}>{comparison.prior.verbatimText}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+function RuleVersionComparisonBlock({ section }: { section: string }): React.JSX.Element | null {
+  const { language, styles, t } = useUi();
+  const [expanded, setExpanded] = useState(false);
+  const comparison = useMemo(() => compareRuleSectionVersions(section), [section]);
+  if (comparison === undefined) return null;
+
+  const controlKey = expanded ? "collapseRuleComparison" : "expandRuleComparison";
+  const sectionLabel = protectedText(language, section);
+  const hasTerms =
+    comparison.termsOnlyInPrior.length +
+      comparison.termsOnlyInCurrent.length +
+      comparison.termsInBoth.length >
+    0;
+
+  return (
+    <View style={styles.comparisonBlock}>
+      <Pressable
+        accessibilityLabel={t(controlKey, { section: sectionLabel })}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={() => setExpanded((current) => !current)}
+        style={styles.ruleSectionToggle}
+      >
+        <Text style={styles.comparisonTitle}>
+          {t("ruleComparisonTitle", { section: sectionLabel })}
+        </Text>
+        <Text style={styles.ruleSectionToggleText}>
+          {t(controlKey, { section: sectionLabel })}
+        </Text>
+      </Pressable>
+      {expanded ? (
+        <View style={styles.comparisonContent}>
+          <View style={styles.masterItemWarning} accessibilityRole="alert">
+            <Text style={styles.officialWarningTitle}>{t("officialWarningTitle")}</Text>
+            <Text style={styles.officialWarningText}>{PRIOR_RULE_WARNING}</Text>
+            <OfficialOriginalLanguageNote />
+          </View>
+          <Text style={styles.sourceBlockMeta}>
+            {t("ruleComparisonPriorMeta", {
+              revision: protectedText(language, comparison.prior.lastRevisionEffectiveFrom),
+              history: protectedText(language, comparison.prior.revisionDates.join("、"))
+            })}
+          </Text>
+          <Text style={styles.sourceBlockMeta}>
+            {t("ruleComparisonPriorDataset", {
+              version: protectedText(language, comparison.priorDatasetVersion),
+              effectiveTo: protectedText(language, comparison.priorEffectiveTo)
+            })}
+          </Text>
+          <Text style={styles.sourceBlockMeta}>
+            {t("ruleComparisonCurrentDataset", {
+              version: protectedText(language, comparison.currentDatasetVersion),
+              effectiveFrom: protectedText(language, comparison.currentEffectiveFrom),
+              count: String(comparison.currentUnitCount)
+            })}
+          </Text>
+          <Text style={styles.sourceBlockMeta}>
+            {t("ruleComparisonSourcePdf", {
+              name: protectedText(language, comparison.prior.sourcePdfDeclaredName),
+              bytes: protectedText(language, String(comparison.prior.sourcePdfBytes)),
+              hash: protectedText(language, comparison.prior.sourcePdfSha256)
+            })}
+          </Text>
+          <Text style={styles.comparisonMethod}>{t("ruleComparisonMethod")}</Text>
+          {hasTerms ? (
+            <>
+              <ComparedTermList labelKey="ruleComparisonRemoved" terms={comparison.termsOnlyInPrior} />
+              <ComparedTermList labelKey="ruleComparisonAdded" terms={comparison.termsOnlyInCurrent} />
+              <ComparedTermList labelKey="ruleComparisonRetained" terms={comparison.termsInBoth} />
+            </>
+          ) : (
+            <Text style={styles.empty}>{t("ruleComparisonNone")}</Text>
+          )}
+          <PriorRuleTextDisclosure comparison={comparison} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1828,6 +2004,58 @@ function createStyles(theme: ThemeTokens) {
       color: theme.color.textStrong,
       fontFamily: "monospace",
       lineHeight: 22
+    },
+    comparisonBlock: {
+      backgroundColor: theme.color.surface,
+      borderColor: theme.color.cardBorder,
+      borderRadius: 10,
+      borderWidth: 1,
+      gap: 8,
+      marginTop: 4,
+      padding: 14
+    },
+    comparisonTitle: {
+      color: theme.color.textStrong,
+      flexShrink: 1,
+      fontSize: 17,
+      fontWeight: "800",
+      lineHeight: 24
+    },
+    comparisonContent: { gap: 9 },
+    comparisonMethod: {
+      color: theme.color.textMuted,
+      fontSize: 14,
+      lineHeight: 20
+    },
+    comparisonTermGroup: { gap: 6 },
+    comparisonTermGroupTitle: {
+      color: theme.color.textStrong,
+      flexShrink: 1,
+      fontWeight: "700",
+      lineHeight: 22
+    },
+    comparisonTermRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6
+    },
+    comparisonTerm: {
+      backgroundColor: theme.color.tagSurface,
+      borderColor: theme.color.subtleDivider,
+      borderRadius: 6,
+      borderWidth: 1,
+      color: theme.color.textStrong,
+      fontFamily: "monospace",
+      lineHeight: 20,
+      paddingHorizontal: 8,
+      paddingVertical: 3
+    },
+    priorRuleTextBlock: {
+      borderColor: theme.color.subtleDivider,
+      borderRadius: 8,
+      borderWidth: 1,
+      gap: 8,
+      padding: 12
     },
     ruleDrugIdentificationBlock: {
       backgroundColor: theme.color.surface,
