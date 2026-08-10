@@ -8,7 +8,7 @@ A lookup tool for Taiwan NHI lipid-lowering drugs, for clinicians. It answers fo
 
 1. Which drugs were affected by the 2026-09-01 coverage-rule announcement, and which were not?
 2. What is the price for each, affected or not?
-3. What changed between the old 2.6.1–2.6.3 coverage rules and the new ones? *(not built yet — see "Open work")*
+3. What changed between the old 2.6.1–2.6.3 coverage rules and the new ones?
 4. All prices come from NHI's own published data, never invented.
 
 It is a **static site**. No server, no API, no database, no accounts, no patient data. Everything runs
@@ -55,6 +55,7 @@ publications, and `data/governed/` holds the sources they were generated from.
 | `nhi-drug-items-2026-08-07-r2` | Item master: 607 records, 4,048 price periods |
 | `nhi-lipid-2026-09-01-r1` | The 2026-09-01 announcement: 187 changed items, before/after prices |
 | `nhi-lipid-rules-structured-2026-09-01-r1` | Rules 2.6.1–2.6.3 as 67 verbatim units |
+| `nhi-lipid-rules-prior-2026-09-01-r1` | The same three sections as in force before 2026-09-01, one text each |
 
 `docs/source-register/` records where each source came from and its SHA-256. That is what backs the
 claim that prices are real rather than invented — keep it accurate if datasets change.
@@ -88,11 +89,22 @@ These exist because breaking them shows a clinician wrong drug information. They
 When changing lookup behavior, add the negative test alongside it (no auto-correct, no auto-select,
 fails closed). That is how these stay true.
 
-## Open work
+## Comparing rule versions
 
-Requirement 3 — diffing old rules against new — is not built. The old 2.6.1–2.6.3 PDFs are recorded
-in `docs/source-register/rule-2.6.*-prior-version-full-text.md` with their hashes, but only as
-provenance; no dataset was generated from them, and the rules engine currently holds one version
-only. The Markdown of those rules supplied earlier is **not** verbatim (it adds words, alters
-punctuation, and carries editorial comments), so a diff built on it would report transcription noise
-as rule changes. Transcribing from the PDFs is the prerequisite.
+`compareRuleSectionVersions(section)` puts the prior and current text side by side and lists
+**mechanically extracted quantitative terms** — treatment/follow-up intervals and lipid thresholds —
+that appear in only one version. It deliberately does not align sentences: the prior 2.6.1 is 2,034
+characters against 8,045 in the current one, so any alignment would be a guess, and a wrong guess
+reads as a rule change that did not happen. Wording changes are therefore not listed, and the UI
+says so.
+
+Whitespace, dash variants and full/half-width comparison operators are folded when matching, so the
+PDF's line-broken `6-\n8週` and the current `6~8 週` compare equal. Display always uses the source
+text.
+
+The prior text comes from the three official PDFs via `pdftotext -layout -enc UTF-8`, with the
+trailing page-number line and trailing blank lines dropped; each record carries the source PDF's
+SHA-256, which matches `docs/source-register/rule-2.6.*-prior-version-full-text.md`. A Markdown
+rendering of those rules was also supplied but is **not** verbatim — it adds words (2.6.2 gains
+「限用於」), moves amendment markers across sentence boundaries, and carries an editorial note
+asserting what changed. It is not a source; use the PDFs.

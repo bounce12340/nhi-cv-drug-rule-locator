@@ -1,0 +1,23 @@
+{
+  "schema": "storage-manifest/v1",
+  "datasetVersion": "nhi-lipid-rules-prior-2026-09-01-r1",
+  "description": "藥品給付規定 2.6.1-2.6.3 於 2026-09-01 修訂生效前之版本。",
+  "extraction": {
+    "tool": "pdftotext -layout -enc UTF-8 (poppler)",
+    "normalization": "移除結尾之頁碼行與結尾空行;其餘位元組未改。"
+  },
+  "sourceRegisterRefs": [
+    "docs/source-register/rule-2.6.1-prior-version-full-text.md",
+    "docs/source-register/rule-2.6.2-prior-version-full-text.md",
+    "docs/source-register/rule-2.6.3-prior-version-full-text.md"
+  ],
+  "effectiveTo": "2026-08-31",
+  "files": [
+    {
+      "declaredName": "rules-prior.jsonl",
+      "sha256": "d913287e345051ac6b19c29df690b61b16c39d8c4a18082ceeb1c3475f162cc2",
+      "bytes": 5337
+    }
+  ],
+  "revoked": false
+}
