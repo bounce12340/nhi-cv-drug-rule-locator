@@ -116,9 +116,12 @@ describe("rule-text drug-master identification UI", () => {
     const resultStart = appSource.indexOf("function RuleLookupResult");
     const resultSource = appSource.slice(resultStart, blockStart);
     expect(cardSource).toContain(">{unit.verbatimText}</Text>");
-    expect(cardSource).not.toContain("expanded");
-    expect(resultSource.indexOf("result.units.map((unit)")).toBeLessThan(
-      resultSource.indexOf("<RuleDrugMasterIdentificationBlock")
+    expect(cardSource).toContain("accessibilityState={{ expanded }}");
+    expect(cardSource.indexOf("{expanded ? (")).toBeLessThan(
+      cardSource.indexOf(">{unit.verbatimText}</Text>")
+    );
+    expect(resultSource.indexOf("<RuleDrugMasterIdentificationBlock")).toBeLessThan(
+      resultSource.indexOf("<RuleTextSectionNode")
     );
   });
 

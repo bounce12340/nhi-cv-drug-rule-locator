@@ -54,6 +54,10 @@ import {
   type ThemeTokens
 } from "./src/ui-preferences";
 import { resolveDrugReviewPresentation } from "./src/drug-review-presentation";
+import {
+  getRuleUnitStructuralMetadata,
+  groupRuleTextUnitsBySection
+} from "./src/rule-text-tree";
 
 type LookupMode = "rules" | "drugItems";
 
@@ -140,9 +144,20 @@ const UI_COPY = Object.freeze({
     noValidatedItems: "該查詢日期沒有已驗證資料所涵蓋的品項期別。",
     noFilteredItems: "此結果篩選目前沒有品項。",
     ruleResultMetadata: "資料集版本：{version} · 生效日：{date}",
+    ruleSourceTag: "來源標記：{value}",
     manualReviewRule: "此結果需要人工確認；請比對健保署公告原文。",
     viewSectionItems: "查看本章節品項（{section}）",
     noRuleUnits: "此查詢未取得已驗證的逐字單元。",
+    officialRuleTextTitle: "官方條文",
+    ruleTextSectionTitle: "章節 {section}（{count} 個單元）",
+    expandRuleTextSection: "展開章節 {section}（目前已收合）",
+    collapseRuleTextSection: "收合章節 {section}（目前已展開）",
+    expandAllRuleUnits: "展開章節 {section} 的全部 {count} 個單元",
+    collapseAllRuleUnits: "收合章節 {section} 的全部 {count} 個單元",
+    ruleUnitType: "類型：{value}",
+    ruleUnitTableLabel: "表別：{value}",
+    expandRuleUnit: "展開單元 {unitId}（目前已收合）",
+    collapseRuleUnit: "收合單元 {unitId}（目前已展開）",
     ruleDrugMasterTitle: "條文中出現之代碼在藥品主檔的記錄（{count} 筆）",
     ruleDrugMasterNoCodes: "本次結果之條文中未出現符合代碼格式之字串。",
     expandRuleDrugMaster: "展開主檔辨識記錄（{count} 筆，目前已收合）",
@@ -246,9 +261,20 @@ const UI_COPY = Object.freeze({
     noValidatedItems: "No item period was found in the verified data for this lookup date.",
     noFilteredItems: "No items match the current factual filter.",
     ruleResultMetadata: "Dataset version: {version} · Effective date: {date}",
+    ruleSourceTag: "Source tag: {value}",
     manualReviewRule: "This result requires manual review; compare it with the original NHI announcement.",
     viewSectionItems: "View items in this section ({section})",
     noRuleUnits: "No verified verbatim unit was found for this query.",
+    officialRuleTextTitle: "Official rule text",
+    ruleTextSectionTitle: "Section {section} ({count} units)",
+    expandRuleTextSection: "Expand section {section} (currently collapsed)",
+    collapseRuleTextSection: "Collapse section {section} (currently expanded)",
+    expandAllRuleUnits: "Expand all {count} units in section {section}",
+    collapseAllRuleUnits: "Collapse all {count} units in section {section}",
+    ruleUnitType: "Type: {value}",
+    ruleUnitTableLabel: "Table label: {value}",
+    expandRuleUnit: "Expand unit {unitId} (currently collapsed)",
+    collapseRuleUnit: "Collapse unit {unitId} (currently expanded)",
     ruleDrugMasterTitle: "Drug-master records for codes appearing in the rule text ({count} entries)",
     ruleDrugMasterNoCodes:
       "No strings matching the code format appear in the rule text for this result.",
@@ -342,18 +368,140 @@ function OfficialOriginalLanguageNote({
   );
 }
 
-function RuleUnitCard({ unit }: { unit: RuleTextUnit }): React.JSX.Element {
+function RuleUnitCard({
+  unit,
+  expanded,
+  onToggle
+}: {
+  unit: RuleTextUnit;
+  expanded: boolean;
+  onToggle: () => void;
+}): React.JSX.Element {
   const { language, styles, t } = useUi();
-  const clausePath =
-    unit.clausePath.length > 0
-      ? protectedText(language, unit.clausePath.join(" › "))
-      : t("rootClause");
+  const metadata = getRuleUnitStructuralMetadata(unit);
+  const unitId = protectedText(language, metadata.unitId);
+  const controlKey = expanded ? "collapseRuleUnit" : "expandRuleUnit";
 
   return (
-    <View style={styles.ruleCard} accessibilityRole="summary">
-      <Text style={styles.ruleUnitId}>{protectedText(language, unit.unitId)}</Text>
-      <Text style={styles.rulePath}>{t("clausePath", { value: clausePath })}</Text>
-      <Text style={styles.verbatimText}>{unit.verbatimText}</Text>
+    <View style={styles.ruleCard}>
+      <Pressable
+        accessibilityLabel={t(controlKey, { unitId })}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={onToggle}
+        style={styles.ruleUnitToggle}
+      >
+        <View style={styles.ruleUnitMetadata}>
+          <Text style={styles.ruleUnitId}>{unitId}</Text>
+          <Text style={styles.rulePath}>
+            {t("ruleUnitType", { value: protectedText(language, metadata.unitType) })}
+          </Text>
+          <Text style={styles.rulePath}>
+            {t("ruleUnitTableLabel", {
+              value: protectedText(language, metadata.tableLabel)
+            })}
+          </Text>
+          {metadata.clausePath.length > 0 ? (
+            <Text style={styles.rulePath}>
+              {t("clausePath", {
+                value: protectedText(language, metadata.clausePath.join(" › "))
+              })}
+            </Text>
+          ) : null}
+        </View>
+        <Text style={styles.ruleUnitToggleText}>{t(controlKey, { unitId })}</Text>
+      </Pressable>
+      {expanded ? (
+        <Text style={styles.verbatimText}>{unit.verbatimText}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+function RuleTextSectionNode({
+  section,
+  units
+}: {
+  section: string;
+  units: readonly RuleTextUnit[];
+}): React.JSX.Element {
+  const { language, styles, t } = useUi();
+  const [expanded, setExpanded] = useState(false);
+  const [expandedUnitIds, setExpandedUnitIds] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  const sectionLabel = protectedText(language, section);
+  const count = String(units.length);
+  const sectionControlKey = expanded ? "collapseRuleTextSection" : "expandRuleTextSection";
+
+  function toggleUnit(unitId: string): void {
+    setExpandedUnitIds((current) => {
+      const next = new Set(current);
+      if (next.has(unitId)) next.delete(unitId);
+      else next.add(unitId);
+      return next;
+    });
+  }
+
+  function expandAllUnits(): void {
+    setExpanded(true);
+    setExpandedUnitIds(new Set(units.map((unit) => unit.unitId)));
+  }
+
+  function collapseAllUnits(): void {
+    setExpandedUnitIds(new Set());
+  }
+
+  return (
+    <View style={styles.ruleSectionNode}>
+      <Pressable
+        accessibilityLabel={t(sectionControlKey, { section: sectionLabel })}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={() => setExpanded((current) => !current)}
+        style={styles.ruleSectionToggle}
+      >
+        <Text accessibilityRole="header" style={styles.ruleSectionTitle}>
+          {t("ruleTextSectionTitle", { section: sectionLabel, count })}
+        </Text>
+        <Text style={styles.ruleSectionToggleText}>
+          {t(sectionControlKey, { section: sectionLabel })}
+        </Text>
+      </Pressable>
+      <View style={styles.ruleSectionBulkControls}>
+        <Pressable
+          accessibilityLabel={t("expandAllRuleUnits", { section: sectionLabel, count })}
+          accessibilityRole="button"
+          onPress={expandAllUnits}
+          style={styles.ruleSectionBulkButton}
+        >
+          <Text style={styles.ruleSectionBulkButtonText}>
+            {t("expandAllRuleUnits", { section: sectionLabel, count })}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityLabel={t("collapseAllRuleUnits", { section: sectionLabel, count })}
+          accessibilityRole="button"
+          onPress={collapseAllUnits}
+          style={styles.ruleSectionBulkButton}
+        >
+          <Text style={styles.ruleSectionBulkButtonText}>
+            {t("collapseAllRuleUnits", { section: sectionLabel, count })}
+          </Text>
+        </Pressable>
+      </View>
+      {expanded ? (
+        <View style={styles.ruleSectionUnits}>
+          {units.map((unit) => (
+            <RuleUnitCard
+              expanded={expandedUnitIds.has(unit.unitId)}
+              key={unit.unitId}
+              onToggle={() => toggleUnit(unit.unitId)}
+              unit={unit}
+            />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -941,6 +1089,7 @@ function RuleLookupResult({
   const resultSections = NAVIGABLE_DRUG_ITEM_RULE_SECTIONS.filter((section) =>
     result.units.some((unit) => unit.section === section)
   );
+  const ruleTextSections = groupRuleTextUnitsBySection(result.units);
 
   return (
     <View style={styles.results}>
@@ -958,6 +1107,9 @@ function RuleLookupResult({
           date: protectedText(language, result.effectiveFrom)
         })}
       </Text>
+      <Text style={styles.resultText}>
+        {t("ruleSourceTag", { value: protectedText(language, result.sourceTag) })}
+      </Text>
       {result.manualReviewRequired ? (
         <Text style={styles.review}>{t("manualReviewRule")}</Text>
       ) : null}
@@ -973,13 +1125,22 @@ function RuleLookupResult({
           </Text>
         </Pressable>
       ))}
-      {result.units.map((unit) => (
-        <RuleUnitCard key={unit.unitId} unit={unit} />
-      ))}
-      {result.units.length === 0 ? <Text style={styles.empty}>{t("noRuleUnits")}</Text> : null}
       {result.units.length > 0 ? (
         <RuleDrugMasterIdentificationBlock isDesktop={isDesktop} units={result.units} />
       ) : null}
+      <View style={styles.ruleTextTree}>
+        <Text accessibilityRole="header" style={styles.officialRuleTextTitle}>
+          {t("officialRuleTextTitle")}
+        </Text>
+        {ruleTextSections.map(({ section, units }) => (
+          <RuleTextSectionNode
+            key={`${section}:${units.map((unit) => unit.unitId).join(",")}`}
+            section={section}
+            units={units}
+          />
+        ))}
+        {result.units.length === 0 ? <Text style={styles.empty}>{t("noRuleUnits")}</Text> : null}
+      </View>
     </View>
   );
 }
@@ -1591,6 +1752,53 @@ function createStyles(theme: ThemeTokens) {
       fontWeight: "700",
       textDecorationLine: "underline"
     },
+    ruleTextTree: { gap: 10, marginTop: 4 },
+    officialRuleTextTitle: {
+      color: theme.color.textStrong,
+      fontSize: 18,
+      fontWeight: "800",
+      lineHeight: 25
+    },
+    ruleSectionNode: {
+      backgroundColor: theme.color.surface,
+      borderColor: theme.color.cardBorder,
+      borderRadius: 10,
+      borderWidth: 1,
+      gap: 8,
+      padding: 12
+    },
+    ruleSectionToggle: {
+      alignItems: "center",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      justifyContent: "space-between",
+      minHeight: 44
+    },
+    ruleSectionTitle: {
+      color: theme.color.textStrong,
+      flexShrink: 1,
+      fontSize: 17,
+      fontWeight: "800",
+      lineHeight: 24
+    },
+    ruleSectionToggleText: {
+      color: theme.color.linkText,
+      flexShrink: 1,
+      fontWeight: "700",
+      lineHeight: 20
+    },
+    ruleSectionBulkControls: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    ruleSectionBulkButton: {
+      borderColor: theme.color.controlBorder,
+      borderRadius: 8,
+      borderWidth: 1,
+      justifyContent: "center",
+      minHeight: 44,
+      paddingHorizontal: 12
+    },
+    ruleSectionBulkButtonText: { color: theme.color.linkText, fontWeight: "700", lineHeight: 20 },
+    ruleSectionUnits: { gap: 8 },
     ruleCard: {
       backgroundColor: theme.color.surface,
       borderColor: theme.color.divider,
@@ -1599,8 +1807,23 @@ function createStyles(theme: ThemeTokens) {
       gap: 8,
       padding: 14
     },
+    ruleUnitToggle: {
+      alignItems: "center",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      justifyContent: "space-between",
+      minHeight: 44
+    },
+    ruleUnitMetadata: { flexShrink: 1, gap: 3 },
     ruleUnitId: { color: theme.color.detailText, fontFamily: "monospace", fontWeight: "800" },
     rulePath: { color: theme.color.textMuted, fontSize: 13 },
+    ruleUnitToggleText: {
+      color: theme.color.linkText,
+      flexShrink: 1,
+      fontWeight: "700",
+      lineHeight: 20
+    },
     verbatimText: {
       color: theme.color.textStrong,
       fontFamily: "monospace",
