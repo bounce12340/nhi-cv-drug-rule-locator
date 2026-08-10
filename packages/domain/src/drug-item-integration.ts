@@ -9,9 +9,8 @@ import {
 
 export const DRUG_ITEM_ANNOUNCEMENT_FILTERS = Object.freeze([
   "all",
-  "changed",
-  "trial",
-  "tableTwo"
+  "priceChanged",
+  "priceUnchanged"
 ] as const);
 
 export type DrugItemAnnouncementFilter =
@@ -27,33 +26,23 @@ export type NavigableDrugItemRuleSection =
   (typeof NAVIGABLE_DRUG_ITEM_RULE_SECTIONS)[number];
 
 export interface DrugItemAnnouncementMembership {
-  readonly changed: boolean;
-  readonly trial: boolean;
-  readonly tableTwo: boolean;
+  /** The 2026-09-01 announcement lists a payment price for this item, before and after. */
+  readonly priceChanged: boolean;
 }
 
 const EMPTY_MEMBERSHIP: DrugItemAnnouncementMembership = Object.freeze({
-  changed: false,
-  trial: false,
-  tableTwo: false
+  priceChanged: false
 });
 const NO_MASTER_RECORDS: readonly DrugItemMasterRecord[] = Object.freeze([]);
 const announcementItemByCode = new Map(ITEM_RECORDS.map((item) => [item.nhiCode, item]));
-const changedCodes = new Set(
+// Measured against the dataset: 57 of the 187 announcement records carry both a
+// before and an after price, and in every one of those 57 the two differ. The
+// remaining 130 carry no price at all — they appear in the announcement for
+// classification reasons, not because their price moved.
+const priceChangedCodes = new Set(
   ITEM_RECORDS.filter(
-    (item) =>
-      item.priceBefore !== undefined ||
-      item.priceAfter !== undefined ||
-      item.effectiveDate !== undefined
+    (item) => item.priceBefore !== undefined && item.priceAfter !== undefined
   ).map((item) => item.nhiCode)
-);
-const trialCodes = new Set(
-  ITEM_RECORDS.filter((item) => item.exceptionNote === "3個月").map((item) => item.nhiCode)
-);
-const tableTwoCodes = new Set(
-  ITEM_RECORDS.filter((item) => item.tableClassification === "表二").map(
-    (item) => item.nhiCode
-  )
 );
 
 const recordsBySection = new Map<NavigableDrugItemRuleSection, readonly DrugItemMasterRecord[]>(
@@ -78,11 +67,7 @@ export function getDrugItemAnnouncementMembership(
   nhiCode: string
 ): DrugItemAnnouncementMembership {
   if (!announcementItemByCode.has(nhiCode)) return EMPTY_MEMBERSHIP;
-  return Object.freeze({
-    changed: changedCodes.has(nhiCode),
-    trial: trialCodes.has(nhiCode),
-    tableTwo: tableTwoCodes.has(nhiCode)
-  });
+  return Object.freeze({ priceChanged: priceChangedCodes.has(nhiCode) });
 }
 
 export function matchesDrugItemAnnouncementFilter(
@@ -90,7 +75,8 @@ export function matchesDrugItemAnnouncementFilter(
   filter: DrugItemAnnouncementFilter
 ): boolean {
   if (filter === "all") return true;
-  return getDrugItemAnnouncementMembership(nhiCode)[filter];
+  const changed = getDrugItemAnnouncementMembership(nhiCode).priceChanged;
+  return filter === "priceChanged" ? changed : !changed;
 }
 
 /** Compares comma-delimited source tokens exactly, including their final source punctuation. */

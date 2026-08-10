@@ -15,9 +15,16 @@ describe("consolidated clinician lookup UI", () => {
     expect(source).not.toContain("藥品品項查詢");
   });
 
-  it("shows the factual tags and all four result filters", () => {
-    for (const label of ["全部", "本次公告異動", "三個月試用清單", "表二品項"]) {
+  it("offers exactly three result filters, split by whether the price moved", () => {
+    for (const label of ["全部", "本次調價", "本次未調價"]) {
       expect(source).toContain(label);
+    }
+    // The 3-month and Table 2 lists are classification facts, not price changes.
+    // They were removed as filters because 186 of the 187 announcement rows are
+    // classified that way while only 57 actually changed price, so filtering on
+    // them answered a different question from the one the labels implied.
+    for (const removed of ["三個月試用清單", "表二品項", "本次公告異動"]) {
+      expect(source).not.toContain(removed);
     }
   });
 

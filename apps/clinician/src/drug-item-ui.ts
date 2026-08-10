@@ -58,7 +58,7 @@ export function resolveAnnouncementPriceComparison(
   nhiCode: string
 ): AnnouncementPriceComparison | undefined {
   const source = resolveAnnouncementItemSource(nhiCode);
-  if (source.status !== "FOUND" || !source.membership.changed) return undefined;
+  if (source.status !== "FOUND" || !source.membership.priceChanged) return undefined;
 
   const { priceBefore, priceAfter, effectiveDate, coverageRule } = source.item;
   if (
@@ -77,6 +77,6 @@ export function shouldShowMasterSnapshotNotice(asOfDate: string, nhiCode: string
   return (
     /^\d{4}-\d{2}-\d{2}$/.test(asOfDate) &&
     asOfDate >= ITEM_DATASET_EFFECTIVE_FROM &&
-    getDrugItemAnnouncementMembership(nhiCode).changed
+    getDrugItemAnnouncementMembership(nhiCode).priceChanged
   );
 }
