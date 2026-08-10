@@ -18,6 +18,7 @@ import {
   type DrugItemMasterLookupResult,
   type DrugItemMasterMatch,
   type NavigableDrugItemRuleSection,
+  type RuleDiffRow,
   type RuleSectionComparison,
   type RuleDrugMasterIdentification,
   type RuleTextLookupResult,
@@ -160,6 +161,17 @@ const UI_COPY = Object.freeze({
     ruleUnitTableLabel: "表別：{value}",
     expandRuleUnit: "展開單元 {unitId}（目前已收合）",
     collapseRuleUnit: "收合單元 {unitId}（目前已展開）",
+    ruleDiffTitle: "新舊條文逐段對照",
+    ruleDiffPriorColumn: "舊制（適用至 {effectiveTo}）",
+    ruleDiffCurrentColumn: "新制（{effectiveFrom} 生效）",
+    ruleDiffKindUnchanged: "未變更",
+    ruleDiffKindRemoved: "刪除",
+    ruleDiffKindAdded: "新增",
+    ruleDiffKindReplaced: "改寫",
+    ruleDiffStats: "舊制共 {priorTokens} 個字元單位，其中 {unchanged} 個在新制中保留；新制另有 {added} 個為新增。",
+    ruleDiffMethod:
+      "本表以最長共同子序列逐字元對齊兩版條文，並抑制過短的偶然相符。對齊為演算法結果，不是法律判讀：同一列並排的刪除與新增，代表兩者在比對結果中相鄰，不代表主管機關是把左邊改寫成右邊。比對時忽略換行（兩份來源的換行皆為排版產物），本表另於句號後重新斷行以利閱讀，並將英文大小寫與全形半形標點視為相同，因此標示「未變更」的兩欄仍可能有大小寫或標點差異，兩欄並列即可看出。條文原文未經修改，另存於上方舊制全文與下方官方條文。",
+    ruleComparisonTermsTitle: "量化條件摘要",
     ruleComparisonTitle: "新舊制對照（{section}）",
     expandRuleComparison: "展開新舊制對照（{section}，目前已收合）",
     collapseRuleComparison: "收合新舊制對照（{section}，目前已展開）",
@@ -292,6 +304,18 @@ const UI_COPY = Object.freeze({
     ruleUnitTableLabel: "Table label: {value}",
     expandRuleUnit: "Expand unit {unitId} (currently collapsed)",
     collapseRuleUnit: "Collapse unit {unitId} (currently expanded)",
+    ruleDiffTitle: "Prior and current text, segment by segment",
+    ruleDiffPriorColumn: "Prior (in force until {effectiveTo})",
+    ruleDiffCurrentColumn: "Current (effective {effectiveFrom})",
+    ruleDiffKindUnchanged: "Unchanged",
+    ruleDiffKindRemoved: "Removed",
+    ruleDiffKindAdded: "Added",
+    ruleDiffKindReplaced: "Rewritten",
+    ruleDiffStats:
+      "The prior version has {priorTokens} character units, {unchanged} of which survive in the current version; the current version adds a further {added}.",
+    ruleDiffMethod:
+      "This table aligns the two versions with a longest-common-subsequence over characters and suppresses coincidental short matches. The alignment is an algorithm result, not a legal reading: a removal and an addition on the same row are adjacent in the comparison, which does not mean the regulator rewrote the left into the right. Line breaks are ignored (they are layout artifacts in both sources) and this table re-wraps after each full stop for readability and letter case and full/half-width punctuation are treated as equal, so a row marked unchanged may still differ in case or punctuation — both columns are shown so that difference stays visible. Neither official text is modified; both remain above and below in full.",
+    ruleComparisonTermsTitle: "Quantitative terms at a glance",
     ruleComparisonTitle: "Prior version compared with current ({section})",
     expandRuleComparison: "Expand prior/current comparison ({section}, currently collapsed)",
     collapseRuleComparison: "Collapse prior/current comparison ({section}, currently expanded)",
@@ -1159,7 +1183,11 @@ function RuleLookupResult({
         <RuleDrugMasterIdentificationBlock isDesktop={isDesktop} units={result.units} />
       ) : null}
       {ruleTextSections.map(({ section }) => (
-        <RuleVersionComparisonBlock key={`comparison:${section}`} section={section} />
+        <RuleVersionComparisonBlock
+          isDesktop={isDesktop}
+          key={`comparison:${section}`}
+          section={section}
+        />
       ))}
       <View style={styles.ruleTextTree}>
         <Text accessibilityRole="header" style={styles.officialRuleTextTitle}>
@@ -1174,6 +1202,83 @@ function RuleLookupResult({
         ))}
         {result.units.length === 0 ? <Text style={styles.empty}>{t("noRuleUnits")}</Text> : null}
       </View>
+    </View>
+  );
+}
+
+const ruleDiffKindKeys = Object.freeze({
+  unchanged: "ruleDiffKindUnchanged",
+  removed: "ruleDiffKindRemoved",
+  added: "ruleDiffKindAdded",
+  replaced: "ruleDiffKindReplaced"
+} as const satisfies Readonly<Record<RuleDiffRow["kind"], UiMessageKey>>);
+
+/**
+ * Display-only rewrap. Both sources' own line breaks are layout artifacts and were
+ * dropped before comparison, so a wholesale replacement arrives as one unbroken
+ * paragraph. Breaking after a full stop restores readability without changing a
+ * character; the unmodified text stays available above and below.
+ */
+function rewrapForReading(text: string): string {
+  return text.replace(/。(?!$)/g, "。\n");
+}
+
+function RuleDiffTable({
+  comparison,
+  isDesktop
+}: {
+  comparison: RuleSectionComparison;
+  isDesktop: boolean;
+}): React.JSX.Element {
+  const { language, styles, t } = useUi();
+  const { diff } = comparison;
+
+  return (
+    <View style={styles.diffBlock}>
+      <Text accessibilityRole="header" style={styles.comparisonTermGroupTitle}>
+        {t("ruleDiffTitle")}
+      </Text>
+      <Text style={styles.comparisonMethod}>
+        {t("ruleDiffStats", {
+          priorTokens: protectedText(language, String(diff.priorTokens)),
+          unchanged: protectedText(language, String(diff.unchangedTokens)),
+          added: protectedText(language, String(diff.addedTokens))
+        })}
+      </Text>
+      <View style={[styles.diffRow, isDesktop ? styles.diffRowDesktop : null]}>
+        <Text style={[styles.diffColumnHeader, isDesktop ? styles.diffCellDesktop : null]}>
+          {t("ruleDiffPriorColumn", {
+            effectiveTo: protectedText(language, comparison.priorEffectiveTo)
+          })}
+        </Text>
+        <Text style={[styles.diffColumnHeader, isDesktop ? styles.diffCellDesktop : null]}>
+          {t("ruleDiffCurrentColumn", {
+            effectiveFrom: protectedText(language, comparison.currentEffectiveFrom)
+          })}
+        </Text>
+      </View>
+      {diff.rows.map((row, index) => (
+        <View accessibilityLabel={t(ruleDiffKindKeys[row.kind])} key={`${row.kind}:${index}`} style={styles.diffRowGroup}>
+          <Text style={styles.diffKindLabel}>{t(ruleDiffKindKeys[row.kind])}</Text>
+          <View style={[styles.diffRow, isDesktop ? styles.diffRowDesktop : null]}>
+          <View style={[styles.diffCell, isDesktop ? styles.diffCellDesktop : null]}>
+            {row.prior.length > 0 ? (
+              <Text style={[styles.diffText, row.kind === "unchanged" ? null : styles.diffRemoved]}>
+                {rewrapForReading(row.prior)}
+              </Text>
+            ) : null}
+          </View>
+          <View style={[styles.diffCell, isDesktop ? styles.diffCellDesktop : null]}>
+            {row.current.length > 0 ? (
+              <Text style={[styles.diffText, row.kind === "unchanged" ? null : styles.diffAdded]}>
+                {rewrapForReading(row.current)}
+              </Text>
+            ) : null}
+          </View>
+          </View>
+        </View>
+      ))}
+      <Text style={styles.comparisonMethod}>{t("ruleDiffMethod")}</Text>
     </View>
   );
 }
@@ -1235,7 +1340,13 @@ function PriorRuleTextDisclosure({
   );
 }
 
-function RuleVersionComparisonBlock({ section }: { section: string }): React.JSX.Element | null {
+function RuleVersionComparisonBlock({
+  section,
+  isDesktop
+}: {
+  section: string;
+  isDesktop: boolean;
+}): React.JSX.Element | null {
   const { language, styles, t } = useUi();
   const [expanded, setExpanded] = useState(false);
   const comparison = useMemo(() => compareRuleSectionVersions(section), [section]);
@@ -1297,6 +1408,10 @@ function RuleVersionComparisonBlock({ section }: { section: string }): React.JSX
               bytes: protectedText(language, String(comparison.prior.sourcePdfBytes)),
               hash: protectedText(language, comparison.prior.sourcePdfSha256)
             })}
+          </Text>
+          <RuleDiffTable comparison={comparison} isDesktop={isDesktop} />
+          <Text accessibilityRole="header" style={styles.comparisonTermGroupTitle}>
+            {t("ruleComparisonTermsTitle")}
           </Text>
           <Text style={styles.comparisonMethod}>{t("ruleComparisonMethod")}</Text>
           {hasTerms ? (
@@ -1998,6 +2113,49 @@ function createStyles(theme: ThemeTokens) {
       color: theme.color.textStrong,
       fontFamily: "monospace",
       lineHeight: 22
+    },
+    diffBlock: {
+      borderColor: theme.color.subtleDivider,
+      borderRadius: 8,
+      borderWidth: 1,
+      gap: 8,
+      padding: 12
+    },
+    diffRowGroup: {
+      borderTopColor: theme.color.rowDivider,
+      borderTopWidth: 1,
+      gap: 4,
+      paddingTop: 8
+    },
+    diffRow: { gap: 6 },
+    diffRowDesktop: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
+    diffCell: { flexShrink: 1, gap: 4 },
+    diffCellDesktop: { flexBasis: 0, flexGrow: 1 },
+    diffColumnHeader: {
+      color: theme.color.textMuted,
+      flexShrink: 1,
+      fontSize: 13,
+      fontWeight: "800",
+      lineHeight: 18
+    },
+    diffKindLabel: {
+      color: theme.color.textMuted,
+      fontSize: 12,
+      fontWeight: "700",
+      lineHeight: 16
+    },
+    diffText: {
+      color: theme.color.textStrong,
+      fontSize: 15,
+      lineHeight: 24
+    },
+    diffRemoved: {
+      backgroundColor: theme.color.reviewSurface,
+      color: theme.color.reviewText
+    },
+    diffAdded: {
+      backgroundColor: theme.color.priceSurface,
+      color: theme.color.priceText
     },
     comparisonBlock: {
       backgroundColor: theme.color.surface,

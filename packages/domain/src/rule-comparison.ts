@@ -4,6 +4,7 @@ import {
   PRIOR_RULE_SECTIONS,
   type PriorRuleSectionRecord
 } from "./generated/rules-prior";
+import { diffRuleSectionText, type RuleDiffSummary } from "./rule-diff";
 import {
   RULE_TEXT_DATASET_VERSION,
   RULE_TEXT_EFFECTIVE_FROM,
@@ -17,11 +18,10 @@ export const PRIOR_RULE_WARNING =
   "官方 PDF 之文字擷取(2026-09-01 修訂生效前之版本);本工具非健保署系統,查詢結果不可作為申報依據,實際規定以健保署公告為準。" as const;
 
 /**
- * Terms compared between versions. Each is a mechanical pattern over the text —
- * no judgement about which provisions matter, and no attempt to align sentences.
- * Sentence-level alignment between a 2,034-character prior section and an
- * 8,045-character current one would be a guess, and a wrong guess reads as a
- * rule change that did not happen.
+ * A quick summary of the numbers that moved, sitting above the full token-level
+ * diff. Each is a mechanical pattern over the text — no judgement about which
+ * provisions matter. It answers "what thresholds changed" at a glance; `diff`
+ * answers "what does the provision now say".
  */
 const COMPARED_TERM_KINDS = [
   {
@@ -56,6 +56,8 @@ export interface RuleSectionComparison {
   readonly termsOnlyInCurrent: readonly ComparedTerm[];
   /** Present in both — listed so an empty change list is distinguishable from an empty section. */
   readonly termsInBoth: readonly ComparedTerm[];
+  /** Token-level side-by-side comparison. Derived view; see rule-diff.ts. */
+  readonly diff: RuleDiffSummary;
 }
 
 /**
@@ -128,6 +130,7 @@ export function compareRuleSectionVersions(section: string): RuleSectionComparis
     currentEffectiveFrom: RULE_TEXT_EFFECTIVE_FROM,
     termsOnlyInPrior: Object.freeze(onlyInPrior),
     termsOnlyInCurrent: Object.freeze(onlyInCurrent),
-    termsInBoth: Object.freeze(inBoth)
+    termsInBoth: Object.freeze(inBoth),
+    diff: diffRuleSectionText(prior.verbatimText, currentSectionText(section))
   });
 }
