@@ -49,6 +49,7 @@ import {
   type ThemeName,
   type ThemeTokens
 } from "./src/ui-preferences";
+import { resolveDrugReviewPresentation } from "./src/drug-review-presentation";
 
 type LookupMode = "rules" | "drugItems";
 
@@ -129,6 +130,8 @@ const UI_COPY = Object.freeze({
     resultTitle: "查詢結果：{status}",
     sectionItemsTitle: "章節品項：{section}",
     resultMetadata: "資料集版本：{version} · 查詢日期：{date}",
+    multipleReviewDrug:
+      "目前畫面列出全部 {count} 筆符合目前條件的候選；工具不會代為選取任何品項或期別。",
     manualReviewDrug: "此結果需要人工確認；系統不會自動選取品項或替代期別。",
     noValidatedItems: "該查詢日期沒有已驗證資料所涵蓋的品項期別。",
     noFilteredItems: "此結果篩選目前沒有品項。",
@@ -222,6 +225,8 @@ const UI_COPY = Object.freeze({
     resultTitle: "Lookup result: {status}",
     sectionItemsTitle: "Section items: {section}",
     resultMetadata: "Dataset version: {version} · Lookup date: {date}",
+    multipleReviewDrug:
+      "The current view lists all {count} candidates matching the current filters; the tool does not select any item or price period for you.",
     manualReviewDrug: "This result requires manual review; no item or price period is selected automatically.",
     noValidatedItems: "No item period was found in the verified data for this lookup date.",
     noFilteredItems: "No items match the current factual filter.",
@@ -737,6 +742,12 @@ function DrugItemMasterLookupMode({
   const hasResult = result !== null || sectionFilter !== undefined;
   const renderedLookupAsOfDate =
     sectionFilter === undefined ? (result?.asOfDate ?? asOfDate) : asOfDate;
+  const reviewPresentation = resolveDrugReviewPresentation({
+    lookupStatus: result?.status,
+    manualReviewRequired: result?.manualReviewRequired ?? false,
+    sectionCandidateCount: sectionFilter === undefined ? 0 : unfilteredMatches.length,
+    visibleCandidateCount: visibleMatches.length
+  });
 
   function performLookup(): void {
     onClearSectionFilter();
@@ -855,7 +866,13 @@ function DrugItemMasterLookupMode({
               date: protectedText(language, asOfDate)
             })}
           </Text>
-          {sectionFilter === undefined && result?.manualReviewRequired ? (
+          {reviewPresentation?.kind === "multipleCandidates" ? (
+            <Text style={styles.multipleReview}>
+              {t("multipleReviewDrug", {
+                count: String(reviewPresentation.visibleCandidateCount)
+              })}
+            </Text>
+          ) : reviewPresentation?.kind === "unavailable" ? (
             <Text style={styles.review}>{t("manualReviewDrug")}</Text>
           ) : null}
           {visibleMatches.map((match) => (
@@ -1219,6 +1236,7 @@ function createStyles(theme: ThemeTokens) {
     results: { gap: 10, marginTop: 8 },
     resultTitle: { color: theme.color.textStrong, fontSize: 18, fontWeight: "800" },
     resultText: { color: theme.color.textMuted },
+    multipleReview: { color: theme.color.textMuted, fontSize: 14, lineHeight: 20 },
     review: {
       backgroundColor: theme.color.reviewSurface,
       borderRadius: 8,
