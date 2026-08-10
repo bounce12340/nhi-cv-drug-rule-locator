@@ -1,10 +1,13 @@
 import { createContext, useContext, useMemo, useState } from "react";
 import {
+  DRUG_ITEMS_DATASET_VERSION,
+  DRUG_ITEM_MASTER_WARNING,
   ITEM_DATASET_VERSION,
   ITEM_WARNING,
   NAVIGABLE_DRUG_ITEM_RULE_SECTIONS,
   getDrugItemAnnouncementMembership,
   getNavigableDrugItemRuleSections,
+  identifyRuleDrugMasterRecords,
   listDrugItemMasterRecordsByRuleSection,
   lookupDrugItemMaster,
   lookupRuleText,
@@ -13,6 +16,7 @@ import {
   type DrugItemMasterLookupResult,
   type DrugItemMasterMatch,
   type NavigableDrugItemRuleSection,
+  type RuleDrugMasterIdentification,
   type RuleTextLookupResult,
   type RuleTextUnit
 } from "@nhi-cv/domain";
@@ -139,6 +143,17 @@ const UI_COPY = Object.freeze({
     manualReviewRule: "此結果需要人工確認；請比對健保署公告原文。",
     viewSectionItems: "查看本章節品項（{section}）",
     noRuleUnits: "此查詢未取得已驗證的逐字單元。",
+    ruleDrugMasterTitle: "條文中出現之代碼在藥品主檔的記錄（{count} 筆）",
+    ruleDrugMasterNoCodes: "本次結果之條文中未出現符合代碼格式之字串。",
+    expandRuleDrugMaster: "展開主檔辨識記錄（{count} 筆，目前已收合）",
+    collapseRuleDrugMaster: "收合主檔辨識記錄（{count} 筆，目前已展開）",
+    ruleDrugMasterDatasetVersion: "藥品主檔資料集版本：{version}",
+    ruleDrugMasterMissing: "主檔查無此代碼；未以條文文字填補。",
+    fieldMasterChineseName: "主檔中文品名：{value}",
+    fieldMasterEnglishName: "主檔英文品名：{value}",
+    fieldMasterIngredient: "主檔成分：{value}",
+    fieldMasterSpecification: "主檔規格量與單位：{value}",
+    fieldMasterDosageForm: "主檔劑型：{value}",
     statusExact: "單筆精確命中",
     statusMultiple: "多筆命中",
     statusUnavailable: "未在已驗證資料集取得結果",
@@ -234,6 +249,21 @@ const UI_COPY = Object.freeze({
     manualReviewRule: "This result requires manual review; compare it with the original NHI announcement.",
     viewSectionItems: "View items in this section ({section})",
     noRuleUnits: "No verified verbatim unit was found for this query.",
+    ruleDrugMasterTitle: "Drug-master records for codes appearing in the rule text ({count} entries)",
+    ruleDrugMasterNoCodes:
+      "No strings matching the code format appear in the rule text for this result.",
+    expandRuleDrugMaster:
+      "Expand drug-master identification records ({count} entries, currently collapsed)",
+    collapseRuleDrugMaster:
+      "Collapse drug-master identification records ({count} entries, currently expanded)",
+    ruleDrugMasterDatasetVersion: "Drug master dataset version: {version}",
+    ruleDrugMasterMissing:
+      "No record was found for this code in the drug master; rule text was not used to fill it.",
+    fieldMasterChineseName: "Master Chinese product name: {value}",
+    fieldMasterEnglishName: "Master English product name: {value}",
+    fieldMasterIngredient: "Master ingredient: {value}",
+    fieldMasterSpecification: "Master specification amount and unit: {value}",
+    fieldMasterDosageForm: "Master dosage form: {value}",
     statusExact: "One exact record match",
     statusMultiple: "Multiple record matches",
     statusUnavailable: "No result in the verified dataset",
@@ -330,10 +360,12 @@ function RuleUnitCard({ unit }: { unit: RuleTextUnit }): React.JSX.Element {
 
 function RuleLookupMode({
   initialQuery = "",
-  onOpenDrugItemsForSection
+  onOpenDrugItemsForSection,
+  isDesktop
 }: {
   initialQuery?: string;
   onOpenDrugItemsForSection: (section: NavigableDrugItemRuleSection) => void;
+  isDesktop: boolean;
 }): React.JSX.Element {
   const { styles, t, tokens } = useUi();
   const [query, setQuery] = useState(initialQuery);
@@ -403,6 +435,7 @@ function RuleLookupMode({
 
       {result ? (
         <RuleLookupResult
+          isDesktop={isDesktop}
           result={result}
           onOpenDrugItemsForSection={onOpenDrugItemsForSection}
         />
@@ -897,10 +930,12 @@ function DrugItemMasterLookupMode({
 
 function RuleLookupResult({
   result,
-  onOpenDrugItemsForSection
+  onOpenDrugItemsForSection,
+  isDesktop
 }: {
   result: RuleTextLookupResult;
   onOpenDrugItemsForSection: (section: NavigableDrugItemRuleSection) => void;
+  isDesktop: boolean;
 }): React.JSX.Element {
   const { language, styles, t } = useUi();
   const resultSections = NAVIGABLE_DRUG_ITEM_RULE_SECTIONS.filter((section) =>
@@ -942,6 +977,150 @@ function RuleLookupResult({
         <RuleUnitCard key={unit.unitId} unit={unit} />
       ))}
       {result.units.length === 0 ? <Text style={styles.empty}>{t("noRuleUnits")}</Text> : null}
+      {result.units.length > 0 ? (
+        <RuleDrugMasterIdentificationBlock isDesktop={isDesktop} units={result.units} />
+      ) : null}
+    </View>
+  );
+}
+
+function RuleDrugMasterIdentificationCard({
+  identification,
+  isDesktop
+}: {
+  identification: RuleDrugMasterIdentification;
+  isDesktop: boolean;
+}): React.JSX.Element {
+  const { language, styles, t } = useUi();
+  const { masterItem, nhiCode } = identification;
+  const missingField = t("missingField");
+  const sourceValue = (value: string): string => protectedText(language, value || missingField);
+
+  if (masterItem === undefined) {
+    return (
+      <View style={styles.ruleDrugIdentificationCard} accessibilityRole="summary">
+        <Text style={styles.code}>{t("fieldNhiCode", { value: protectedText(language, nhiCode) })}</Text>
+        <Text style={styles.empty}>{t("ruleDrugMasterMissing")}</Text>
+      </View>
+    );
+  }
+
+  const specification = [masterItem.specificationAmount, masterItem.specificationUnit]
+    .filter((value) => value.length > 0)
+    .join(" ");
+
+  return (
+    <View style={styles.ruleDrugIdentificationCard} accessibilityRole="summary">
+      <Text style={styles.code}>
+        {t("fieldNhiCode", { value: protectedText(language, nhiCode) })}
+      </Text>
+      <View style={styles.ruleDrugIdentificationDetails}>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>
+            {t("fieldMasterChineseName", { value: sourceValue(masterItem.drugNameZh) })}
+          </Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>
+            {t("fieldMasterEnglishName", { value: sourceValue(masterItem.drugNameEn) })}
+          </Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>
+            {t("fieldMasterIngredient", { value: sourceValue(masterItem.ingredient) })}
+          </Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>
+            {t("fieldMasterSpecification", { value: sourceValue(specification) })}
+          </Text>
+        </MasterDetailCell>
+        <MasterDetailCell isDesktop={isDesktop}>
+          <Text style={styles.detail}>
+            {t("fieldMasterDosageForm", { value: sourceValue(masterItem.dosageForm) })}
+          </Text>
+        </MasterDetailCell>
+      </View>
+    </View>
+  );
+}
+
+function RuleDrugMasterIdentificationBlock({
+  units,
+  isDesktop
+}: {
+  units: readonly RuleTextUnit[];
+  isDesktop: boolean;
+}): React.JSX.Element {
+  const { language, styles, t } = useUi();
+  const [expanded, setExpanded] = useState(false);
+  const identifications = useMemo(
+    () => identifyRuleDrugMasterRecords(units.map((unit) => unit.verbatimText)),
+    [units]
+  );
+  const count = String(identifications.length);
+  const controlKey = expanded ? "collapseRuleDrugMaster" : "expandRuleDrugMaster";
+
+  if (identifications.length === 0) {
+    return (
+      <View style={styles.ruleDrugIdentificationBlock}>
+        <Text style={styles.ruleDrugIdentificationTitle}>
+          {t("ruleDrugMasterTitle", { count })}
+        </Text>
+        <View style={styles.ruleDrugIdentificationContent}>
+          <Text style={styles.empty}>{t("ruleDrugMasterNoCodes")}</Text>
+          <Text style={styles.sourceBlockMeta}>
+            {t("ruleDrugMasterDatasetVersion", {
+              version: protectedText(language, DRUG_ITEMS_DATASET_VERSION)
+            })}
+          </Text>
+          <View style={styles.masterItemWarning} accessibilityRole="alert">
+            <Text style={styles.officialWarningTitle}>{t("officialWarningTitle")}</Text>
+            <Text style={styles.officialWarningText}>{DRUG_ITEM_MASTER_WARNING}</Text>
+            <OfficialOriginalLanguageNote />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.ruleDrugIdentificationBlock}>
+      <Pressable
+        accessibilityLabel={t(controlKey, { count })}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={() => setExpanded((current) => !current)}
+        style={styles.ruleDrugIdentificationToggle}
+      >
+        <Text style={styles.ruleDrugIdentificationTitle}>
+          {t("ruleDrugMasterTitle", { count })}
+        </Text>
+        <Text style={styles.ruleDrugIdentificationToggleText}>
+          {t(controlKey, { count })}
+        </Text>
+      </Pressable>
+      {expanded ? (
+        <View style={styles.ruleDrugIdentificationContent}>
+          <Text style={styles.sourceBlockMeta}>
+            {t("ruleDrugMasterDatasetVersion", {
+              version: protectedText(language, DRUG_ITEMS_DATASET_VERSION)
+            })}
+          </Text>
+          <View style={styles.masterItemWarning} accessibilityRole="alert">
+            <Text style={styles.officialWarningTitle}>{t("officialWarningTitle")}</Text>
+            <Text style={styles.officialWarningText}>{DRUG_ITEM_MASTER_WARNING}</Text>
+            <OfficialOriginalLanguageNote />
+          </View>
+          {identifications.map((identification) => (
+            <RuleDrugMasterIdentificationCard
+              identification={identification}
+              isDesktop={isDesktop}
+              key={identification.nhiCode}
+            />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1109,6 +1288,7 @@ export default function App(): React.JSX.Element {
           {mode === "rules" ? (
             <RuleLookupMode
               initialQuery={ruleQuerySeed}
+              isDesktop={isDesktop}
               onOpenDrugItemsForSection={openDrugItemsForSection}
             />
           ) : (
@@ -1425,6 +1605,49 @@ function createStyles(theme: ThemeTokens) {
       color: theme.color.textStrong,
       fontFamily: "monospace",
       lineHeight: 22
+    },
+    ruleDrugIdentificationBlock: {
+      backgroundColor: theme.color.surface,
+      borderColor: theme.color.cardBorder,
+      borderRadius: 10,
+      borderWidth: 1,
+      gap: 8,
+      marginTop: 4,
+      padding: 14
+    },
+    ruleDrugIdentificationToggle: {
+      alignItems: "center",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      justifyContent: "space-between",
+      minHeight: 44
+    },
+    ruleDrugIdentificationTitle: {
+      color: theme.color.textStrong,
+      flexShrink: 1,
+      fontSize: 17,
+      fontWeight: "800",
+      lineHeight: 24
+    },
+    ruleDrugIdentificationToggleText: {
+      color: theme.color.linkText,
+      flexShrink: 1,
+      fontWeight: "700",
+      lineHeight: 20
+    },
+    ruleDrugIdentificationContent: { gap: 9 },
+    ruleDrugIdentificationCard: {
+      borderColor: theme.color.subtleDivider,
+      borderRadius: 8,
+      borderWidth: 1,
+      gap: 8,
+      padding: 12
+    },
+    ruleDrugIdentificationDetails: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8
     }
   });
 }
