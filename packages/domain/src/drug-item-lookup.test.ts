@@ -67,6 +67,12 @@ function engineAuthoredProjection(result: DrugItemMasterLookupResult): unknown {
   return engineFields;
 }
 
+/** Records the lookup can still return: those with a non-zero payment price at VALID_DATE. */
+const PRICED_RECORDS = DRUG_ITEM_MASTER_RECORDS.filter((record) => {
+  const period = selectDrugItemMasterPricePeriod(record.priceHistory, VALID_DATE);
+  return period !== undefined && Number(period.paymentPriceRaw) !== 0;
+});
+
 describe("display-only governed drug-item master lookup", () => {
   it("normalizes code by NFKC, trim, uppercase, spaces, and hyphens before exact match", () => {
     const item = DRUG_ITEM_MASTER_RECORDS[0]!;
@@ -121,8 +127,8 @@ describe("display-only governed drug-item master lookup", () => {
   });
 
   it("retains strength text and returns every ambiguous match without selection or preference", () => {
-    const pair = DRUG_ITEM_MASTER_RECORDS.flatMap((first, firstIndex) =>
-      DRUG_ITEM_MASTER_RECORDS.slice(firstIndex + 1)
+    const pair = PRICED_RECORDS.flatMap((first, firstIndex) =>
+      PRICED_RECORDS.slice(firstIndex + 1)
         .filter((second) => {
           const firstSkeleton = normalizeName(first.drugNameZh).replace(/\d+(?:\.\d+)?/g, "#");
           const secondSkeleton = normalizeName(second.drugNameZh).replace(/\d+(?:\.\d+)?/g, "#");
@@ -137,9 +143,9 @@ describe("display-only governed drug-item master lookup", () => {
     expect(secondResult.matches.some((match) => match.item.nhiCode === pair[1].nhiCode)).toBe(true);
     expect(secondResult.matches.some((match) => match.item.nhiCode === pair[0].nhiCode)).toBe(false);
 
-    const repeatedIngredient = DRUG_ITEM_MASTER_RECORDS.find(
+    const repeatedIngredient = PRICED_RECORDS.find(
       (candidate) =>
-        DRUG_ITEM_MASTER_RECORDS.filter(
+        PRICED_RECORDS.filter(
           (item) => normalizeName(item.ingredient) === normalizeName(candidate.ingredient)
         ).length > 1
     )!;
@@ -147,12 +153,74 @@ describe("display-only governed drug-item master lookup", () => {
       query: repeatedIngredient.ingredient,
       as_of_date: VALID_DATE
     });
-    const expectedCodes = DRUG_ITEM_MASTER_RECORDS.filter((item) =>
+    // Every match the lookup can still return, in master order and with nothing
+    // ranked or preferred; items priced 0.00 for this date are the only omission.
+    const expectedCodes = PRICED_RECORDS.filter((item) =>
       normalizeName(item.ingredient).includes(normalizeName(repeatedIngredient.ingredient))
     ).map((item) => item.nhiCode);
+    const omittedCodes = DRUG_ITEM_MASTER_RECORDS.filter(
+      (item) =>
+        normalizeName(item.ingredient).includes(normalizeName(repeatedIngredient.ingredient)) &&
+        !expectedCodes.includes(item.nhiCode)
+    );
     expect(ambiguous.status).toBe("MULTIPLE_MATCHES");
     expect(ambiguous.matches.map((match) => match.item.nhiCode)).toEqual(expectedCodes);
+    expect(ambiguous.excludedZeroPriceCount).toBe(omittedCodes.length);
     expect(ambiguous).not.toHaveProperty("selectedItem");
+  });
+
+  it("leaves out items whose payment price for the requested date is 0.00", () => {
+    const zeroPriced = DRUG_ITEM_MASTER_RECORDS.filter((record) => {
+      const period = selectDrugItemMasterPricePeriod(record.priceHistory, VALID_DATE);
+      return period !== undefined && Number(period.paymentPriceRaw) === 0;
+    });
+    expect(zeroPriced.length).toBeGreaterThan(0);
+    expect(zeroPriced.length + PRICED_RECORDS.length).toBe(DRUG_ITEM_MASTER_RECORDS.length);
+
+    const result = lookupDrugItemMaster({ query: zeroPriced[0]!.nhiCode, as_of_date: VALID_DATE });
+    expect(result.status).toBe("NOT_IN_VALIDATED_DATASET");
+    expect(result.matches).toHaveLength(0);
+    // Counted, not silently dropped: an exact code that returns nothing needs a reason.
+    expect(result.excludedZeroPriceCount).toBe(1);
+  });
+
+  it("still returns an item that was priced 0.00 later but had a real price on the date asked", () => {
+    const laterZero = DRUG_ITEM_MASTER_RECORDS.find((record) => {
+      const last = record.priceHistory[record.priceHistory.length - 1];
+      return (
+        record.priceHistory.length > 1 &&
+        last !== undefined &&
+        Number(last.paymentPriceRaw) === 0 &&
+        Number(record.priceHistory[0]!.paymentPriceRaw) !== 0
+      );
+    })!;
+    const earlier = laterZero.priceHistory[0]!;
+    const result = lookupDrugItemMaster({
+      query: laterZero.nhiCode,
+      as_of_date: earlier.startDateIso
+    });
+    expect(result.status).toBe("EXACT_MATCH");
+    expect(result.matches[0]?.applicablePricePeriod).toBe(earlier);
+    expect(result.excludedZeroPriceCount).toBe(0);
+  });
+
+  it("keeps a row whose price does not parse as a number rather than guessing it is zero", () => {
+    // The master carries 11 periods whose payment price is literally "-". None of
+    // them covers a current date, but "-" is not zero and must never be treated as
+    // zero: hiding an item because its price failed to parse would lose a real item.
+    const unparseable = DRUG_ITEM_MASTER_RECORDS.flatMap((record) =>
+      record.priceHistory
+        .filter((period) => !Number.isFinite(Number(period.paymentPriceRaw)))
+        .map((period) => ({ record, period }))
+    );
+    expect(unparseable).toHaveLength(11);
+    expect(new Set(unparseable.map(({ period }) => period.paymentPriceRaw))).toEqual(new Set(["-"]));
+
+    const { record, period } = unparseable[0]!;
+    const result = lookupDrugItemMaster({ query: record.nhiCode, as_of_date: period.startDateIso });
+    expect(result.status).toBe("EXACT_MATCH");
+    expect(result.matches[0]?.applicablePricePeriod.paymentPriceRaw).toBe("-");
+    expect(result.excludedZeroPriceCount).toBe(0);
   });
 
   it("selects only the period whose inclusive interval contains the as-of date", () => {
@@ -209,7 +277,7 @@ describe("display-only governed drug-item master lookup", () => {
 
   it("locks the display-only source tag, exact warning, complete history, and review semantics", () => {
     const exact = lookupDrugItemMaster({
-      query: DRUG_ITEM_MASTER_RECORDS[0]!.nhiCode,
+      query: PRICED_RECORDS[0]!.nhiCode,
       as_of_date: VALID_DATE,
       dataset_version: DRUG_ITEMS_DATASET_VERSION
     });
@@ -222,7 +290,8 @@ describe("display-only governed drug-item master lookup", () => {
       "effectiveFrom",
       "effectiveTo",
       "asOfDate",
-      "matches"
+      "matches",
+      "excludedZeroPriceCount"
     ]);
     expect(exact.status).toBe("EXACT_MATCH");
     expect(exact.manualReviewRequired).toBe(false);

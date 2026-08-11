@@ -62,7 +62,15 @@ claim that prices are real rather than invented — keep it accurate if datasets
 
 A note on prices: 370 of the 607 master records currently show `0.00`. In every case that is the
 final, open-ended price period following a real earlier price — the master is a full historical item
-file, not a list of currently-reimbursed items.
+file, not a list of currently-reimbursed items. **Drug lookups leave those rows out** and report how
+many were excluded, so an exact code that returns nothing says why rather than looking like a typo.
+The exclusion is per requested date, so an item priced 0.00 today still resolves for a date when it
+had a price. A price that does not parse as a number is kept, not treated as zero — the master holds
+11 periods whose price is literally `-`.
+
+Rule-text code identification deliberately uses the **complete** master, zero-priced rows included.
+Rule 2.6.1 cites one code that is now priced 0.00; resolving it there is meaningful, and reporting
+「主檔查無此代碼」 for a code the master does hold would be a lie.
 
 ## Rules that protect correctness
 

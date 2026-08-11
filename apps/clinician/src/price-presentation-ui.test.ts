@@ -198,20 +198,30 @@ describe("independent collapsed price histories", () => {
     expect(cardSource.slice(conditionalStart)).toContain("period.paymentPriceRaw");
   });
 
-  it("keeps multi-result cards on the existing mobile breakpoint and preserves raw zero prices", () => {
+  it("leaves items priced 0.00 out of results, reports how many, and keeps historical zeros raw", () => {
     const result = lookupDrugItemMaster({
       query: "SIMVASTATIN 20 MG",
       as_of_date: "2026-09-02"
     });
     expect(result.status).toBe("MULTIPLE_MATCHES");
-    expect(result.matches).toHaveLength(42);
     expect(getClinicianLayoutMode(767)).toBe("mobile");
     expect(appSource).toContain('flexWrap: "wrap"');
 
-    const zeroPeriod = result.matches
+    // Every returned item has a real price for the requested date.
+    for (const match of result.matches) {
+      expect(Number(match.applicablePricePeriod.paymentPriceRaw)).not.toBe(0);
+    }
+    // The ones left out are counted rather than silently dropped, so a clinician
+    // who typed a valid query and saw a short list is told why it is short.
+    expect(result.excludedZeroPriceCount).toBeGreaterThan(0);
+    expect(result.matches.length + result.excludedZeroPriceCount).toBe(42);
+
+    // A surviving item's own history can still contain a 0.00 period; those are
+    // rendered exactly as the master records them.
+    const historicalZero = result.matches
       .flatMap((match) => match.item.priceHistory)
       .find((period) => period.paymentPriceRaw === "0.00");
-    expect(zeroPeriod?.paymentPriceRaw).toBe("0.00");
+    expect(historicalZero?.paymentPriceRaw).toBe("0.00");
     expect(appSource).toContain("protectedText(language, period.paymentPriceRaw)");
   });
 });
