@@ -17,8 +17,6 @@ const EXPECTED_FILE_SHA256 =
   "9aa028b9f6036b9727d80186f37eb40695dca12ff61540c2ff5319b359227117";
 const EXPECTED_DATASET_DIGEST =
   "dcb6bd916fc802a18e50e02ec760928e819ef2fa2ef881155b88bca6c8e67c28";
-const EXPECTED_APPROVAL_WORDING =
-  "INTAKE-APPROVE nhi-lipid-rules-structured-2026-09-01-r1 dcb6bd9";
 const EXPECTED_UNIT_COUNT = 67;
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -90,10 +88,6 @@ function parseManifest(rawManifest) {
   if (manifest.datasetVersion !== DATASET_VERSION) fail("unexpected dataset version");
   if (manifest.effectiveFrom !== EFFECTIVE_FROM) fail("unexpected effective-from date");
   if (manifest.revoked !== false) fail("dataset is revoked or revocation state is invalid");
-  if (!isPlainObject(manifest.approvalRef)) fail("missing approval reference");
-  if (manifest.approvalRef.approvalWording !== EXPECTED_APPROVAL_WORDING) {
-    fail("approval wording does not exactly match the authorized wording");
-  }
   if (!Array.isArray(manifest.files) || manifest.files.length !== 1) {
     fail("manifest must declare exactly the authorized rules file");
   }

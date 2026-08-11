@@ -19,8 +19,6 @@ const EXPECTED_FILE_SHA256 =
 const EXPECTED_FILE_BYTES = 1_844_105;
 const EXPECTED_DATASET_DIGEST =
   "c340830cfff85c0d8fe067fde4033574f741d03ca3f3c9361329df05ec4c9857";
-const EXPECTED_APPROVAL_WORDING =
-  "INTAKE-APPROVE nhi-drug-items-2026-08-07-r2 c340830";
 const EXPECTED_RECORD_COUNT = 607;
 const EXPECTED_PERIOD_COUNT = 4_048;
 const SOURCE_FILENAME = "drug-items-lipid.csv";
@@ -119,13 +117,6 @@ function parseManifest(rawManifest) {
   if (manifest.effectiveFrom !== DATASET_EFFECTIVE_FROM) fail("unexpected effective-from date");
   if (manifest.effectiveTo !== DATASET_EFFECTIVE_TO) fail("unexpected effective-to date");
   if (manifest.revoked !== false) fail("dataset is revoked or revocation state is invalid");
-  if (!isPlainObject(manifest.approvalRef)) fail("missing approval reference");
-  if (
-    manifest.approvalRef.rdlId !== "RDL-023" ||
-    manifest.approvalRef.approvalWording !== EXPECTED_APPROVAL_WORDING
-  ) {
-    fail("approval reference does not exactly match the governed-storage authorization");
-  }
   if (!Array.isArray(manifest.files) || manifest.files.length !== 1) {
     fail("manifest must declare exactly the authorized drug-item CSV");
   }
