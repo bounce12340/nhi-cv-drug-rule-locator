@@ -15,7 +15,6 @@ const DATASET_VERSION = "nhi-lipid-2026-09-01-r1";
 const EFFECTIVE_FROM = "2026-09-01";
 const EXPECTED_DATASET_DIGEST =
   "01a4df7463c76a4f280dfd8f5dc8307c292e797532b98bed3edca85abbf155c5";
-const EXPECTED_APPROVAL_WORDING = "INTAKE-APPROVE nhi-lipid-2026-09-01-r1 01a4df7";
 const EXPECTED_RECORD_COUNT = 187;
 
 const SOURCE_FILES = [
@@ -118,13 +117,6 @@ function parseManifest(rawManifest) {
   if (manifest.datasetVersion !== DATASET_VERSION) fail("unexpected dataset version");
   if (manifest.effectiveFrom !== EFFECTIVE_FROM) fail("unexpected effective-from date");
   if (manifest.revoked !== false) fail("dataset is revoked or revocation state is invalid");
-  if (!isPlainObject(manifest.approvalRef)) fail("missing approval reference");
-  if (
-    manifest.approvalRef.rdlId !== "RDL-012" ||
-    manifest.approvalRef.approvalWording !== EXPECTED_APPROVAL_WORDING
-  ) {
-    fail("approval reference does not exactly match the governed-storage authorization");
-  }
   if (!Array.isArray(manifest.files) || manifest.files.length !== SOURCE_FILES.length) {
     fail("manifest must declare exactly the four authorized CSV files");
   }

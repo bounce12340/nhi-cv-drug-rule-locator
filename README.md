@@ -82,7 +82,7 @@ CI 跑 typecheck、test、build。合併到 `main` 會自動部署到 Cloudflare
 
 1. 新的來源檔放進 `data/governed/<資料集版本>/`
 2. 更新該目錄的 `storage-manifest.json`(檔案雜湊、位元組數)
-3. **更新 codegen 腳本頂端寫死的常數**——`DATASET_VERSION`、`EXPECTED_FILE_SHA256`、`EXPECTED_RECORD_COUNT` 等。這些是刻意寫死的:資料換了而數字沒跟著換,codegen 會中止而不是默默產生錯的東西
+3. **更新 codegen 腳本頂端寫死的常數**——`DATASET_VERSION`、`EXPECTED_FILE_SHA256`、`EXPECTED_RECORD_COUNT` 等。這些是刻意寫死的:資料換了而數字沒跟著換,codegen 會以離開碼 1 中止,而不是默默產生錯的東西
 4. 跑對應的 codegen
 
 ```bash
@@ -95,8 +95,6 @@ node scripts/rules-prior-codegen.mjs   # 修訂前規定
 5. 更新 [`docs/source-register/`](docs/source-register/) 的出處記錄,以及 [CLAUDE.md](CLAUDE.md) 與本檔中的筆數
 
 **`packages/domain/src/generated/` 一律用產生的,不要手改。**
-
-前三個 codegen 另有 `EXPECTED_APPROVAL_WORDING` 常數,是舊流程留下的核准字串,現在已無對應流程,更新資料時一併改掉或移除即可。
 
 ---
 
