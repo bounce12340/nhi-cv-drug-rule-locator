@@ -1,7 +1,10 @@
 import { createContext, useContext, useMemo, useState } from "react";
 import {
+  DRUG_ITEMS_DATASET_EFFECTIVE_FROM,
+  DRUG_ITEMS_DATASET_EFFECTIVE_TO,
   DRUG_ITEMS_DATASET_VERSION,
   DRUG_ITEM_MASTER_WARNING,
+  ITEM_DATASET_EFFECTIVE_FROM,
   ITEM_DATASET_VERSION,
   ITEM_WARNING,
   NAVIGABLE_DRUG_ITEM_RULE_SECTIONS,
@@ -57,6 +60,7 @@ import {
   type ThemeName,
   type ThemeTokens
 } from "./src/ui-preferences";
+import { resolveAsOfDatePresets, todayIso } from "./src/as-of-date";
 import { resolveDrugReviewPresentation } from "./src/drug-review-presentation";
 import {
   getRuleUnitStructuralMetadata,
@@ -145,6 +149,9 @@ const UI_COPY = Object.freeze({
       "目前畫面列出全部 {count} 筆符合目前條件的候選；工具不會代為選取任何品項或期別。",
     manualReviewDrug: "此結果需要人工確認；系統不會自動選取品項或替代期別。",
     excludedZeroPrice: "另有 {count} 筆符合查詢的品項，因該查詢日期之支付價為 0.00 未列出。",
+    asOfDatePresetToday: "今天（{value}）",
+    asOfDatePresetAnnouncement: "新制生效日（{value}）",
+    asOfDatePickerHint: "點日期欄位可開啟日曆選擇其他日期。價格依所選日期適用之期別顯示。",
     noValidatedItems: "該查詢日期沒有已驗證資料所涵蓋的品項期別。",
     noFilteredItems: "此結果篩選目前沒有品項。",
     ruleResultMetadata: "資料集版本：{version} · 生效日：{date}",
@@ -290,6 +297,10 @@ const UI_COPY = Object.freeze({
     manualReviewDrug: "This result requires manual review; no item or price period is selected automatically.",
     excludedZeroPrice:
       "A further {count} item(s) matched the query but are not listed, because their payment price for that date is 0.00.",
+    asOfDatePresetToday: "Today ({value})",
+    asOfDatePresetAnnouncement: "Announcement effective date ({value})",
+    asOfDatePickerHint:
+      "Tap the date field to open a calendar and pick another date. Prices are shown for the period covering the date you choose.",
     noValidatedItems: "No item period was found in the verified data for this lookup date.",
     noFilteredItems: "No items match the current factual filter.",
     ruleResultMetadata: "Dataset version: {version} · Effective date: {date}",
@@ -651,6 +662,74 @@ function RuleLookupMode({
   );
 }
 
+/**
+ * A real date picker. `<input type="date">` is a plain DOM element rather than a
+ * react-native-web primitive because RN's TextInput has no date mode and cannot
+ * open the browser or phone calendar; everything here renders to DOM anyway.
+ * The two presets are the dates a clinician actually reasons about — today's
+ * price, and the price once the 2026-09-01 announcement is in force.
+ */
+function AsOfDateField({
+  accessibilityLabel,
+  onChange,
+  value
+}: {
+  accessibilityLabel: string;
+  onChange: (next: string) => void;
+  value: string;
+}): React.JSX.Element {
+  const { language, styles, t, tokens } = useUi();
+  const presets = useMemo(() => resolveAsOfDatePresets(ITEM_DATASET_EFFECTIVE_FROM), []);
+  const presetKeys = { today: "asOfDatePresetToday", announcement: "asOfDatePresetAnnouncement" } as const;
+
+  return (
+    <View style={styles.asOfDateBlock}>
+      <input
+        aria-label={accessibilityLabel}
+        max={DRUG_ITEMS_DATASET_EFFECTIVE_TO}
+        min={DRUG_ITEMS_DATASET_EFFECTIVE_FROM}
+        onChange={(event) => onChange(event.target.value)}
+        style={{
+          backgroundColor: tokens.color.surface,
+          border: `1px solid ${tokens.color.inputBorder}`,
+          borderRadius: 10,
+          color: tokens.color.textStrong,
+          fontFamily: "inherit",
+          fontSize: 16,
+          minHeight: 44,
+          padding: "10px 12px",
+          width: "100%"
+        }}
+        type="date"
+        value={value}
+      />
+      <View style={styles.filterRow}>
+        {presets.map((preset) => {
+          const selected = preset.value === value;
+          const label = t(presetKeys[preset.key], {
+            value: protectedText(language, preset.value)
+          });
+          return (
+            <Pressable
+              accessibilityLabel={label}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              key={preset.key}
+              onPress={() => onChange(preset.value)}
+              style={[styles.filterButton, selected ? styles.filterButtonSelected : null]}
+            >
+              <Text style={[styles.filterButtonText, selected ? styles.filterButtonTextSelected : null]}>
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text style={styles.asOfDateHint}>{t("asOfDatePickerHint")}</Text>
+    </View>
+  );
+}
+
 function AnnouncementTags({ nhiCode }: { nhiCode: string }): React.JSX.Element | null {
   const { styles, t } = useUi();
   const membership = getDrugItemAnnouncementMembership(nhiCode);
@@ -953,7 +1032,7 @@ function DrugItemMasterLookupMode({
 }): React.JSX.Element {
   const { language, styles, t, tokens } = useUi();
   const [query, setQuery] = useState("");
-  const [asOfDate, setAsOfDate] = useState<string>(drugItemsDataset.effectiveFrom);
+  const [asOfDate, setAsOfDate] = useState<string>(() => todayIso());
   const [datasetVersion, setDatasetVersion] = useState<string>(drugItemsDataset.datasetVersion);
   const [result, setResult] = useState<DrugItemMasterLookupResult | null>(null);
   const [announcementFilter, setAnnouncementFilter] =
@@ -1016,14 +1095,9 @@ function DrugItemMasterLookupMode({
         style={styles.input}
         value={query}
       />
-      <TextInput
+      <AsOfDateField
         accessibilityLabel={t("drugDateLabel")}
-        autoCapitalize="none"
-        autoCorrect={false}
-        onChangeText={setAsOfDate}
-        placeholder={t("datePlaceholder")}
-        placeholderTextColor={tokens.color.textMuted}
-        style={styles.input}
+        onChange={setAsOfDate}
         value={asOfDate}
       />
       <TextInput
@@ -2165,6 +2239,8 @@ function createStyles(theme: ThemeTokens) {
       backgroundColor: theme.color.priceSurface,
       color: theme.color.priceText
     },
+    asOfDateBlock: { gap: 8 },
+    asOfDateHint: { color: theme.color.textMuted, fontSize: 13, lineHeight: 19 },
     comparisonBlock: {
       backgroundColor: theme.color.surface,
       borderColor: theme.color.cardBorder,

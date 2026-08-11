@@ -72,6 +72,26 @@ Rule-text code identification deliberately uses the **complete** master, zero-pr
 Rule 2.6.1 cites one code that is now priced 0.00; resolving it there is meaningful, and reporting
 「主檔查無此代碼」 for a code the master does hold would be a lie.
 
+## Dates
+
+Official texts use ROC years: **民國 115 = 2026** (ROC + 1911). So 115/9/1 is 2026-09-01, 94/6/1 is
+2005-06-01, 108/2/1 is 2019-02-01. The prior-rules dataset stores both the ROC strings as published
+and the converted `lastRevisionEffectiveFrom`.
+
+The drug tab's as-of date defaults to **today**, via `todayIso()` in
+`apps/clinician/src/as-of-date.ts`. It formats from local calendar components, never
+`toISOString()` — Taiwan is UTC+8, so between local midnight and 08:00 the UTC date is still
+yesterday and the clinician would silently get the previous day's prices, mornings only.
+
+The rule tab stays on `RULE_TEXT_EFFECTIVE_FROM` (2026-09-01) and must not default to today: the
+rules engine returns `NOT_IN_VALIDATED_DATASET` for any earlier date, so every rule query would fail
+until that date passes.
+
+The master is a 2026-08-06 snapshot and does not yet carry the prices the 2026-09-01 announcement
+introduces. Choosing a date on or after the effective date therefore still shows the snapshot price;
+`shouldShowMasterSnapshotNotice` surfaces that, and the new price stays where it actually is — the
+announcement's before/after comparison.
+
 ## Rules that protect correctness
 
 These exist because breaking them shows a clinician wrong drug information. They are not process.
