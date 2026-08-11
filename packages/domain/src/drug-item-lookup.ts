@@ -49,10 +49,30 @@ export interface DrugItemMasterLookupResult {
   readonly effectiveTo: typeof DRUG_ITEMS_DATASET_EFFECTIVE_TO;
   readonly asOfDate: string;
   readonly matches: readonly DrugItemMasterMatch[];
+  /**
+   * Items that matched the query but whose payment price for the requested date is
+   * 0.00, and so were left out. Reported rather than silently dropped: a clinician
+   * who typed a valid code and got nothing would otherwise assume a typo.
+   */
+  readonly excludedZeroPriceCount: number;
 }
 
 const NO_DRUG_ITEM_MASTER_MATCHES: readonly DrugItemMasterMatch[] = Object.freeze([]);
 const NHI_CODE_SURFACE_FORMAT = /^[A-Z0-9]{10}$/;
+
+/**
+ * 370 of the 607 master records carry 0.00 as their final, open-ended price period,
+ * following a real earlier price — the master is a full historical item file, not a
+ * list of currently-reimbursed items. Those rows answer no question a clinician is
+ * asking, so lookups leave them out.
+ *
+ * The parse is deliberately strict: anything that is not a finite number is kept,
+ * because dropping a row we failed to understand would hide a real item.
+ */
+function hasZeroPaymentPrice(period: DrugItemMasterPricePeriod): boolean {
+  const parsed = Number(period.paymentPriceRaw.trim());
+  return Number.isFinite(parsed) && parsed === 0;
+}
 
 function normalizeDrugItemMasterCode(value: string): string {
   return value.normalize("NFKC").trim().toUpperCase().replace(/[\s-]/g, "");
@@ -118,28 +138,34 @@ export function lookupDrugItemMaster(
     );
   }
 
+  let excludedZeroPriceCount = 0;
   const matches = Object.freeze(
     candidates.flatMap((item) => {
       const applicablePricePeriod = selectDrugItemMasterPricePeriod(
         item.priceHistory,
         request.as_of_date
       );
-      return applicablePricePeriod === undefined
-        ? []
-        : [Object.freeze({ item, applicablePricePeriod })];
+      if (applicablePricePeriod === undefined) return [];
+      if (hasZeroPaymentPrice(applicablePricePeriod)) {
+        excludedZeroPriceCount += 1;
+        return [];
+      }
+      return [Object.freeze({ item, applicablePricePeriod })];
     })
   );
   if (matches.length === 0) {
     return makeDrugItemMasterResult(
       "NOT_IN_VALIDATED_DATASET",
       request.as_of_date,
-      NO_DRUG_ITEM_MASTER_MATCHES
+      NO_DRUG_ITEM_MASTER_MATCHES,
+      excludedZeroPriceCount
     );
   }
   return makeDrugItemMasterResult(
     matches.length === 1 ? "EXACT_MATCH" : "MULTIPLE_MATCHES",
     request.as_of_date,
-    matches
+    matches,
+    excludedZeroPriceCount
   );
 }
 
@@ -152,7 +178,8 @@ function isIsoDate(value: string): boolean {
 function makeDrugItemMasterResult(
   status: DrugItemMasterLookupStatus,
   asOfDate: string,
-  matches: readonly DrugItemMasterMatch[]
+  matches: readonly DrugItemMasterMatch[],
+  excludedZeroPriceCount = 0
 ): DrugItemMasterLookupResult {
   return Object.freeze({
     status,
@@ -163,6 +190,7 @@ function makeDrugItemMasterResult(
     effectiveFrom: DRUG_ITEMS_DATASET_EFFECTIVE_FROM,
     effectiveTo: DRUG_ITEMS_DATASET_EFFECTIVE_TO,
     asOfDate,
-    matches
+    matches,
+    excludedZeroPriceCount
   });
 }

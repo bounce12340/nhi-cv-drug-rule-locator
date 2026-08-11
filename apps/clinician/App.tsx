@@ -144,6 +144,7 @@ const UI_COPY = Object.freeze({
     multipleReviewDrug:
       "目前畫面列出全部 {count} 筆符合目前條件的候選；工具不會代為選取任何品項或期別。",
     manualReviewDrug: "此結果需要人工確認；系統不會自動選取品項或替代期別。",
+    excludedZeroPrice: "另有 {count} 筆符合查詢的品項，因該查詢日期之支付價為 0.00 未列出。",
     noValidatedItems: "該查詢日期沒有已驗證資料所涵蓋的品項期別。",
     noFilteredItems: "此結果篩選目前沒有品項。",
     ruleResultMetadata: "資料集版本：{version} · 生效日：{date}",
@@ -287,6 +288,8 @@ const UI_COPY = Object.freeze({
     multipleReviewDrug:
       "The current view lists all {count} candidates matching the current filters; the tool does not select any item or price period for you.",
     manualReviewDrug: "This result requires manual review; no item or price period is selected automatically.",
+    excludedZeroPrice:
+      "A further {count} item(s) matched the query but are not listed, because their payment price for that date is 0.00.",
     noValidatedItems: "No item period was found in the verified data for this lookup date.",
     noFilteredItems: "No items match the current factual filter.",
     ruleResultMetadata: "Dataset version: {version} · Effective date: {date}",
@@ -1109,6 +1112,11 @@ function DrugItemMasterLookupMode({
             </Text>
           ) : reviewPresentation?.kind === "unavailable" ? (
             <Text style={styles.review}>{t("manualReviewDrug")}</Text>
+          ) : null}
+          {result !== null && result.excludedZeroPriceCount > 0 ? (
+            <Text style={styles.multipleReview}>
+              {t("excludedZeroPrice", { count: String(result.excludedZeroPriceCount) })}
+            </Text>
           ) : null}
           {visibleMatches.map((match) => (
             <DrugItemMasterCard
