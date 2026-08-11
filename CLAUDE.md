@@ -72,6 +72,40 @@ Rule-text code identification deliberately uses the **complete** master, zero-pr
 Rule 2.6.1 cites one code that is now priced 0.00; resolving it there is meaningful, and reporting
 「主檔查無此代碼」 for a code the master does hold would be a lie.
 
+## Doses
+
+A clinician treats each strength as its own group, so drug results carry a dose filter. The
+strengths are derived, because the master cannot supply them directly: `specificationAmount` and
+`specificationUnit` are **empty on 595 of the 607 records**, and the 12 that are populated hold pack
+sizes, not strengths.
+
+`packages/domain/src/drug-dose.ts` reads them from two fields and unions the results:
+
+| Field | Example | What it states |
+| --- | --- | --- |
+| `ingredient` | `ATORVASTATIN (CALCIUM) 10 MG` | structured, present on every record |
+| `drugNameEn` | `Atotin F.C. Tablets 10mg` | the label strength |
+
+Measured: 524 records state a dose in both, 83 in the ingredient only, 0 in the name only —
+**607/607 yield at least one**, so nothing is guessed. The union is what makes it correct on the 21
+records where the two fields disagree, all of which are salt forms or compounds:
+
+- `FLUVASTATIN SODIUM 21.06 MG` / `LESCOL CAPSULES 20MG` — only the name has the 20 mg a clinician types
+- `EZETIMIBE 10 MG+SIMVASTATIN 20 MG` / `Agitin Tablets 10/20mg` — only the ingredient has ezetimibe's 10 mg
+
+Taking either field alone drops one of those. Three things this must keep doing:
+
+1. **Never reconcile a salt weight into a label strength.** 10.85 mg and 10 mg are both offered for
+   Caduet, because the master states both. Rounding one into the other invents a number.
+2. **Keep a concentration's denominator.** `CHOLESTYRAMINE 444.4 MG/GM` becomes `444.4 mg/g`, never
+   `444.4 mg` — it is a powder, not a 444.4 mg tablet, and a 444.4 mg filter must not reach it.
+3. **Units are part of the filter key**, so `4 g` never matches `4 mg`.
+
+Options offered on screen are computed from the records currently displayed, so no option can return
+nothing. A record whose strength cannot be read falls into a `DRUG_DOSE_UNSPECIFIED_KEY` bucket
+rather than out of every filter; no record is in it today, and a test asserts that by measurement so
+a later snapshot cannot quietly strand one.
+
 ## Dates
 
 Official texts use ROC years: **民國 115 = 2026** (ROC + 1911). So 115/9/1 is 2026-09-01, 94/6/1 is
@@ -143,6 +177,33 @@ makes the output wrong rather than merely uglier:
 Case and full/half-width punctuation fold for matching, but both columns are always rendered, so a
 row marked unchanged still shows `Statins` beside `statins`. The only display transform is a line
 break after each full stop; a wholesale replacement otherwise arrives as one unbroken paragraph.
+
+### The drug listing 2.6.1 gained
+
+One region is held out of the diff's **input**: the drug listing that begins at 「成分名稱／健保代碼／
+藥品名稱」 inside unit `2.6.1-001`. That header appears exactly once across all 67 current units, and
+in none of the prior sections.
+
+It is excluded because the prior text has no listing at all, so it can only ever align as one
+undifferentiated block. Measured: 2.6.1's current text is 8,045 characters of which the listing is
+5,098, and it landed in a single diff row whose current cell was **5,080 characters, marked
+`replaced`** — which reads as a claim that the regulator rewrote the old criteria table into a list
+of products. It did not; the list is new.
+
+Removing it **changes no alignment decision**. The diff still produces 14 rows with the same 7
+unchanged / 7 replaced split; only that one cell shrinks, to 709 characters. `rule-comparison.test.ts`
+asserts all of those numbers, so a future change to `rule-diff.ts` that made the exclusion start
+moving rows would fail rather than quietly alter what the screen claims.
+
+Nothing leaves the tool. Three things must stay true, and are tested:
+
+- the unit's **verbatim text is unaltered** — all 5,266 characters are still rendered in the rule tree
+- the excluded region carries **no duration and no lipid threshold**, so the term summary is complete
+- all **116 codes** in it are still resolved against the master and listed above the comparison
+
+`RuleSectionComparison.excludedDrugListings` reports the unit, the character count and the code count
+so the screen can say what is missing and where to read it. Excluding a region silently would be the
+actual violation; this is a labelled trim of a derived view.
 
 The prior text comes from the three official PDFs via `pdftotext -layout -enc UTF-8`, with the
 trailing page-number line and trailing blank lines dropped; each record carries the source PDF's

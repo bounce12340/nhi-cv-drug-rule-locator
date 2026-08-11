@@ -5,6 +5,7 @@ import {
   type PriorRuleSectionRecord
 } from "./generated/rules-prior";
 import { diffRuleSectionText, type RuleDiffSummary } from "./rule-diff";
+import { extractNhiCodesFromVerbatimText } from "./rule-drug-identification";
 import {
   RULE_TEXT_DATASET_VERSION,
   RULE_TEXT_EFFECTIVE_FROM,
@@ -42,6 +43,19 @@ export interface ComparedTerm {
   readonly text: string;
 }
 
+/**
+ * A drug listing that was left out of the comparison input. Reported rather than
+ * dropped quietly, so the screen can say what is missing from the comparison and
+ * where to read it instead.
+ */
+export interface ExcludedDrugListing {
+  /** The unit whose verbatim text holds it. Its full text is unchanged and still displayed. */
+  readonly unitId: string;
+  readonly characterCount: number;
+  /** Codes inside the excluded region; the same items the master identification block lists. */
+  readonly nhiCodeCount: number;
+}
+
 export interface RuleSectionComparison {
   readonly section: string;
   readonly prior: PriorRuleSectionRecord;
@@ -58,6 +72,8 @@ export interface RuleSectionComparison {
   readonly termsInBoth: readonly ComparedTerm[];
   /** Token-level side-by-side comparison. Derived view; see rule-diff.ts. */
   readonly diff: RuleDiffSummary;
+  /** Drug listings held back from `diff`'s input. Empty for every section but 2.6.1. */
+  readonly excludedDrugListings: readonly ExcludedDrugListing[];
 }
 
 /**
@@ -88,10 +104,61 @@ function collectTerms(text: string): Map<string, ComparedTerm> {
   return found;
 }
 
-function currentSectionText(section: string): string {
-  return RULE_TEXT_UNITS.filter((unit) => unit.section === section)
-    .map((unit) => unit.verbatimText)
+/**
+ * The header of the drug listing that 2.6.1 gained on 2026-09-01. It appears exactly
+ * once across all 67 current units and never in any prior section.
+ */
+const DRUG_LISTING_HEADER = "成分名稱\n健保代碼\n藥品名稱";
+
+/**
+ * The listing runs from that header to the end of the unit holding it, and is left out
+ * of the comparison input.
+ *
+ * Why, measured on 2.6.1: the section's current text is 8,045 characters, of which the
+ * listing is 5,098 — and the prior text has no listing at all, so it can only ever align
+ * as one undifferentiated block. It landed in a single diff row whose current cell was
+ * 5,080 characters, marked `replaced`, which reads as a claim that the regulator rewrote
+ * the old criteria table into a list of products. It did not; the list is new.
+ *
+ * Removing it changes no alignment decision. The diff still produces 14 rows with the
+ * same 7 unchanged / 7 replaced split; only that one cell shrinks, to 709 characters.
+ *
+ * This trims the comparison's input only. The unit's verbatim text is displayed in full
+ * and unaltered in the rule-text tree, and every code in the listing is resolved against
+ * the master by `identifyRuleDrugMasterRecords` — which is where a clinician should read
+ * the drug names, since the listing's own name column cannot be paired by row order.
+ */
+function withoutDrugListing(verbatimText: string): string {
+  const at = verbatimText.indexOf(DRUG_LISTING_HEADER);
+  return at === -1 ? verbatimText : verbatimText.slice(0, at).trimEnd();
+}
+
+function currentSectionUnits(section: string): readonly (typeof RULE_TEXT_UNITS)[number][] {
+  return RULE_TEXT_UNITS.filter((unit) => unit.section === section);
+}
+
+/** The section's text as compared: verbatim except for the drug listing described above. */
+function comparedSectionText(section: string): string {
+  return currentSectionUnits(section)
+    .map((unit) => withoutDrugListing(unit.verbatimText))
     .join("\n");
+}
+
+function excludedDrugListings(section: string): readonly ExcludedDrugListing[] {
+  return Object.freeze(
+    currentSectionUnits(section).flatMap((unit) => {
+      const at = unit.verbatimText.indexOf(DRUG_LISTING_HEADER);
+      if (at === -1) return [];
+      const listing = unit.verbatimText.slice(at);
+      return [
+        Object.freeze({
+          unitId: unit.unitId,
+          characterCount: listing.length,
+          nhiCodeCount: extractNhiCodesFromVerbatimText(listing).length
+        })
+      ];
+    })
+  );
 }
 
 function currentUnitCount(section: string): number {
@@ -108,7 +175,7 @@ export function compareRuleSectionVersions(section: string): RuleSectionComparis
   if (prior === undefined) return undefined;
 
   const priorTerms = collectTerms(prior.verbatimText);
-  const currentTerms = collectTerms(currentSectionText(section));
+  const currentTerms = collectTerms(comparedSectionText(section));
 
   const onlyInPrior: ComparedTerm[] = [];
   const inBoth: ComparedTerm[] = [];
@@ -131,6 +198,7 @@ export function compareRuleSectionVersions(section: string): RuleSectionComparis
     termsOnlyInPrior: Object.freeze(onlyInPrior),
     termsOnlyInCurrent: Object.freeze(onlyInCurrent),
     termsInBoth: Object.freeze(inBoth),
-    diff: diffRuleSectionText(prior.verbatimText, currentSectionText(section))
+    diff: diffRuleSectionText(prior.verbatimText, comparedSectionText(section)),
+    excludedDrugListings: excludedDrugListings(section)
   });
 }
