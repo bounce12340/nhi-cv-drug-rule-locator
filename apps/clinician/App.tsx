@@ -8,7 +8,9 @@ import {
   ITEM_DATASET_VERSION,
   ITEM_WARNING,
   NAVIGABLE_DRUG_ITEM_RULE_SECTIONS,
+  DRUG_DOSE_UNSPECIFIED_KEY,
   PRIOR_RULE_WARNING,
+  collectDrugDoseFacets,
   compareRuleSectionVersions,
   getDrugItemAnnouncementMembership,
   getNavigableDrugItemRuleSections,
@@ -16,7 +18,9 @@ import {
   listDrugItemMasterRecordsByRuleSection,
   lookupDrugItemMaster,
   lookupRuleText,
+  matchesDrugDoseFilter,
   matchesDrugItemAnnouncementFilter,
+  type DrugDoseFacet,
   type DrugItemAnnouncementFilter,
   type DrugItemMasterLookupResult,
   type DrugItemMasterMatch,
@@ -92,6 +96,13 @@ const UI_COPY = Object.freeze({
     filterAll: "全部",
     filterPriceChanged: "本次調價",
     filterPriceUnchanged: "本次未調價",
+    doseFilter: "劑量",
+    doseFilterAll: "全部劑量（{count}）",
+    doseFilterOption: "{label}（{count}）",
+    doseUnspecified: "劑量未標示",
+    doseNote:
+      "劑量取自主檔的成分欄與英文品名兩者聯集。鹽類成分記載的是鹽重（如 atorvastatin calcium 10.85 mg），與標示含量（10 mg）並列，兩個都查得到；數值一律照主檔原樣，不換算、不四捨五入。",
+    doseSelectedEmpty: "目前條件下沒有此劑量的品項。",
     announcementSourceTitle: "另一資料來源：2026-09-01 公告異動明細",
     announcementDatasetVersion: "資料集版本：{result.datasetVersion}",
     announcementNotFound: "此主檔代碼未列於 2026-09-01 公告資料集。",
@@ -196,6 +207,8 @@ const UI_COPY = Object.freeze({
     ruleComparisonPriorTextTitle: "舊制條文全文",
     expandPriorRuleText: "展開舊制條文全文（目前已收合）",
     collapsePriorRuleText: "收合舊制條文全文（目前已展開）",
+    ruleDiffExcludedListing:
+      "本對照未納入條文 {unitId} 的藥品清單表（{characters} 字、{codes} 個健保代碼）。該表為新制新增，舊制條文中沒有對應內容，納入比對只會成為一整格「改寫」，看不出給付規定改了什麼。清單的官方全文未經更動，在下方「官方規則逐字條文」的 {unitId} 內完整呈現；{codes} 個代碼對應的品名、成分、劑型則在上方「條文中出現之代碼在藥品主檔的記錄」逐筆列出。",
     ruleDrugMasterTitle: "條文中出現之代碼在藥品主檔的記錄（{count} 筆）",
     ruleDrugMasterNoCodes: "本次結果之條文中未出現符合代碼格式之字串。",
     expandRuleDrugMaster: "展開主檔辨識記錄（{count} 筆，目前已收合）",
@@ -238,6 +251,13 @@ const UI_COPY = Object.freeze({
     filterAll: "All",
     filterPriceChanged: "Price changed",
     filterPriceUnchanged: "Price not changed",
+    doseFilter: "Dose",
+    doseFilterAll: "All doses ({count})",
+    doseFilterOption: "{label} ({count})",
+    doseUnspecified: "Dose not stated",
+    doseNote:
+      "Doses are read from the master's ingredient field and English drug name, unioned. Salt forms state the salt weight (e.g. atorvastatin calcium 10.85 mg) alongside the label strength (10 mg), and both can be searched; values are shown exactly as the master states them, never converted or rounded.",
+    doseSelectedEmpty: "No item carries this dose under the current filters.",
     announcementSourceTitle: "Separate source: 2026-09-01 announcement change details",
     announcementDatasetVersion: "Dataset version: {result.datasetVersion}",
     announcementNotFound: "This master code is not listed in the 2026-09-01 announcement dataset.",
@@ -347,6 +367,8 @@ const UI_COPY = Object.freeze({
     ruleComparisonPriorTextTitle: "Prior version, full text",
     expandPriorRuleText: "Expand prior version full text (currently collapsed)",
     collapsePriorRuleText: "Collapse prior version full text (currently expanded)",
+    ruleDiffExcludedListing:
+      "This comparison leaves out the drug listing in unit {unitId} ({characters} characters, {codes} NHI codes). The listing is new; the prior text has no counterpart, so comparing it can only produce one undifferentiated “rewritten” cell that says nothing about how the coverage conditions changed. The official text of the listing is unaltered and shown in full under {unitId} in the verbatim rule text below, and the {codes} codes are resolved to names, ingredients and dosage forms in the drug-master records above.",
     ruleDrugMasterTitle: "Drug-master records for codes appearing in the rule text ({count} entries)",
     ruleDrugMasterNoCodes:
       "No strings matching the code format appear in the rule text for this result.",
@@ -417,6 +439,84 @@ const lookupStatusKeys = Object.freeze({
   MULTIPLE_MATCHES: "statusMultiple",
   NOT_IN_VALIDATED_DATASET: "statusUnavailable"
 } satisfies Readonly<Record<RuleTextLookupResult["status"], UiMessageKey>>);
+
+/**
+ * Strength options for the current result set. Every option is a strength some item on
+ * screen actually carries, so no option can return nothing — except a selection the
+ * other filters have since emptied, which is kept visible with its zero count so it can
+ * be seen and cleared rather than quietly applied or quietly dropped.
+ */
+function DoseFilterRow({
+  facets,
+  onSelect,
+  selected,
+  totalCount
+}: {
+  facets: readonly DrugDoseFacet[];
+  onSelect: (facet: DrugDoseFacet | undefined) => void;
+  selected: DrugDoseFacet | undefined;
+  totalCount: number;
+}): React.JSX.Element | null {
+  const { styles, t } = useUi();
+  if (facets.length === 0 && selected === undefined) return null;
+
+  const options = [...facets];
+  if (selected !== undefined && !options.some((facet) => facet.key === selected.key)) {
+    options.push({ key: selected.key, label: selected.label, count: 0 });
+  }
+
+  function optionLabel(facet: DrugDoseFacet): string {
+    return t("doseFilterOption", {
+      label: facet.key === DRUG_DOSE_UNSPECIFIED_KEY ? t("doseUnspecified") : facet.label,
+      count: String(facet.count)
+    });
+  }
+
+  return (
+    <View style={styles.doseFilterBlock}>
+      <Text style={styles.filterTitle}>{t("doseFilter")}</Text>
+      <View style={styles.filterRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: selected === undefined }}
+          onPress={() => onSelect(undefined)}
+          style={[styles.filterButton, selected === undefined ? styles.filterButtonSelected : null]}
+        >
+          <Text
+            style={[
+              styles.filterButtonText,
+              selected === undefined ? styles.filterButtonTextSelected : null
+            ]}
+          >
+            {t("doseFilterAll", { count: String(totalCount) })}
+          </Text>
+        </Pressable>
+        {options.map((facet) => {
+          const isSelected = selected?.key === facet.key;
+          return (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
+              key={facet.key}
+              onPress={() => onSelect(isSelected ? undefined : facet)}
+              style={[styles.filterButton, isSelected ? styles.filterButtonSelected : null]}
+            >
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  isSelected ? styles.filterButtonTextSelected : null
+                ]}
+              >
+                {optionLabel(facet)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text style={styles.doseNote}>{t("doseNote")}</Text>
+    </View>
+  );
+}
 
 function protectedText(language: InterfaceLanguage, value: string): string {
   return preserveProtectedText(language, value);
@@ -1037,6 +1137,11 @@ function DrugItemMasterLookupMode({
   const [result, setResult] = useState<DrugItemMasterLookupResult | null>(null);
   const [announcementFilter, setAnnouncementFilter] =
     useState<DrugItemAnnouncementFilter>("all");
+  // undefined means no dose is selected. A clinician treats each strength as its own
+  // group, so this narrows the result set rather than replacing the search. The whole
+  // facet is held, not just its key, so a selection can still be labelled after the
+  // other filters move and its count drops to zero.
+  const [doseFilter, setDoseFilter] = useState<DrugDoseFacet | undefined>(undefined);
 
   const sectionMatches = useMemo<readonly DrugItemMasterMatch[]>(() => {
     if (sectionFilter === undefined) return Object.freeze([]);
@@ -1053,8 +1158,17 @@ function DrugItemMasterLookupMode({
   }, [asOfDate, datasetVersion, sectionFilter]);
 
   const unfilteredMatches = sectionFilter === undefined ? (result?.matches ?? []) : sectionMatches;
-  const visibleMatches = unfilteredMatches.filter((match) =>
+  const announcementMatches = unfilteredMatches.filter((match) =>
     matchesDrugItemAnnouncementFilter(match.item.nhiCode, announcementFilter)
+  );
+  // Offered strengths come from what is on screen, so no option ever returns nothing.
+  // Not memoized: `announcementMatches` is a fresh array every render, and per-record
+  // extraction is already cached by NHI code inside the domain package.
+  const doseFacets: readonly DrugDoseFacet[] = collectDrugDoseFacets(
+    announcementMatches.map((match) => match.item)
+  );
+  const visibleMatches = announcementMatches.filter((match) =>
+    matchesDrugDoseFilter(match.item, doseFilter?.key)
   );
   const hasResult = result !== null || sectionFilter !== undefined;
   const renderedLookupAsOfDate =
@@ -1068,6 +1182,9 @@ function DrugItemMasterLookupMode({
 
   function performLookup(): void {
     onClearSectionFilter();
+    // A strength selected for the previous drug usually does not exist for the next one.
+    // Carrying it over would return an empty screen that looks like "no such drug".
+    setDoseFilter(undefined);
     setResult(
       lookupDrugItemMaster({
         query,
@@ -1154,6 +1271,14 @@ function DrugItemMasterLookupMode({
             </Pressable>
           ))}
         </View>
+        {hasResult ? (
+          <DoseFilterRow
+            facets={doseFacets}
+            onSelect={setDoseFilter}
+            selected={doseFilter}
+            totalCount={announcementMatches.length}
+          />
+        ) : null}
       </View>
 
       {hasResult ? (
@@ -1204,7 +1329,9 @@ function DrugItemMasterLookupMode({
           {unfilteredMatches.length === 0 ? (
             <Text style={styles.empty}>{t("noValidatedItems")}</Text>
           ) : visibleMatches.length === 0 ? (
-            <Text style={styles.empty}>{t("noFilteredItems")}</Text>
+            <Text style={styles.empty}>
+              {t(doseFilter === undefined ? "noFilteredItems" : "doseSelectedEmpty")}
+            </Text>
           ) : null}
         </View>
       ) : null}
@@ -1327,6 +1454,15 @@ function RuleDiffTable({
           added: protectedText(language, String(diff.addedTokens))
         })}
       </Text>
+      {comparison.excludedDrugListings.map((listing) => (
+        <Text key={listing.unitId} style={styles.diffExcludedNotice}>
+          {t("ruleDiffExcludedListing", {
+            unitId: protectedText(language, listing.unitId),
+            characters: protectedText(language, String(listing.characterCount)),
+            codes: protectedText(language, String(listing.nhiCodeCount))
+          })}
+        </Text>
+      ))}
       <View style={[styles.diffRow, isDesktop ? styles.diffRowDesktop : null]}>
         <Text style={[styles.diffColumnHeader, isDesktop ? styles.diffCellDesktop : null]}>
           {t("ruleDiffPriorColumn", {
@@ -2078,6 +2214,14 @@ function createStyles(theme: ThemeTokens) {
     filterBlock: { gap: 8 },
     filterTitle: { color: theme.color.detailText, fontWeight: "800" },
     filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    doseFilterBlock: {
+      gap: 8,
+      marginTop: 4,
+      borderTopWidth: 1,
+      borderTopColor: theme.color.controlBorder,
+      paddingTop: 12
+    },
+    doseNote: { color: theme.color.textMuted, fontSize: 13, lineHeight: 19 },
     filterButton: {
       borderColor: theme.color.controlBorder,
       borderRadius: 999,
@@ -2262,6 +2406,14 @@ function createStyles(theme: ThemeTokens) {
       color: theme.color.textMuted,
       fontSize: 14,
       lineHeight: 20
+    },
+    diffExcludedNotice: {
+      backgroundColor: theme.color.tabSurface,
+      borderRadius: 6,
+      color: theme.color.detailText,
+      fontSize: 14,
+      lineHeight: 21,
+      padding: 10
     },
     comparisonTermGroup: { gap: 6 },
     comparisonTermGroupTitle: {
