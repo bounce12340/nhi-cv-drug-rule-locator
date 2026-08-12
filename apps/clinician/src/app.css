@@ -407,6 +407,51 @@ summary:focus-visible {
   margin: 3px 0;
 }
 
+/* -------------------------------------------------------------- readout -- */
+
+/*
+ * What the typed line was read as. Shown always, never a hidden inference: each
+ * chip quotes the characters it came from, and the controls below can override it.
+ */
+.readout {
+  display: grid;
+  gap: 6px;
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.readout-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.readout-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.readout-aside {
+  background: none;
+  border-style: dashed;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.readout-raw {
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
 /* ---------------------------------------------------------------- stats -- */
 
 .stat-row {

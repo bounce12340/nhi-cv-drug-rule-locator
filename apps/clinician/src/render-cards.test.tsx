@@ -1,11 +1,12 @@
 import {
   DRUG_ITEM_MASTER_WARNING,
   getDrugItemDoses,
-  lookupDrugItemMaster
+  lookupDrugItemMaster,
+  parseDrugQuery
 } from "@nhi-cv/domain";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { DrugItemCard, OfficialSourcesDisclosure, UiProvider } from "../App";
+import { DrugItemCard, OfficialSourcesDisclosure, SmartQueryReadout, UiProvider } from "../App";
 
 /**
  * Renders each block against real dataset records and asserts on the markup the
@@ -74,5 +75,40 @@ describe("official warnings", () => {
     );
     expect(markup).toContain(DRUG_ITEM_MASTER_WARNING);
     expect(markup.split(DRUG_ITEM_MASTER_WARNING).length - 1).toBe(1);
+  });
+});
+
+describe("what the typed line was read as", () => {
+  const parsed = parseDrugQuery("請幫我查 atorvastatin 40mg 這次調價的 115/9/1", {
+    today: "2026-08-12",
+    announcementDate: "2026-09-01"
+  });
+  const markup = render(
+    <SmartQueryReadout facets={parsed.facets} searchText={parsed.searchText} />
+  );
+
+  it("shows each reading with the characters it came from", () => {
+    expect(markup).toContain("40 mg");
+    expect(markup).toContain("40mg");
+    expect(markup).toContain("這次調價");
+    expect(markup).toContain("2026-09-01");
+    expect(markup).toContain("115/9/1");
+  });
+
+  it("names the words it set aside instead of dropping them in silence", () => {
+    for (const word of ["請", "幫我", "查", "的"]) expect(markup).toContain(word);
+  });
+
+  it("states the text the name search actually received", () => {
+    expect(parsed.searchText).toBe("atorvastatin");
+    expect(markup).toContain("atorvastatin");
+  });
+
+  it("renders nothing at all when the line held no conditions", () => {
+    const plain = parseDrugQuery("atorvastatin", {
+      today: "2026-08-12",
+      announcementDate: "2026-09-01"
+    });
+    expect(render(<SmartQueryReadout facets={plain.facets} searchText={plain.searchText} />)).toBe("");
   });
 });
