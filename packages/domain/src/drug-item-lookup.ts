@@ -58,6 +58,7 @@ export interface DrugItemMasterLookupResult {
 }
 
 const NO_DRUG_ITEM_MASTER_MATCHES: readonly DrugItemMasterMatch[] = Object.freeze([]);
+const NO_DRUG_ITEM_MASTER_RECORDS: readonly DrugItemMasterRecord[] = Object.freeze([]);
 const NHI_CODE_SURFACE_FORMAT = /^[A-Z0-9]{10}$/;
 
 /**
@@ -78,14 +79,43 @@ function normalizeDrugItemMasterCode(value: string): string {
   return value.normalize("NFKC").trim().toUpperCase().replace(/[\s-]/g, "");
 }
 
+/**
+ * The master states the same strength two ways, measured across all 607 records:
+ * `ingredient` writes `20 MG` on every one of them, while `drugNameEn` writes `20mg`
+ * on 467 and `20 mg` on 57. The ingredient is the only field carrying the generic
+ * name, so requiring the query to appear verbatim made "lovastatin 20mg" impossible
+ * to find while "lovastatin 20 mg" worked. Folding the gap between a number and its
+ * unit makes both spellings the same key.
+ */
+const DOSE_GAP = /(\d)\s+(mg|mcg|gm|ml|iu|g|毫克|公絲)\b/g;
+
 function normalizeDrugItemMasterName(value: string): string {
-  return value.normalize("NFKC").trim().toLocaleLowerCase("en-US").replace(/\s+/g, " ");
+  return value
+    .normalize("NFKC")
+    .trim()
+    .toLocaleLowerCase("en-US")
+    .replace(/\s+/g, " ")
+    .replace(DOSE_GAP, "$1$2");
 }
 
-function itemMatchesName(record: DrugItemMasterRecord, normalizedQuery: string): boolean {
-  return [record.drugNameZh, record.drugNameEn, record.ingredient]
-    .map(normalizeDrugItemMasterName)
-    .some((value) => value.includes(normalizedQuery));
+/**
+ * Every word the clinician typed must appear somewhere in the item's Chinese name,
+ * English name or ingredient — not necessarily in the same field, and not
+ * necessarily adjacent. "pravastatin 20mg" has to reach an item whose ingredient
+ * reads `PRAVASTATIN SODIUM 20 MG`, and requiring one contiguous run could not.
+ *
+ * This widens what is found; it never narrows it, and it corrects nothing. A word
+ * that appears in no field still matches no item.
+ */
+function itemMatchesName(record: DrugItemMasterRecord, queryTerms: readonly string[]): boolean {
+  const fields = [record.drugNameZh, record.drugNameEn, record.ingredient].map(
+    normalizeDrugItemMasterName
+  );
+  return queryTerms.every((term) => fields.some((field) => field.includes(term)));
+}
+
+function toQueryTerms(query: string): readonly string[] {
+  return normalizeDrugItemMasterName(query).split(" ").filter((term) => term.length > 0);
 }
 
 /** Returns a period only when exactly one interval covers the requested date. */
@@ -120,22 +150,34 @@ export function lookupDrugItemMaster(
   }
 
   const normalizedCode = normalizeDrugItemMasterCode(request.query);
-  let candidates: readonly DrugItemMasterRecord[];
+  let candidates: readonly DrugItemMasterRecord[] = NO_DRUG_ITEM_MASTER_RECORDS;
+
+  // An exact code always wins, and only ever an exact one.
   if (NHI_CODE_SURFACE_FORMAT.test(normalizedCode)) {
     const exactItem = DRUG_ITEM_MASTER_RECORDS.find((item) => item.nhiCode === normalizedCode);
-    candidates = exactItem === undefined ? [] : [exactItem];
-  } else {
-    const normalizedQuery = normalizeDrugItemMasterName(request.query);
-    if (normalizedQuery.length === 0) {
+    if (exactItem !== undefined) candidates = [exactItem];
+  }
+
+  /*
+   * A query that looks like a code but matches none falls through to the name search
+   * rather than ending here. `LOVASTATIN` is ten alphanumeric characters, so the code
+   * surface swallowed it and the ingredient became unsearchable — it is the only
+   * lipid-lowering generic name of exactly that length, which is why it went unnoticed.
+   *
+   * This does not soften the exact-code rule. A mistyped code still resolves to no
+   * item, because the fallback only matches text that literally appears in a name or
+   * ingredient field; it never reaches a neighbouring code.
+   */
+  if (candidates.length === 0) {
+    const queryTerms = toQueryTerms(request.query);
+    if (queryTerms.length === 0) {
       return makeDrugItemMasterResult(
         "NOT_IN_VALIDATED_DATASET",
         request.as_of_date,
         NO_DRUG_ITEM_MASTER_MATCHES
       );
     }
-    candidates = DRUG_ITEM_MASTER_RECORDS.filter((item) =>
-      itemMatchesName(item, normalizedQuery)
-    );
+    candidates = DRUG_ITEM_MASTER_RECORDS.filter((item) => itemMatchesName(item, queryTerms));
   }
 
   let excludedZeroPriceCount = 0;

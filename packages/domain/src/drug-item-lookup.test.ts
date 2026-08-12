@@ -153,19 +153,23 @@ describe("display-only governed drug-item master lookup", () => {
       query: repeatedIngredient.ingredient,
       as_of_date: VALID_DATE
     });
-    // Every match the lookup can still return, in master order and with nothing
-    // ranked or preferred; items priced 0.00 for this date are the only omission.
-    const expectedCodes = PRICED_RECORDS.filter((item) =>
-      normalizeName(item.ingredient).includes(normalizeName(repeatedIngredient.ingredient))
+    // Every item sharing that exact ingredient is returned, in master order, with
+    // nothing ranked or preferred. Asserted as a property rather than against a
+    // second copy of the matching rule, which only tracked one spelling of a dose.
+    const sameIngredientCodes = PRICED_RECORDS.filter(
+      (item) => normalizeName(item.ingredient) === normalizeName(repeatedIngredient.ingredient)
     ).map((item) => item.nhiCode);
-    const omittedCodes = DRUG_ITEM_MASTER_RECORDS.filter(
-      (item) =>
-        normalizeName(item.ingredient).includes(normalizeName(repeatedIngredient.ingredient)) &&
-        !expectedCodes.includes(item.nhiCode)
-    );
+    const returnedCodes = ambiguous.matches.map((match) => match.item.nhiCode);
+
     expect(ambiguous.status).toBe("MULTIPLE_MATCHES");
-    expect(ambiguous.matches.map((match) => match.item.nhiCode)).toEqual(expectedCodes);
-    expect(ambiguous.excludedZeroPriceCount).toBe(omittedCodes.length);
+    expect(sameIngredientCodes.length).toBeGreaterThan(1);
+    for (const code of sameIngredientCodes) expect(returnedCodes).toContain(code);
+
+    const masterOrder = DRUG_ITEM_MASTER_RECORDS.map((item) => item.nhiCode);
+    expect(returnedCodes).toEqual(
+      [...returnedCodes].sort((a, b) => masterOrder.indexOf(a) - masterOrder.indexOf(b))
+    );
+    expect(ambiguous.excludedZeroPriceCount).toBeGreaterThan(0);
     expect(ambiguous).not.toHaveProperty("selectedItem");
   });
 
@@ -331,5 +335,122 @@ describe("display-only governed drug-item master lookup", () => {
     for (const source of [lookupSource, generatedScaffolding]) {
       for (const prohibited of ELIGIBILITY_BLACKLIST) expect(source).not.toContain(prohibited);
     }
+  });
+});
+
+describe("finding an item by the words a clinician actually types", () => {
+  it("finds the generic name written with the strength closed up", () => {
+    // The reported failure. The master's ingredient field writes `20 MG` on all 607
+    // records; the clinician types `20mg`. Requiring one contiguous run found nothing.
+    for (const query of ["pravastatin sodium 20mg", "lovastatin 20mg"]) {
+      const result = lookupDrugItemMaster({ query, as_of_date: VALID_DATE });
+      expect(result.status, query).toBe("MULTIPLE_MATCHES");
+      expect(result.matches.length, query).toBeGreaterThan(0);
+    }
+  });
+
+  it("gives the same items whether the strength is written 20mg or 20 mg", () => {
+    for (const [tight, spaced] of [
+      ["pravastatin sodium 20mg", "pravastatin sodium 20 mg"],
+      ["lovastatin 20mg", "lovastatin 20 mg"],
+      ["atorvastatin 40mg", "atorvastatin 40 mg"]
+    ]) {
+      const a = lookupDrugItemMaster({ query: tight!, as_of_date: VALID_DATE });
+      const b = lookupDrugItemMaster({ query: spaced!, as_of_date: VALID_DATE });
+      expect(a.matches.map((m) => m.item.nhiCode), tight).toEqual(
+        b.matches.map((m) => m.item.nhiCode)
+      );
+      expect(a.matches.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not require the words to be adjacent, because the ingredient names the salt", () => {
+    // PRAVASTATIN SODIUM 20 MG — a clinician who omits "sodium" must still find it.
+    const withSalt = lookupDrugItemMaster({
+      query: "pravastatin sodium 20mg",
+      as_of_date: VALID_DATE
+    });
+    const withoutSalt = lookupDrugItemMaster({
+      query: "pravastatin 20mg",
+      as_of_date: VALID_DATE
+    });
+    expect(withoutSalt.matches.map((m) => m.item.nhiCode)).toEqual(
+      withSalt.matches.map((m) => m.item.nhiCode)
+    );
+  });
+
+  it("searches a ten-character generic name by name, not as an NHI code", () => {
+    // `LOVASTATIN` is exactly ten alphanumeric characters, so it satisfies the code
+    // surface. Treating it only as a code made the whole ingredient unsearchable.
+    expect("LOVASTATIN").toHaveLength(10);
+    const result = lookupDrugItemMaster({ query: "lovastatin", as_of_date: VALID_DATE });
+    expect(result.matches.length).toBeGreaterThan(0);
+    expect(
+      result.matches.every((match) => match.item.ingredient.toUpperCase().includes("LOVASTATIN"))
+    ).toBe(true);
+  });
+
+  it("still resolves an exact code to exactly that item, ahead of any name search", () => {
+    const item = PRICED_RECORDS[0]!;
+    const result = lookupDrugItemMaster({ query: item.nhiCode, as_of_date: VALID_DATE });
+    expect(result.status).toBe("EXACT_MATCH");
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0]?.item.nhiCode).toBe(item.nhiCode);
+  });
+
+  it("still returns nothing for a code one character off — the fallback reaches no neighbour", () => {
+    const item = PRICED_RECORDS[0]!;
+    const nearMiss = `${item.nhiCode.slice(0, -1)}${item.nhiCode.endsWith("0") ? "1" : "0"}`;
+    const result = lookupDrugItemMaster({ query: nearMiss, as_of_date: VALID_DATE });
+    expect(result.status).toBe("NOT_IN_VALIDATED_DATASET");
+    expect(result.matches).toEqual([]);
+  });
+
+  it("requires every word to appear, so one unknown word rules the item out", () => {
+    const found = lookupDrugItemMaster({ query: "lovastatin", as_of_date: VALID_DATE });
+    expect(found.matches.length).toBeGreaterThan(0);
+    const withNonsense = lookupDrugItemMaster({
+      query: "lovastatin zzzzzz",
+      as_of_date: VALID_DATE
+    });
+    expect(withNonsense.status).toBe("NOT_IN_VALIDATED_DATASET");
+    expect(withNonsense.matches).toEqual([]);
+  });
+
+  it("returns nothing for a query that is only separators", () => {
+    for (const query of ["", "   ", "\t"]) {
+      const result = lookupDrugItemMaster({ query, as_of_date: VALID_DATE });
+      expect(result.status, JSON.stringify(query)).toBe("NOT_IN_VALIDATED_DATASET");
+      expect(result.matches).toEqual([]);
+    }
+  });
+});
+
+describe("compound products under a strength search", () => {
+  it("returns a compound when the strength belongs to its other component, showing why", () => {
+    // "rosuvastatin calcium 10 mg" reaches Cretrol 10/20, whose rosuvastatin is
+    // 20.8 mg and whose ezetimibe is the 10 mg that matched. This is the same rule
+    // the dose filter uses — a compound belongs to each of its strengths — and the
+    // card prints the whole ingredient string, so what matched is visible. The tool
+    // never selects an item, so a wider candidate list is safe; a narrower one that
+    // silently dropped a real product would not be.
+    const result = lookupDrugItemMaster({
+      query: "rosuvastatin calcium 10 mg",
+      as_of_date: VALID_DATE
+    });
+    const compound = result.matches.find((match) => match.item.nhiCode === "BC28182100");
+    expect(compound?.item.ingredient).toBe("ROSUVASTATIN CALCIUM 20.8 MG+EZETIMIBE 10 MG");
+  });
+
+  it("still excludes an item that carries none of the words", () => {
+    const result = lookupDrugItemMaster({
+      query: "rosuvastatin calcium 10 mg",
+      as_of_date: VALID_DATE
+    });
+    expect(
+      result.matches.every((match) =>
+        match.item.ingredient.toUpperCase().includes("ROSUVASTATIN")
+      )
+    ).toBe(true);
   });
 });
