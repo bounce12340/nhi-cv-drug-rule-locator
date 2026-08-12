@@ -2,7 +2,9 @@
 
 醫師診間用的健保降血脂藥品與給付規定查詢工具。線上位置:<https://nhi.uic-ai.com/>
 
-一個靜態網站,掛在 Cloudflare Pages。沒有伺服器、沒有 API、沒有資料庫、沒有帳號。所有資料編譯進前端,查詢全部在瀏覽器裡完成——輸入的內容不會送到任何地方,也不會被記錄。介面有中英雙語與明亮／暗黑主題。
+一個靜態網站,掛在 Cloudflare Pages。沒有伺服器、沒有 API、沒有資料庫、沒有帳號。所有資料編譯進前端,查詢全部在瀏覽器裡完成——輸入的內容不會送到任何地方,也不會被記錄。介面有中英雙語與明亮／暗黑主題,桌機是左查詢右結果的兩欄版面,手機自動收成單欄。
+
+免責與資料來源警語**整頁只出現一次**(頁首一則、結果區底部一個可展開的來源區塊),不會每張結果卡重印一次。
 
 ## 這個工具回答四件事
 
@@ -93,7 +95,9 @@ pnpm --filter @nhi-cv/clinician dev  # 本機開發
 ```
 
 - `packages/domain` — 查詢邏輯與編譯後的資料集。純函式、frozen 資料、無 I/O
-- `apps/clinician` — 介面(Vite + React,零網路呼叫)
+- `apps/clinician` — 介面(Vite + React,純 DOM 與純 CSS,零網路呼叫)
+  - `App.tsx` 只負責版面,不含任何文案;所有字串在 `src/copy.ts`(中英各一份)
+  - `src/app.css` 是全部樣式;顏色以 CSS 變數宣告一次,由 `[data-theme]` 切換
 - `data/governed` — 資料集的原始來源檔
 - `scripts/*-codegen.mjs` — 從 `data/governed/` 重新產生 `packages/domain/src/generated/`
 

@@ -1,18 +1,18 @@
 import { createContext, useContext, useMemo, useState } from "react";
 import {
+  DRUG_DOSE_UNSPECIFIED_KEY,
   DRUG_ITEMS_DATASET_EFFECTIVE_FROM,
   DRUG_ITEMS_DATASET_EFFECTIVE_TO,
-  DRUG_ITEMS_DATASET_VERSION,
   DRUG_ITEM_MASTER_WARNING,
   ITEM_DATASET_EFFECTIVE_FROM,
   ITEM_DATASET_VERSION,
   ITEM_WARNING,
   NAVIGABLE_DRUG_ITEM_RULE_SECTIONS,
-  DRUG_DOSE_UNSPECIFIED_KEY,
   PRIOR_RULE_WARNING,
   collectDrugDoseFacets,
   compareRuleSectionVersions,
   getDrugItemAnnouncementMembership,
+  getDrugItemDoses,
   getNavigableDrugItemRuleSections,
   identifyRuleDrugMasterRecords,
   listDrugItemMasterRecordsByRuleSection,
@@ -24,34 +24,27 @@ import {
   type DrugItemAnnouncementFilter,
   type DrugItemMasterLookupResult,
   type DrugItemMasterMatch,
+  type DrugItemMasterRecord,
   type NavigableDrugItemRuleSection,
   type RuleDiffRow,
-  type RuleSectionComparison,
   type RuleDrugMasterIdentification,
+  type RuleSectionComparison,
   type RuleTextLookupResult,
   type RuleTextUnit
 } from "@nhi-cv/domain";
-import {
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  useColorScheme,
-  useWindowDimensions
-} from "react-native";
+import "./src/app.css";
+import { UI_COPY, type Translator, type UiMessageKey } from "./src/copy";
+import { resolveAsOfDatePresets, todayIso } from "./src/as-of-date";
 import {
   DRUG_ITEM_MASTER_SNAPSHOT_DATE,
-  getClinicianLayoutMode,
   resolveAnnouncementItemSource,
   resolveAnnouncementPriceComparison,
   shouldShowMasterSnapshotNotice,
   type AnnouncementPriceComparison
 } from "./src/drug-item-ui";
+import { resolveDrugReviewPresentation } from "./src/drug-review-presentation";
+import { getRuleUnitStructuralMetadata, groupRuleTextUnitsBySection } from "./src/rule-text-tree";
 import {
-  THEME_TOKENS,
   loadInterfaceLanguage,
   loadThemePreference,
   preferenceStorage,
@@ -61,355 +54,15 @@ import {
   saveThemePreference,
   translateMessage,
   type InterfaceLanguage,
-  type ThemeName,
-  type ThemeTokens
+  type ThemeName
 } from "./src/ui-preferences";
-import { resolveAsOfDatePresets, todayIso } from "./src/as-of-date";
-import { resolveDrugReviewPresentation } from "./src/drug-review-presentation";
-import {
-  getRuleUnitStructuralMetadata,
-  groupRuleTextUnitsBySection
-} from "./src/rule-text-tree";
 
-type LookupMode = "rules" | "drugItems";
+type LookupMode = "drugItems" | "rules";
 
-const UI_COPY = Object.freeze({
-  zh: Object.freeze({
-    themeLightButton: "主題：明亮（切換至暗黑）",
-    themeDarkButton: "主題：暗黑（切換至明亮）",
-    languageControlLabel: "介面語言",
-    languageChinese: "中文",
-    languageEnglish: "English",
-    drugLookupTab: "藥品查詢",
-    ruleLookupTab: "規則逐字查詢",
-    ruleTitle: "官方規則逐字查詢",
-    ruleSubtitle: "以章節、單元編號或表名查找已驗證的逐字單元。",
-    ruleSearchLabel: "規則搜尋",
-    ruleSearchPlaceholder: "例如 2.6.1、2.6.1-002 或表一",
-    ruleDateLabel: "規則查詢日期",
-    datePlaceholder: "查詢日期 YYYY-MM-DD",
-    ruleDatasetLabel: "規則資料集版本",
-    datasetPlaceholder: "資料集版本",
-    ruleSearchButton: "查詢規則原文",
-    clausePath: "clausePath：{value}",
-    rootClause: "（根層）",
-    filterAll: "全部",
-    filterPriceChanged: "本次調價",
-    filterPriceUnchanged: "本次未調價",
-    doseFilter: "劑量",
-    doseFilterAll: "全部劑量（{count}）",
-    doseFilterOption: "{label}（{count}）",
-    doseUnspecified: "劑量未標示",
-    doseNote:
-      "劑量取自主檔的成分欄與英文品名兩者聯集。鹽類成分記載的是鹽重（如 atorvastatin calcium 10.85 mg），與標示含量（10 mg）並列，兩個都查得到；數值一律照主檔原樣，不換算、不四捨五入。",
-    doseSelectedEmpty: "目前條件下沒有此劑量的品項。",
-    announcementSourceTitle: "另一資料來源：2026-09-01 公告異動明細",
-    announcementDatasetVersion: "資料集版本：{result.datasetVersion}",
-    announcementNotFound: "此主檔代碼未列於 2026-09-01 公告資料集。",
-    announcementChangedTitle: "2026-09-01 公告價格對照",
-    priceComparison: "原支付價 {priceBefore} → 初核價格 {priceAfter}",
-    priceBefore: "原支付價：{value}",
-    priceAfter: "初核價格：{value}",
-    effectiveDate: "生效日：{value}",
-    announcementRuleSection: "給付規定章節：{value}",
-    tableTwoMembership: "表二歸屬：{value}",
-    trialNote: "三個月試用期註記：{value}",
-    missingField: "本資料列未提供",
-    fieldEnglishName: "英文品名：{value}",
-    fieldNhiCode: "健保代碼：{value}",
-    fieldIngredient: "成分及含量：{value}",
-    fieldSpecification: "規格：{value}",
-    fieldDosageForm: "劑型：{value}",
-    fieldVendor: "藥商：{value}",
-    fieldManufacturer: "製造廠：{value}",
-    fieldAtc: "ATC：{value}",
-    fieldCategory: "藥品分類：{value}",
-    fieldClassificationGroup: "分類分組名稱：{value}",
-    fieldSingleCompound: "單複方：{value}",
-    applicablePriceTitle: "該查詢日期適用之支付價",
-    validPeriod: "有效期間：{start} 至 {end}",
-    masterSnapshotNotice:
-      "主檔資料集版本 {version} 為 {snapshotDate} 時點快照；主檔最新價格期間為 {start} 至 {end}。上方公告價格對照另載該快照日之後、生效日 {effectiveDate} 的異動。",
-    priceHistoryTitle: "價格沿革",
-    expandPriceHistory: "展開價格沿革（{count} 筆，目前已收合）",
-    collapsePriceHistory: "收合價格沿革（{count} 筆，目前已展開）",
-    validPeriodHeader: "有效期間",
-    paymentPriceHeader: "支付價",
-    dateRange: "{start} 至 {end}",
-    paymentPriceValue: "支付價：{value}",
-    ruleSectionTitle: "給付規定章節",
-    openRuleLabel: "開啟規則 {section} 的逐字條文",
-    openRuleLink: "{section}（開啟逐字條文）",
-    drugTitle: "藥品查詢",
-    drugSubtitle: "以健保代碼、中文品名、英文品名或成分查找品項主檔。",
-    drugSearchLabel: "藥品主檔搜尋",
-    drugSearchPlaceholder: "輸入中文品名、健保代碼、英文品名或成分",
-    drugDateLabel: "藥品主檔查詢日期",
-    drugDatasetLabel: "藥品主檔資料集版本",
-    drugSearchButton: "查詢藥品主檔",
-    sectionFilter: "章節篩選：{section}",
-    clearSectionFilter: "清除章節篩選",
-    resultFilter: "結果篩選",
-    officialWarningTitle: "官方轉錄警語",
-    originalLanguageNote:
-      "Official warnings and rule text appear in their original Chinese wording.",
-    resultTitle: "查詢結果：{status}",
-    sectionItemsTitle: "章節品項：{section}",
-    resultMetadata: "資料集版本：{version} · 查詢日期：{date}",
-    multipleReviewDrug:
-      "目前畫面列出全部 {count} 筆符合目前條件的候選；工具不會代為選取任何品項或期別。",
-    manualReviewDrug: "此結果需要人工確認；系統不會自動選取品項或替代期別。",
-    excludedZeroPrice: "另有 {count} 筆符合查詢的品項，因該查詢日期之支付價為 0.00 未列出。",
-    asOfDatePresetToday: "今天（{value}）",
-    asOfDatePresetAnnouncement: "新制生效日（{value}）",
-    asOfDatePickerHint: "點日期欄位可開啟日曆選擇其他日期。價格依所選日期適用之期別顯示。",
-    noValidatedItems: "該查詢日期沒有已驗證資料所涵蓋的品項期別。",
-    noFilteredItems: "此結果篩選目前沒有品項。",
-    ruleResultMetadata: "資料集版本：{version} · 生效日：{date}",
-    ruleSourceTag: "來源標記：{value}",
-    manualReviewRule: "此結果需要人工確認；請比對健保署公告原文。",
-    viewSectionItems: "查看本章節品項（{section}）",
-    noRuleUnits: "此查詢未取得已驗證的逐字單元。",
-    officialRuleTextTitle: "官方條文",
-    ruleTextSectionTitle: "章節 {section}（{count} 個單元）",
-    expandRuleTextSection: "展開章節 {section}（目前已收合）",
-    collapseRuleTextSection: "收合章節 {section}（目前已展開）",
-    expandAllRuleUnits: "展開章節 {section} 的全部 {count} 個單元",
-    collapseAllRuleUnits: "收合章節 {section} 的全部 {count} 個單元",
-    ruleUnitType: "類型：{value}",
-    ruleUnitTableLabel: "表別：{value}",
-    expandRuleUnit: "展開單元 {unitId}（目前已收合）",
-    collapseRuleUnit: "收合單元 {unitId}（目前已展開）",
-    ruleDiffTitle: "新舊條文逐段對照",
-    ruleDiffPriorColumn: "舊制（適用至 {effectiveTo}）",
-    ruleDiffCurrentColumn: "新制（{effectiveFrom} 生效）",
-    ruleDiffKindUnchanged: "未變更",
-    ruleDiffKindRemoved: "刪除",
-    ruleDiffKindAdded: "新增",
-    ruleDiffKindReplaced: "改寫",
-    ruleDiffStats: "舊制共 {priorTokens} 個字元單位，其中 {unchanged} 個在新制中保留；新制另有 {added} 個為新增。",
-    ruleDiffMethod:
-      "本表以最長共同子序列逐字元對齊兩版條文，並抑制過短的偶然相符。對齊為演算法結果，不是法律判讀：同一列並排的刪除與新增，代表兩者在比對結果中相鄰，不代表主管機關是把左邊改寫成右邊。比對時忽略換行（兩份來源的換行皆為排版產物），本表另於句號後重新斷行以利閱讀，並將英文大小寫與全形半形標點視為相同，因此標示「未變更」的兩欄仍可能有大小寫或標點差異，兩欄並列即可看出。條文原文未經修改，另存於上方舊制全文與下方官方條文。",
-    ruleComparisonTermsTitle: "量化條件摘要",
-    ruleComparisonTitle: "新舊制對照（{section}）",
-    expandRuleComparison: "展開新舊制對照（{section}，目前已收合）",
-    collapseRuleComparison: "收合新舊制對照（{section}，目前已展開）",
-    ruleComparisonPriorMeta: "舊制：最後修訂 {revision}；修訂沿革 {history}",
-    ruleComparisonPriorDataset: "舊制資料集：{version}（適用至 {effectiveTo}）",
-    ruleComparisonCurrentDataset: "新制資料集：{version}（{effectiveFrom} 生效，{count} 個單元）",
-    ruleComparisonSourcePdf: "舊制來源 PDF：{name}（{bytes} bytes，SHA-256 {hash}）",
-    ruleComparisonMethod:
-      "以下比對僅就機械擷取之量化條件（療程與追蹤期間、血脂數值門檻）列出兩制差異，未做逐句比對；文字敘述之增刪不在此列，仍須自行閱讀兩制全文。",
-    ruleComparisonRemoved: "僅見於舊制（{count}）",
-    ruleComparisonAdded: "僅見於新制（{count}）",
-    ruleComparisonRetained: "兩制皆有（{count}）",
-    ruleComparisonNone: "本節未擷取到可比對之量化條件。",
-    ruleComparisonPriorTextTitle: "舊制條文全文",
-    expandPriorRuleText: "展開舊制條文全文（目前已收合）",
-    collapsePriorRuleText: "收合舊制條文全文（目前已展開）",
-    ruleDiffExcludedListing:
-      "本對照未納入條文 {unitId} 的藥品清單表（{characters} 字、{codes} 個健保代碼）。該表為新制新增，舊制條文中沒有對應內容，納入比對只會成為一整格「改寫」，看不出給付規定改了什麼。清單的官方全文未經更動，在下方「官方規則逐字條文」的 {unitId} 內完整呈現；{codes} 個代碼對應的品名、成分、劑型則在上方「條文中出現之代碼在藥品主檔的記錄」逐筆列出。",
-    ruleDrugMasterTitle: "條文中出現之代碼在藥品主檔的記錄（{count} 筆）",
-    ruleDrugMasterNoCodes: "本次結果之條文中未出現符合代碼格式之字串。",
-    expandRuleDrugMaster: "展開主檔辨識記錄（{count} 筆，目前已收合）",
-    collapseRuleDrugMaster: "收合主檔辨識記錄（{count} 筆，目前已展開）",
-    ruleDrugMasterDatasetVersion: "藥品主檔資料集版本：{version}",
-    ruleDrugMasterMissing: "主檔查無此代碼；未以條文文字填補。",
-    fieldMasterChineseName: "主檔中文品名：{value}",
-    fieldMasterEnglishName: "主檔英文品名：{value}",
-    fieldMasterIngredient: "主檔成分：{value}",
-    fieldMasterSpecification: "主檔規格量與單位：{value}",
-    fieldMasterDosageForm: "主檔劑型：{value}",
-    statusExact: "單筆精確命中",
-    statusMultiple: "多筆命中",
-    statusUnavailable: "未在已驗證資料集取得結果",
-    privacyTitle: "此工具不接受病人資料",
-    privacyText: "請勿輸入姓名、病歷號、檢驗值、診斷或任何可識別病人資訊。",
-    footerAttribution:
-      "資料來源:衛生福利部中央健康保險署『健保用藥品項查詢項目檔』(政府資料開放平臺),依政府資料開放授權條款第1版利用",
-    footerPrivacy: "本站不設帳號、不蒐集任何個人資料;查詢內容不記錄、不儲存。"
-  }),
-  en: Object.freeze({
-    themeLightButton: "Theme: Light (switch to Dark)",
-    themeDarkButton: "Theme: Dark (switch to Light)",
-    languageControlLabel: "Interface language",
-    languageChinese: "中文",
-    languageEnglish: "English",
-    drugLookupTab: "Drug lookup",
-    ruleLookupTab: "Verbatim rule lookup",
-    ruleTitle: "Official verbatim rule lookup",
-    ruleSubtitle: "Find verified verbatim units by section, unit number, or table name.",
-    ruleSearchLabel: "Rule search",
-    ruleSearchPlaceholder: "For example, 2.6.1, 2.6.1-002, or 表一",
-    ruleDateLabel: "Rule lookup date",
-    datePlaceholder: "Lookup date YYYY-MM-DD",
-    ruleDatasetLabel: "Rule dataset version",
-    datasetPlaceholder: "Dataset version",
-    ruleSearchButton: "Search rule text",
-    clausePath: "Clause path: {value}",
-    rootClause: "(root)",
-    filterAll: "All",
-    filterPriceChanged: "Price changed",
-    filterPriceUnchanged: "Price not changed",
-    doseFilter: "Dose",
-    doseFilterAll: "All doses ({count})",
-    doseFilterOption: "{label} ({count})",
-    doseUnspecified: "Dose not stated",
-    doseNote:
-      "Doses are read from the master's ingredient field and English drug name, unioned. Salt forms state the salt weight (e.g. atorvastatin calcium 10.85 mg) alongside the label strength (10 mg), and both can be searched; values are shown exactly as the master states them, never converted or rounded.",
-    doseSelectedEmpty: "No item carries this dose under the current filters.",
-    announcementSourceTitle: "Separate source: 2026-09-01 announcement change details",
-    announcementDatasetVersion: "Dataset version: {result.datasetVersion}",
-    announcementNotFound: "This master code is not listed in the 2026-09-01 announcement dataset.",
-    announcementChangedTitle: "2026-09-01 announcement price comparison",
-    priceComparison:
-      "Previous payment price {priceBefore} → Initial review price {priceAfter}",
-    priceBefore: "Previous payment price: {value}",
-    priceAfter: "Initial review price: {value}",
-    effectiveDate: "Effective date: {value}",
-    announcementRuleSection: "Rule section: {value}",
-    tableTwoMembership: "Table 2 classification: {value}",
-    trialNote: "3-month trial note: {value}",
-    missingField: "Not provided in this source row",
-    fieldEnglishName: "English product name: {value}",
-    fieldNhiCode: "NHI code: {value}",
-    fieldIngredient: "Ingredient and strength: {value}",
-    fieldSpecification: "Specification: {value}",
-    fieldDosageForm: "Dosage form: {value}",
-    fieldVendor: "Vendor: {value}",
-    fieldManufacturer: "Manufacturer: {value}",
-    fieldAtc: "ATC: {value}",
-    fieldCategory: "Drug category: {value}",
-    fieldClassificationGroup: "Classification group: {value}",
-    fieldSingleCompound: "Single or combination product: {value}",
-    applicablePriceTitle: "Payment price for the lookup date",
-    validPeriod: "Effective period: {start} to {end}",
-    masterSnapshotNotice:
-      "Master dataset version {version} is a snapshot dated {snapshotDate}. Its latest price period runs from {start} to {end}. The announcement price comparison above separately records a change after that snapshot date, effective {effectiveDate}.",
-    priceHistoryTitle: "Price history",
-    expandPriceHistory: "Expand price history ({count} entries, currently collapsed)",
-    collapsePriceHistory: "Collapse price history ({count} entries, currently expanded)",
-    validPeriodHeader: "Effective period",
-    paymentPriceHeader: "Payment price",
-    dateRange: "{start} to {end}",
-    paymentPriceValue: "Payment price: {value}",
-    ruleSectionTitle: "Rule section",
-    openRuleLabel: "Open the verbatim text for rule {section}",
-    openRuleLink: "{section} (open verbatim rule text)",
-    drugTitle: "Drug lookup",
-    drugSubtitle: "Find master items by NHI code, Chinese name, English name, or ingredient.",
-    drugSearchLabel: "Drug master search",
-    drugSearchPlaceholder: "Enter a Chinese name, NHI code, English name, or ingredient",
-    drugDateLabel: "Drug master lookup date",
-    drugDatasetLabel: "Drug master dataset version",
-    drugSearchButton: "Search drug master",
-    sectionFilter: "Section filter: {section}",
-    clearSectionFilter: "Clear section filter",
-    resultFilter: "Result filters",
-    officialWarningTitle: "Official transcription warning",
-    originalLanguageNote:
-      "Official warnings and rule text appear in their original Chinese wording.",
-    resultTitle: "Lookup result: {status}",
-    sectionItemsTitle: "Section items: {section}",
-    resultMetadata: "Dataset version: {version} · Lookup date: {date}",
-    multipleReviewDrug:
-      "The current view lists all {count} candidates matching the current filters; the tool does not select any item or price period for you.",
-    manualReviewDrug: "This result requires manual review; no item or price period is selected automatically.",
-    excludedZeroPrice:
-      "A further {count} item(s) matched the query but are not listed, because their payment price for that date is 0.00.",
-    asOfDatePresetToday: "Today ({value})",
-    asOfDatePresetAnnouncement: "Announcement effective date ({value})",
-    asOfDatePickerHint:
-      "Tap the date field to open a calendar and pick another date. Prices are shown for the period covering the date you choose.",
-    noValidatedItems: "No item period was found in the verified data for this lookup date.",
-    noFilteredItems: "No items match the current factual filter.",
-    ruleResultMetadata: "Dataset version: {version} · Effective date: {date}",
-    ruleSourceTag: "Source tag: {value}",
-    manualReviewRule: "This result requires manual review; compare it with the original NHI announcement.",
-    viewSectionItems: "View items in this section ({section})",
-    noRuleUnits: "No verified verbatim unit was found for this query.",
-    officialRuleTextTitle: "Official rule text",
-    ruleTextSectionTitle: "Section {section} ({count} units)",
-    expandRuleTextSection: "Expand section {section} (currently collapsed)",
-    collapseRuleTextSection: "Collapse section {section} (currently expanded)",
-    expandAllRuleUnits: "Expand all {count} units in section {section}",
-    collapseAllRuleUnits: "Collapse all {count} units in section {section}",
-    ruleUnitType: "Type: {value}",
-    ruleUnitTableLabel: "Table label: {value}",
-    expandRuleUnit: "Expand unit {unitId} (currently collapsed)",
-    collapseRuleUnit: "Collapse unit {unitId} (currently expanded)",
-    ruleDiffTitle: "Prior and current text, segment by segment",
-    ruleDiffPriorColumn: "Prior (in force until {effectiveTo})",
-    ruleDiffCurrentColumn: "Current (effective {effectiveFrom})",
-    ruleDiffKindUnchanged: "Unchanged",
-    ruleDiffKindRemoved: "Removed",
-    ruleDiffKindAdded: "Added",
-    ruleDiffKindReplaced: "Rewritten",
-    ruleDiffStats:
-      "The prior version has {priorTokens} character units, {unchanged} of which survive in the current version; the current version adds a further {added}.",
-    ruleDiffMethod:
-      "This table aligns the two versions with a longest-common-subsequence over characters and suppresses coincidental short matches. The alignment is an algorithm result, not a legal reading: a removal and an addition on the same row are adjacent in the comparison, which does not mean the regulator rewrote the left into the right. Line breaks are ignored (they are layout artifacts in both sources) and this table re-wraps after each full stop for readability and letter case and full/half-width punctuation are treated as equal, so a row marked unchanged may still differ in case or punctuation — both columns are shown so that difference stays visible. Neither official text is modified; both remain above and below in full.",
-    ruleComparisonTermsTitle: "Quantitative terms at a glance",
-    ruleComparisonTitle: "Prior version compared with current ({section})",
-    expandRuleComparison: "Expand prior/current comparison ({section}, currently collapsed)",
-    collapseRuleComparison: "Collapse prior/current comparison ({section}, currently expanded)",
-    ruleComparisonPriorMeta: "Prior version: last revised {revision}; revision history {history}",
-    ruleComparisonPriorDataset: "Prior dataset: {version} (in force until {effectiveTo})",
-    ruleComparisonCurrentDataset:
-      "Current dataset: {version} (effective {effectiveFrom}, {count} units)",
-    ruleComparisonSourcePdf: "Prior source PDF: {name} ({bytes} bytes, SHA-256 {hash})",
-    ruleComparisonMethod:
-      "This comparison lists only mechanically extracted quantitative terms (treatment and follow-up intervals, lipid value thresholds) that differ between the two versions. Sentences are not aligned and wording changes are not listed, so both full texts still need to be read.",
-    ruleComparisonRemoved: "Only in the prior version ({count})",
-    ruleComparisonAdded: "Only in the current version ({count})",
-    ruleComparisonRetained: "In both versions ({count})",
-    ruleComparisonNone: "No comparable quantitative term was extracted for this section.",
-    ruleComparisonPriorTextTitle: "Prior version, full text",
-    expandPriorRuleText: "Expand prior version full text (currently collapsed)",
-    collapsePriorRuleText: "Collapse prior version full text (currently expanded)",
-    ruleDiffExcludedListing:
-      "This comparison leaves out the drug listing in unit {unitId} ({characters} characters, {codes} NHI codes). The listing is new; the prior text has no counterpart, so comparing it can only produce one undifferentiated “rewritten” cell that says nothing about how the coverage conditions changed. The official text of the listing is unaltered and shown in full under {unitId} in the verbatim rule text below, and the {codes} codes are resolved to names, ingredients and dosage forms in the drug-master records above.",
-    ruleDrugMasterTitle: "Drug-master records for codes appearing in the rule text ({count} entries)",
-    ruleDrugMasterNoCodes:
-      "No strings matching the code format appear in the rule text for this result.",
-    expandRuleDrugMaster:
-      "Expand drug-master identification records ({count} entries, currently collapsed)",
-    collapseRuleDrugMaster:
-      "Collapse drug-master identification records ({count} entries, currently expanded)",
-    ruleDrugMasterDatasetVersion: "Drug master dataset version: {version}",
-    ruleDrugMasterMissing:
-      "No record was found for this code in the drug master; rule text was not used to fill it.",
-    fieldMasterChineseName: "Master Chinese product name: {value}",
-    fieldMasterEnglishName: "Master English product name: {value}",
-    fieldMasterIngredient: "Master ingredient: {value}",
-    fieldMasterSpecification: "Master specification amount and unit: {value}",
-    fieldMasterDosageForm: "Master dosage form: {value}",
-    statusExact: "One exact record match",
-    statusMultiple: "Multiple record matches",
-    statusUnavailable: "No result in the verified dataset",
-    privacyTitle: "This tool does not accept patient data",
-    privacyText:
-      "Do not enter names, medical record numbers, test results, diagnoses, or any identifiable patient information.",
-    footerAttribution:
-      "Source: National Health Insurance Administration, Ministry of Health and Welfare, NHI Drug Item Query File (data.gov.tw), used under the Open Government Data License, Version 1.0.",
-    footerPrivacy:
-      "This site has no accounts and collects no personal data; lookup content is neither logged nor stored."
-  })
-});
-
-type UiMessageKey = keyof (typeof UI_COPY)["zh"];
-type UiReplacements = Readonly<Record<string, string>>;
-type Translator = (key: UiMessageKey, replacements?: UiReplacements) => string;
-
-type AppStyles = ReturnType<typeof createStyles>;
-
-type UiContextValue = Readonly<{
-  language: InterfaceLanguage;
-  styles: AppStyles;
-  theme: ThemeName;
-  tokens: ThemeTokens;
-  t: Translator;
-}>;
+interface UiContextValue {
+  readonly language: InterfaceLanguage;
+  readonly t: Translator;
+}
 
 const UiContext = createContext<UiContextValue | null>(null);
 
@@ -421,6 +74,7 @@ function useUi(): UiContextValue {
 
 const ruleTextDataset = lookupRuleText({ query: "", as_of_date: "" });
 const drugItemsDataset = lookupDrugItemMaster({ query: "", as_of_date: "" });
+
 const announcementFilters: readonly DrugItemAnnouncementFilter[] = Object.freeze([
   "all",
   "priceChanged",
@@ -440,24 +94,169 @@ const lookupStatusKeys = Object.freeze({
   NOT_IN_VALIDATED_DATASET: "statusUnavailable"
 } satisfies Readonly<Record<RuleTextLookupResult["status"], UiMessageKey>>);
 
+const ruleDiffKindKeys = Object.freeze({
+  unchanged: "ruleDiffKindUnchanged",
+  removed: "ruleDiffKindRemoved",
+  added: "ruleDiffKindAdded",
+  replaced: "ruleDiffKindReplaced"
+} as const satisfies Readonly<Record<RuleDiffRow["kind"], UiMessageKey>>);
+
+function protectedText(language: InterfaceLanguage, value: string): string {
+  return preserveProtectedText(language, value);
+}
+
 /**
- * Strength options for the current result set. Every option is a strength some item on
- * screen actually carries, so no option can return nothing — except a selection the
- * other filters have since emptied, which is kept visible with its zero count so it can
- * be seen and cleared rather than quietly applied or quietly dropped.
+ * Test seam. Components below are exported so a test can render one in isolation
+ * against real dataset records and assert on the markup a clinician actually gets,
+ * rather than grepping this file's source for implementation strings.
  */
-function DoseFilterRow({
-  facets,
-  onSelect,
+export function UiProvider({
+  language = "zh",
+  children
+}: {
+  language?: InterfaceLanguage;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  const value: UiContextValue = {
+    language,
+    t: (key, replacements) =>
+      translateMessage(UI_COPY, language, key, UI_COPY.zh[key], replacements)
+  };
+  return <UiContext.Provider value={value}>{children}</UiContext.Provider>;
+}
+
+/* ------------------------------------------------------------- primitives -- */
+
+function Field({
+  label,
+  children
+}: {
+  label: string;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <div className="field">
+      <label>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function Chip({
   selected,
+  onClick,
+  children,
+  small = false
+}: {
+  selected: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  small?: boolean;
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      className={small ? "chip chip-small" : "chip"}
+      aria-pressed={selected}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Stat({ label, value, text = false }: { label: string; value: string; text?: boolean }) {
+  return (
+    <div className="stat">
+      <dt>{label}</dt>
+      <dd className={text ? "stat-text" : undefined}>{value}</dd>
+    </div>
+  );
+}
+
+function Disclosure({
+  summary,
+  children,
+  className = "",
+  open = false
+}: {
+  summary: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  open?: boolean;
+}): React.JSX.Element {
+  return (
+    <details className={className} open={open}>
+      <summary>{summary}</summary>
+      <div className="details-body">{children}</div>
+    </details>
+  );
+}
+
+/* ------------------------------------------------------------ date field -- */
+
+function AsOfDateField({
+  label,
+  value,
+  onChange
+}: {
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+}): React.JSX.Element {
+  const { t } = useUi();
+  const presets = resolveAsOfDatePresets(ITEM_DATASET_EFFECTIVE_FROM);
+  const presetKeys: Readonly<Record<string, UiMessageKey>> = {
+    today: "asOfDatePresetToday",
+    announcement: "asOfDatePresetAnnouncement"
+  };
+
+  return (
+    <Field label={label}>
+      <input
+        type="date"
+        value={value}
+        min={DRUG_ITEMS_DATASET_EFFECTIVE_FROM}
+        max={DRUG_ITEMS_DATASET_EFFECTIVE_TO}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      <div className="chip-row">
+        {presets.map((preset) => (
+          <Chip
+            key={preset.key}
+            small
+            selected={value === preset.value}
+            onClick={() => onChange(preset.value)}
+          >
+            {t(presetKeys[preset.key] ?? "asOfDatePresetToday", { value: preset.value })}
+          </Chip>
+        ))}
+      </div>
+      <p className="hint">{t("asOfDatePickerHint")}</p>
+    </Field>
+  );
+}
+
+/* ------------------------------------------------------------ dose filter -- */
+
+/**
+ * Strength options for the current result set. Every option is a strength some item
+ * on screen actually carries, so no option can return nothing — except a selection
+ * the other filters have since emptied, which stays visible with its zero count so
+ * it can be seen and cleared rather than quietly applied or quietly dropped.
+ */
+function DoseFilterGroup({
+  facets,
+  selected,
+  onSelect,
   totalCount
 }: {
   facets: readonly DrugDoseFacet[];
-  onSelect: (facet: DrugDoseFacet | undefined) => void;
   selected: DrugDoseFacet | undefined;
+  onSelect: (facet: DrugDoseFacet | undefined) => void;
   totalCount: number;
 }): React.JSX.Element | null {
-  const { styles, t } = useUi();
+  const { t } = useUi();
   if (facets.length === 0 && selected === undefined) return null;
 
   const options = [...facets];
@@ -465,682 +264,265 @@ function DoseFilterRow({
     options.push({ key: selected.key, label: selected.label, count: 0 });
   }
 
-  function optionLabel(facet: DrugDoseFacet): string {
-    return t("doseFilterOption", {
-      label: facet.key === DRUG_DOSE_UNSPECIFIED_KEY ? t("doseUnspecified") : facet.label,
-      count: String(facet.count)
-    });
-  }
-
   return (
-    <View style={styles.doseFilterBlock}>
-      <Text style={styles.filterTitle}>{t("doseFilter")}</Text>
-      <View style={styles.filterRow}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ selected: selected === undefined }}
-          onPress={() => onSelect(undefined)}
-          style={[styles.filterButton, selected === undefined ? styles.filterButtonSelected : null]}
-        >
-          <Text
-            style={[
-              styles.filterButtonText,
-              selected === undefined ? styles.filterButtonTextSelected : null
-            ]}
+    <div className="filter-group">
+      <h3>{t("doseFilter")}</h3>
+      <div className="chip-row">
+        <Chip small selected={selected === undefined} onClick={() => onSelect(undefined)}>
+          {t("doseFilterAll", { count: String(totalCount) })}
+        </Chip>
+        {options.map((facet) => (
+          <Chip
+            key={facet.key}
+            small
+            selected={selected?.key === facet.key}
+            onClick={() => onSelect(selected?.key === facet.key ? undefined : facet)}
           >
-            {t("doseFilterAll", { count: String(totalCount) })}
-          </Text>
-        </Pressable>
-        {options.map((facet) => {
-          const isSelected = selected?.key === facet.key;
-          return (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: isSelected }}
-              key={facet.key}
-              onPress={() => onSelect(isSelected ? undefined : facet)}
-              style={[styles.filterButton, isSelected ? styles.filterButtonSelected : null]}
-            >
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  isSelected ? styles.filterButtonTextSelected : null
-                ]}
-              >
-                {optionLabel(facet)}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      <Text style={styles.doseNote}>{t("doseNote")}</Text>
-    </View>
-  );
-}
-
-function protectedText(language: InterfaceLanguage, value: string): string {
-  return preserveProtectedText(language, value);
-}
-
-function OfficialOriginalLanguageNote({
-  announcement = false
-}: {
-  announcement?: boolean;
-}): React.JSX.Element | null {
-  const { language, styles, t } = useUi();
-  if (language !== "en") return null;
-  return (
-    <Text
-      style={announcement ? styles.announcementOriginalLanguageNote : styles.originalLanguageNote}
-    >
-      {t("originalLanguageNote")}
-    </Text>
-  );
-}
-
-function RuleUnitCard({
-  unit,
-  expanded,
-  onToggle
-}: {
-  unit: RuleTextUnit;
-  expanded: boolean;
-  onToggle: () => void;
-}): React.JSX.Element {
-  const { language, styles, t } = useUi();
-  const metadata = getRuleUnitStructuralMetadata(unit);
-  const unitId = protectedText(language, metadata.unitId);
-  const controlKey = expanded ? "collapseRuleUnit" : "expandRuleUnit";
-
-  return (
-    <View style={styles.ruleCard}>
-      <Pressable
-        accessibilityLabel={t(controlKey, { unitId })}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        onPress={onToggle}
-        style={styles.ruleUnitToggle}
-      >
-        <View style={styles.ruleUnitMetadata}>
-          <Text style={styles.ruleUnitId}>{unitId}</Text>
-          <Text style={styles.rulePath}>
-            {t("ruleUnitType", { value: protectedText(language, metadata.unitType) })}
-          </Text>
-          <Text style={styles.rulePath}>
-            {t("ruleUnitTableLabel", {
-              value: protectedText(language, metadata.tableLabel)
+            {t("doseFilterOption", {
+              label: facet.key === DRUG_DOSE_UNSPECIFIED_KEY ? t("doseUnspecified") : facet.label,
+              count: String(facet.count)
             })}
-          </Text>
-          {metadata.clausePath.length > 0 ? (
-            <Text style={styles.rulePath}>
-              {t("clausePath", {
-                value: protectedText(language, metadata.clausePath.join(" › "))
-              })}
-            </Text>
-          ) : null}
-        </View>
-        <Text style={styles.ruleUnitToggleText}>{t(controlKey, { unitId })}</Text>
-      </Pressable>
-      {expanded ? (
-        <Text style={styles.verbatimText}>{unit.verbatimText}</Text>
-      ) : null}
-    </View>
+          </Chip>
+        ))}
+      </div>
+      <p className="hint">{t("doseNote")}</p>
+    </div>
   );
 }
 
-function RuleTextSectionNode({
-  section,
-  units
-}: {
-  section: string;
-  units: readonly RuleTextUnit[];
-}): React.JSX.Element {
-  const { language, styles, t } = useUi();
-  const [expanded, setExpanded] = useState(false);
-  const [expandedUnitIds, setExpandedUnitIds] = useState<ReadonlySet<string>>(
-    () => new Set()
-  );
-  const sectionLabel = protectedText(language, section);
-  const count = String(units.length);
-  const sectionControlKey = expanded ? "collapseRuleTextSection" : "expandRuleTextSection";
-
-  function toggleUnit(unitId: string): void {
-    setExpandedUnitIds((current) => {
-      const next = new Set(current);
-      if (next.has(unitId)) next.delete(unitId);
-      else next.add(unitId);
-      return next;
-    });
-  }
-
-  function expandAllUnits(): void {
-    setExpanded(true);
-    setExpandedUnitIds(new Set(units.map((unit) => unit.unitId)));
-  }
-
-  function collapseAllUnits(): void {
-    setExpandedUnitIds(new Set());
-  }
-
-  return (
-    <View style={styles.ruleSectionNode}>
-      <Pressable
-        accessibilityLabel={t(sectionControlKey, { section: sectionLabel })}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        onPress={() => setExpanded((current) => !current)}
-        style={styles.ruleSectionToggle}
-      >
-        <Text accessibilityRole="header" style={styles.ruleSectionTitle}>
-          {t("ruleTextSectionTitle", { section: sectionLabel, count })}
-        </Text>
-        <Text style={styles.ruleSectionToggleText}>
-          {t(sectionControlKey, { section: sectionLabel })}
-        </Text>
-      </Pressable>
-      <View style={styles.ruleSectionBulkControls}>
-        <Pressable
-          accessibilityLabel={t("expandAllRuleUnits", { section: sectionLabel, count })}
-          accessibilityRole="button"
-          onPress={expandAllUnits}
-          style={styles.ruleSectionBulkButton}
-        >
-          <Text style={styles.ruleSectionBulkButtonText}>
-            {t("expandAllRuleUnits", { section: sectionLabel, count })}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityLabel={t("collapseAllRuleUnits", { section: sectionLabel, count })}
-          accessibilityRole="button"
-          onPress={collapseAllUnits}
-          style={styles.ruleSectionBulkButton}
-        >
-          <Text style={styles.ruleSectionBulkButtonText}>
-            {t("collapseAllRuleUnits", { section: sectionLabel, count })}
-          </Text>
-        </Pressable>
-      </View>
-      {expanded ? (
-        <View style={styles.ruleSectionUnits}>
-          {units.map((unit) => (
-            <RuleUnitCard
-              expanded={expandedUnitIds.has(unit.unitId)}
-              key={unit.unitId}
-              onToggle={() => toggleUnit(unit.unitId)}
-              unit={unit}
-            />
-          ))}
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function RuleLookupMode({
-  initialQuery = "",
-  onOpenDrugItemsForSection,
-  isDesktop
-}: {
-  initialQuery?: string;
-  onOpenDrugItemsForSection: (section: NavigableDrugItemRuleSection) => void;
-  isDesktop: boolean;
-}): React.JSX.Element {
-  const { styles, t, tokens } = useUi();
-  const [query, setQuery] = useState(initialQuery);
-  const [asOfDate, setAsOfDate] = useState<string>(ruleTextDataset.effectiveFrom);
-  const [datasetVersion, setDatasetVersion] = useState<string>(ruleTextDataset.datasetVersion);
-  const [result, setResult] = useState<RuleTextLookupResult | null>(() =>
-    initialQuery.length === 0
-      ? null
-      : lookupRuleText({
-          query: initialQuery,
-          as_of_date: ruleTextDataset.effectiveFrom,
-          dataset_version: ruleTextDataset.datasetVersion
-        })
-  );
-
-  function performLookup(): void {
-    setResult(
-      lookupRuleText({
-        query,
-        as_of_date: asOfDate,
-        ...(datasetVersion.trim().length > 0 ? { dataset_version: datasetVersion } : {})
-      })
-    );
-  }
-
-  return (
-    <View style={styles.modeContent}>
-      <Text style={styles.title}>{t("ruleTitle")}</Text>
-      <Text style={styles.subtitle}>{t("ruleSubtitle")}</Text>
-
-      <TextInput
-        autoFocus
-        accessibilityLabel={t("ruleSearchLabel")}
-        autoCapitalize="none"
-        autoCorrect={false}
-        onChangeText={setQuery}
-        onSubmitEditing={performLookup}
-        placeholder={t("ruleSearchPlaceholder")}
-        placeholderTextColor={tokens.color.textMuted}
-        returnKeyType="search"
-        style={styles.input}
-        value={query}
-      />
-      <TextInput
-        accessibilityLabel={t("ruleDateLabel")}
-        autoCapitalize="none"
-        autoCorrect={false}
-        onChangeText={setAsOfDate}
-        placeholder={t("datePlaceholder")}
-        placeholderTextColor={tokens.color.textMuted}
-        style={styles.input}
-        value={asOfDate}
-      />
-      <TextInput
-        accessibilityLabel={t("ruleDatasetLabel")}
-        autoCapitalize="none"
-        autoCorrect={false}
-        onChangeText={setDatasetVersion}
-        placeholder={t("datasetPlaceholder")}
-        placeholderTextColor={tokens.color.textMuted}
-        style={styles.input}
-        value={datasetVersion}
-      />
-      <Pressable accessibilityRole="button" onPress={performLookup} style={styles.ruleButton}>
-        <Text style={styles.buttonText}>{t("ruleSearchButton")}</Text>
-      </Pressable>
-
-      {result ? (
-        <RuleLookupResult
-          isDesktop={isDesktop}
-          result={result}
-          onOpenDrugItemsForSection={onOpenDrugItemsForSection}
-        />
-      ) : null}
-    </View>
-  );
-}
+/* ---------------------------------------------------------- official text -- */
 
 /**
- * A real date picker. `<input type="date">` is a plain DOM element rather than a
- * react-native-web primitive because RN's TextInput has no date mode and cannot
- * open the browser or phone calendar; everything here renders to DOM anyway.
- * The two presets are the dates a clinician actually reasons about — today's
- * price, and the price once the 2026-09-01 announcement is in force.
+ * The datasets' own transcription warnings, verbatim and unedited, shown once per
+ * screen instead of once per result card. Collapsing them is allowed; altering,
+ * summarizing or excerpting them is not.
  */
-function AsOfDateField({
-  accessibilityLabel,
-  onChange,
-  value
+export function OfficialSourcesDisclosure({
+  entries
 }: {
-  accessibilityLabel: string;
-  onChange: (next: string) => void;
-  value: string;
+  entries: readonly { readonly labelKey: UiMessageKey; readonly version: string; readonly warning: string }[];
 }): React.JSX.Element {
-  const { language, styles, t, tokens } = useUi();
-  const presets = useMemo(() => resolveAsOfDatePresets(ITEM_DATASET_EFFECTIVE_FROM), []);
-  const presetKeys = { today: "asOfDatePresetToday", announcement: "asOfDatePresetAnnouncement" } as const;
-
+  const { language, t } = useUi();
   return (
-    <View style={styles.asOfDateBlock}>
-      <input
-        aria-label={accessibilityLabel}
-        max={DRUG_ITEMS_DATASET_EFFECTIVE_TO}
-        min={DRUG_ITEMS_DATASET_EFFECTIVE_FROM}
-        onChange={(event) => onChange(event.target.value)}
-        style={{
-          backgroundColor: tokens.color.surface,
-          border: `1px solid ${tokens.color.inputBorder}`,
-          borderRadius: 10,
-          color: tokens.color.textStrong,
-          fontFamily: "inherit",
-          fontSize: 16,
-          minHeight: 44,
-          padding: "10px 12px",
-          width: "100%"
-        }}
-        type="date"
-        value={value}
-      />
-      <View style={styles.filterRow}>
-        {presets.map((preset) => {
-          const selected = preset.value === value;
-          const label = t(presetKeys[preset.key], {
-            value: protectedText(language, preset.value)
-          });
-          return (
-            <Pressable
-              accessibilityLabel={label}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              key={preset.key}
-              onPress={() => onChange(preset.value)}
-              style={[styles.filterButton, selected ? styles.filterButtonSelected : null]}
-            >
-              <Text style={[styles.filterButtonText, selected ? styles.filterButtonTextSelected : null]}>
-                {label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      <Text style={styles.asOfDateHint}>{t("asOfDatePickerHint")}</Text>
-    </View>
+    <Disclosure summary={t("officialSourcesTitle")}>
+      <ul className="source-list">
+        {entries.map((entry) => (
+          <li key={entry.version}>
+            <b>{t(entry.labelKey)}</b>
+            <span className="mono">{protectedText(language, entry.version)}</span>
+            <p className="source-warning">{entry.warning}</p>
+          </li>
+        ))}
+      </ul>
+      <p className="hint">{t("originalLanguageNote")}</p>
+    </Disclosure>
   );
 }
 
-function AnnouncementTags({ nhiCode }: { nhiCode: string }): React.JSX.Element | null {
-  const { styles, t } = useUi();
-  const membership = getDrugItemAnnouncementMembership(nhiCode);
-  const tags: readonly UiMessageKey[] = [
-    membership.priceChanged ? "filterPriceChanged" : undefined
-  ].filter((key): key is UiMessageKey => key !== undefined);
-  if (tags.length === 0) return null;
+/* ------------------------------------------------------- drug item card --- */
 
-  return (
-    <View style={styles.tagRow}>
-      {tags.map((key) => (
-        <View key={key} style={styles.factTag}>
-          <Text style={styles.factTagText}>{t(key)}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function AnnouncementItemSourceBlock({
-  comparison,
-  nhiCode
+function AnnouncementBlock({
+  nhiCode,
+  comparison
 }: {
-  comparison: AnnouncementPriceComparison | undefined;
   nhiCode: string;
-}): React.JSX.Element {
-  const { language, styles, t } = useUi();
+  comparison: AnnouncementPriceComparison | undefined;
+}): React.JSX.Element | null {
+  const { language, t } = useUi();
   const source = resolveAnnouncementItemSource(nhiCode);
-  const result = {
-    datasetVersion: ITEM_DATASET_VERSION,
-    warning: ITEM_WARNING
-  } as const;
-  const missingField = t("missingField");
+  if (source.status !== "FOUND" || comparison === undefined) return null;
 
   return (
-    <View style={styles.announcementSourceBlock}>
-      <Text style={styles.sourceBlockTitle}>{t("announcementSourceTitle")}</Text>
-      <Text style={styles.sourceBlockMeta}>
-        {t("announcementDatasetVersion", {
-          "result.datasetVersion": protectedText(language, result.datasetVersion)
-        })}
-      </Text>
-      <Text style={styles.sourceBlockWarning}>{result.warning}</Text>
-      <OfficialOriginalLanguageNote announcement />
-      {source.status === "NOT_FOUND" ? (
-        <Text style={styles.detail}>{t("announcementNotFound")}</Text>
-      ) : (
-        <>
-          {comparison !== undefined ? (
-            <View style={styles.announcementFactBlock}>
-              <Text style={styles.announcementFactTitle}>{t("announcementChangedTitle")}</Text>
-              <Text
-                accessibilityLabel={`${t("priceBefore", {
-                  value: protectedText(language, comparison.priceBefore)
-                })} ${t("priceAfter", {
-                  value: protectedText(language, comparison.priceAfter)
-                })}`}
-                style={styles.announcementPriceComparison}
-              >
-                {t("priceComparison", {
-                  priceBefore: protectedText(language, comparison.priceBefore),
-                  priceAfter: protectedText(language, comparison.priceAfter)
-                })}
-              </Text>
-              <Text style={styles.detail}>
-                {t("effectiveDate", {
-                  value: protectedText(language, comparison.effectiveDate)
-                })}
-              </Text>
-              <Text style={styles.detail}>
-                {t("announcementRuleSection", {
-                  value: protectedText(language, comparison.coverageRule)
-                })}
-              </Text>
-            </View>
-          ) : null}
-          {source.item.tableClassification !== undefined ? (
-            <Text style={styles.detail}>
-              {t("tableTwoMembership", {
-                value: protectedText(language, source.item.tableClassification ?? missingField)
-              })}
-            </Text>
-          ) : null}
-          {source.item.exceptionNote !== undefined ? (
-            <Text style={styles.detail}>
-              {t("trialNote", {
-                value: protectedText(language, source.item.exceptionNote ?? missingField)
-              })}
-            </Text>
-          ) : null}
-        </>
-      )}
-    </View>
+    <div className="price-line">
+      <span className="price-label">{t("announcementChangedTitle")}</span>
+      <span className="price-change">
+        {/* Both sides are labelled: an unlabelled "2.93 → 2.78" leaves the clinician
+            to infer which number the announcement introduced. */}
+        <span className="price-label">{t("priceBefore", { value: "" })}</span>
+        <span className="price-before">{protectedText(language, comparison.priceBefore)}</span>
+        <span aria-hidden="true">→</span>
+        <span className="price-label">{t("priceAfter", { value: "" })}</span>
+        <span className="price-after">{protectedText(language, comparison.priceAfter)}</span>
+      </span>
+      <span className="price-period">
+        {t("effectiveDate", { value: protectedText(language, comparison.effectiveDate) })}
+      </span>
+    </div>
   );
 }
 
-function MasterDetailCell({
-  children,
-  isDesktop
-}: {
-  children: React.ReactNode;
-  isDesktop: boolean;
-}): React.JSX.Element {
-  const { styles } = useUi();
-  return (
-    <View style={[styles.masterDetailCell, isDesktop ? styles.masterDetailCellDesktop : null]}>
-      {children}
-    </View>
-  );
-}
-
-function DrugItemMasterCard({
+export function DrugItemCard({
   match,
   lookupAsOfDate,
-  onOpenRuleText,
-  isDesktop
+  onOpenRuleText
 }: {
   match: DrugItemMasterMatch;
   lookupAsOfDate: string;
   onOpenRuleText: (coverageRule: string) => void;
-  isDesktop: boolean;
 }): React.JSX.Element {
-  const { language, styles, t } = useUi();
-  const [priceHistoryExpanded, setPriceHistoryExpanded] = useState(false);
+  const { language, t } = useUi();
   const { item, applicablePricePeriod } = match;
-  const missingField = t("missingField");
-  const specification = [item.specificationAmount, item.specificationUnit]
-    .filter((value) => value.length > 0)
-    .join(" ");
-  const linkedRuleSections = getNavigableDrugItemRuleSections(item.coverageRuleSection);
-  const sourceValue = (value: string): string => protectedText(language, value || missingField);
-  const announcementComparison = resolveAnnouncementPriceComparison(item.nhiCode);
-  const latestPricePeriod = item.priceHistory[item.priceHistory.length - 1];
-  const showMasterSnapshotNotice = shouldShowMasterSnapshotNotice(
-    lookupAsOfDate,
-    item.nhiCode
-  );
-  const priceHistoryControlKey = priceHistoryExpanded
-    ? "collapsePriceHistory"
-    : "expandPriceHistory";
-  const priceHistoryCount = String(item.priceHistory.length);
+  const missing = t("missingField");
+  const value = (raw: string): string => protectedText(language, raw || missing);
+  const membership = getDrugItemAnnouncementMembership(item.nhiCode);
+  const comparison = resolveAnnouncementPriceComparison(item.nhiCode);
+  const doses = getDrugItemDoses(item);
+  const sections = getNavigableDrugItemRuleSections(item.coverageRuleSection);
 
   return (
-    <View style={styles.masterItemCard} accessibilityRole="summary">
-      <Text style={styles.masterProductName}>{protectedText(language, item.drugNameZh)}</Text>
-      <AnnouncementTags nhiCode={item.nhiCode} />
-      <AnnouncementItemSourceBlock
-        comparison={announcementComparison}
-        nhiCode={item.nhiCode}
-      />
+    <article className="item">
+      <div className="item-head">
+        <h3 className="item-name">
+          {value(item.drugNameZh)}
+          <span className="item-name-en">{value(item.drugNameEn)}</span>
+        </h3>
+        <span className="code-badge">{protectedText(language, item.nhiCode)}</span>
+      </div>
 
-      <View style={styles.masterDetailsGrid}>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>{t("fieldEnglishName", { value: sourceValue(item.drugNameEn) })}</Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.code}>{t("fieldNhiCode", { value: sourceValue(item.nhiCode) })}</Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>{t("fieldIngredient", { value: sourceValue(item.ingredient) })}</Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>{t("fieldSpecification", { value: sourceValue(specification) })}</Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>{t("fieldDosageForm", { value: sourceValue(item.dosageForm) })}</Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>{t("fieldVendor", { value: sourceValue(item.vendor) })}</Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>{t("fieldManufacturer", { value: sourceValue(item.manufacturer) })}</Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>{t("fieldAtc", { value: sourceValue(item.atcCode) })}</Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>{t("fieldCategory", { value: sourceValue(item.drugCategory) })}</Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>
-            {t("fieldClassificationGroup", { value: sourceValue(item.classificationGroupName) })}
-          </Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>{t("fieldSingleCompound", { value: sourceValue(item.singleOrCompound) })}</Text>
-        </MasterDetailCell>
-      </View>
+      <div className="tag-row">
+        {doses.map((dose) => (
+          <span className="tag tag-dose" key={dose.key}>
+            {dose.label}
+          </span>
+        ))}
+        {item.dosageForm.length > 0 ? (
+          <span className="tag">{protectedText(language, item.dosageForm)}</span>
+        ) : null}
+        {membership.priceChanged ? (
+          <span className="tag tag-changed">{t("filterPriceChanged")}</span>
+        ) : null}
+      </div>
 
-      <View style={styles.applicablePriceBlock}>
-        <Text style={styles.sourceBlockTitle}>{t("applicablePriceTitle")}</Text>
-        <Text style={styles.masterPrice}>
+      <div className="price-line">
+        <span className="price-label">{t("applicablePriceTitle")}</span>
+        <span className="price-value">
           {protectedText(language, applicablePricePeriod.paymentPriceRaw)}
-        </Text>
-        <Text style={styles.sourceBlockMeta}>
-          {t("validPeriod", {
+        </span>
+        <span className="price-period">
+          {t("dateRange", {
             start: protectedText(language, applicablePricePeriod.startDateIso),
             end: protectedText(language, applicablePricePeriod.endDateIso)
           })}
-        </Text>
-      </View>
+        </span>
+      </div>
 
-      {showMasterSnapshotNotice &&
-      announcementComparison !== undefined &&
-      latestPricePeriod !== undefined ? (
-        <Text style={styles.masterSnapshotNotice}>
+      <AnnouncementBlock comparison={comparison} nhiCode={item.nhiCode} />
+
+      {shouldShowMasterSnapshotNotice(lookupAsOfDate, item.nhiCode) ? (
+        <p className="notice">
           {t("masterSnapshotNotice", {
             version: protectedText(language, drugItemsDataset.datasetVersion),
             snapshotDate: DRUG_ITEM_MASTER_SNAPSHOT_DATE,
-            start: protectedText(language, latestPricePeriod.startDateIso),
-            end: protectedText(language, latestPricePeriod.endDateIso),
-            effectiveDate: protectedText(language, announcementComparison.effectiveDate)
+            start: protectedText(language, applicablePricePeriod.startDateIso),
+            end: protectedText(language, applicablePricePeriod.endDateIso),
+            effectiveDate: protectedText(language, comparison?.effectiveDate ?? "")
           })}
-        </Text>
+        </p>
       ) : null}
 
-      <View style={styles.priceHistoryBlock}>
-        <Pressable
-          accessibilityLabel={t(priceHistoryControlKey, { count: priceHistoryCount })}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: priceHistoryExpanded }}
-          onPress={() => setPriceHistoryExpanded((expanded) => !expanded)}
-          style={styles.priceHistoryToggle}
+      <div className="field-grid">
+        <div>
+          {t("fieldIngredient", { value: "" })}
+          <b>{value(item.ingredient)}</b>
+        </div>
+        <div>
+          {t("fieldVendor", { value: "" })}
+          <b>{value(item.vendor)}</b>
+        </div>
+      </div>
+
+      <Disclosure className="flush" summary={t("showItemDetails")}>
+        <div className="field-grid">
+          <div>
+            {t("fieldManufacturer", { value: "" })}
+            <b>{value(item.manufacturer)}</b>
+          </div>
+          <div>
+            {t("fieldAtc", { value: "" })}
+            <b>{value(item.atcCode)}</b>
+          </div>
+          <div>
+            {t("fieldCategory", { value: "" })}
+            <b>{value(item.drugCategory)}</b>
+          </div>
+          <div>
+            {t("fieldClassificationGroup", { value: "" })}
+            <b>{value(item.classificationGroupName)}</b>
+          </div>
+          <div>
+            {t("fieldSingleCompound", { value: "" })}
+            <b>{value(item.singleOrCompound)}</b>
+          </div>
+          <div>
+            {t("fieldSpecification", { value: "" })}
+            <b>{value([item.specificationAmount, item.specificationUnit].filter(Boolean).join(" "))}</b>
+          </div>
+          <div>
+            {`${t("ruleSectionTitle")}：`}
+            <b>{value(item.coverageRuleSection)}</b>
+          </div>
+        </div>
+
+        <div className="scroll-x">
+          <table className="data-table">
+            <caption className="visually-hidden">{t("priceHistoryTitle")}</caption>
+            <thead>
+              <tr>
+                <th>{t("validPeriodHeader")}</th>
+                <th>{t("paymentPriceHeader")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {item.priceHistory.map((period) => (
+                <tr key={`${period.startDateIso}:${period.endDateIso}:${period.paymentPriceRaw}`}>
+                  <td>
+                    {t("dateRange", {
+                      start: protectedText(language, period.startDateIso),
+                      end: protectedText(language, period.endDateIso)
+                    })}
+                  </td>
+                  <td>{protectedText(language, period.paymentPriceRaw)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Disclosure>
+
+      {sections.map((section) => (
+        <button
+          className="link-button"
+          key={section}
+          onClick={() => onOpenRuleText(section)}
+          type="button"
         >
-          <Text style={styles.sourceBlockTitle}>{t("priceHistoryTitle")}</Text>
-          <Text style={styles.priceHistoryToggleText}>
-            {t(priceHistoryControlKey, { count: priceHistoryCount })}
-          </Text>
-        </Pressable>
-        {priceHistoryExpanded ? (
-          <>
-            <View
-              style={[
-                styles.priceHistoryHeader,
-                isDesktop ? styles.priceHistoryRowDesktop : null
-              ]}
-            >
-              <Text style={[styles.sourceBlockMeta, isDesktop ? styles.pricePeriodDesktop : null]}>
-                {t("validPeriodHeader")}
-              </Text>
-              <Text style={[styles.sourceBlockMeta, isDesktop ? styles.priceValueDesktop : null]}>
-                {t("paymentPriceHeader")}
-              </Text>
-            </View>
-            {item.priceHistory.map((period) => (
-              <View
-                key={`${period.effectiveStartRaw}-${period.effectiveEndRaw}`}
-                style={[styles.priceHistoryRow, isDesktop ? styles.priceHistoryRowDesktop : null]}
-              >
-                <Text style={[styles.detail, isDesktop ? styles.pricePeriodDesktop : null]}>
-                  {t("dateRange", {
-                    start: protectedText(language, period.startDateIso),
-                    end: protectedText(language, period.endDateIso)
-                  })}
-                </Text>
-                <Text style={[styles.detail, isDesktop ? styles.priceValueDesktop : null]}>
-                  {t("paymentPriceValue", {
-                    value: protectedText(language, period.paymentPriceRaw)
-                  })}
-                </Text>
-              </View>
-            ))}
-          </>
-        ) : null}
-      </View>
-
-      <View style={styles.coverageSectionBlock}>
-        <Text style={styles.sourceBlockTitle}>{t("ruleSectionTitle")}</Text>
-        <Text style={styles.detail}>{sourceValue(item.coverageRuleSection)}</Text>
-        {linkedRuleSections.map((section) => (
-          <Pressable
-            accessibilityLabel={t("openRuleLabel", {
-              section: protectedText(language, section)
-            })}
-            accessibilityRole="button"
-            key={section}
-            onPress={() => onOpenRuleText(section)}
-          >
-            <Text style={styles.coverageLink}>
-              {t("openRuleLink", { section: protectedText(language, section) })}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-    </View>
+          {t("openRuleLink", { section: protectedText(language, section) })}
+        </button>
+      ))}
+    </article>
   );
 }
 
-function DrugItemMasterLookupMode({
-  onOpenRuleText,
+/* --------------------------------------------------------- drug lookup ---- */
+
+function DrugLookupMode({
   sectionFilter,
   onClearSectionFilter,
-  isDesktop
+  onOpenRuleText
 }: {
-  onOpenRuleText: (coverageRule: string) => void;
   sectionFilter: NavigableDrugItemRuleSection | undefined;
   onClearSectionFilter: () => void;
-  isDesktop: boolean;
+  onOpenRuleText: (coverageRule: string) => void;
 }): React.JSX.Element {
-  const { language, styles, t, tokens } = useUi();
+  const { language, t } = useUi();
   const [query, setQuery] = useState("");
   const [asOfDate, setAsOfDate] = useState<string>(() => todayIso());
   const [datasetVersion, setDatasetVersion] = useState<string>(drugItemsDataset.datasetVersion);
   const [result, setResult] = useState<DrugItemMasterLookupResult | null>(null);
-  const [announcementFilter, setAnnouncementFilter] =
-    useState<DrugItemAnnouncementFilter>("all");
-  // undefined means no dose is selected. A clinician treats each strength as its own
-  // group, so this narrows the result set rather than replacing the search. The whole
-  // facet is held, not just its key, so a selection can still be labelled after the
-  // other filters move and its count drops to zero.
+  const [announcementFilter, setAnnouncementFilter] = useState<DrugItemAnnouncementFilter>("all");
+  // undefined means no dose is selected. The whole facet is held, not just its key,
+  // so a selection can still be labelled after the other filters move and its count
+  // drops to zero.
   const [doseFilter, setDoseFilter] = useState<DrugDoseFacet | undefined>(undefined);
 
   const sectionMatches = useMemo<readonly DrugItemMasterMatch[]>(() => {
@@ -1161,7 +543,6 @@ function DrugItemMasterLookupMode({
   const announcementMatches = unfilteredMatches.filter((match) =>
     matchesDrugItemAnnouncementFilter(match.item.nhiCode, announcementFilter)
   );
-  // Offered strengths come from what is on screen, so no option ever returns nothing.
   // Not memoized: `announcementMatches` is a fresh array every render, and per-record
   // extraction is already cached by NHI code inside the domain package.
   const doseFacets: readonly DrugDoseFacet[] = collectDrugDoseFacets(
@@ -1171,8 +552,10 @@ function DrugItemMasterLookupMode({
     matchesDrugDoseFilter(match.item, doseFilter?.key)
   );
   const hasResult = result !== null || sectionFilter !== undefined;
-  const renderedLookupAsOfDate =
-    sectionFilter === undefined ? (result?.asOfDate ?? asOfDate) : asOfDate;
+
+  const changedCount = unfilteredMatches.filter(
+    (match) => getDrugItemAnnouncementMembership(match.item.nhiCode).priceChanged
+  ).length;
   const reviewPresentation = resolveDrugReviewPresentation({
     lookupStatus: result?.status,
     manualReviewRequired: result?.manualReviewRequired ?? false,
@@ -1182,8 +565,8 @@ function DrugItemMasterLookupMode({
 
   function performLookup(): void {
     onClearSectionFilter();
-    // A strength selected for the previous drug usually does not exist for the next one.
-    // Carrying it over would return an empty screen that looks like "no such drug".
+    // A strength selected for the previous drug usually does not exist for the next
+    // one. Carrying it over would show an empty screen that looks like "no such drug".
     setDoseFilter(undefined);
     setResult(
       lookupDrugItemMaster({
@@ -1195,309 +578,361 @@ function DrugItemMasterLookupMode({
   }
 
   return (
-    <View style={styles.modeContent}>
-      <Text style={styles.title}>{t("drugTitle")}</Text>
-      <Text style={styles.subtitle}>{t("drugSubtitle")}</Text>
+    <div className="workspace">
+      <div className="query-column">
+        <section className="card">
+          <div className="card-head">
+            <span className="step-badge">1</span>
+            <h2>{t("queryPanelTitle")}</h2>
+          </div>
+          <div className="card-body">
+            <Field label={t("drugSearchLabel")}>
+              <input
+                autoFocus
+                autoCapitalize="characters"
+                autoCorrect="off"
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") performLookup();
+                }}
+                placeholder={t("drugSearchPlaceholder")}
+                type="text"
+                value={query}
+              />
+            </Field>
 
-      <TextInput
-        autoFocus
-        accessibilityLabel={t("drugSearchLabel")}
-        autoCapitalize="characters"
-        autoCorrect={false}
-        onChangeText={setQuery}
-        onSubmitEditing={performLookup}
-        placeholder={t("drugSearchPlaceholder")}
-        placeholderTextColor={tokens.color.textMuted}
-        returnKeyType="search"
-        style={styles.input}
-        value={query}
-      />
-      <AsOfDateField
-        accessibilityLabel={t("drugDateLabel")}
-        onChange={setAsOfDate}
-        value={asOfDate}
-      />
-      <TextInput
-        accessibilityLabel={t("drugDatasetLabel")}
-        autoCapitalize="none"
-        autoCorrect={false}
-        onChangeText={setDatasetVersion}
-        placeholder={t("datasetPlaceholder")}
-        placeholderTextColor={tokens.color.textMuted}
-        style={styles.input}
-        value={datasetVersion}
-      />
-      <Pressable accessibilityRole="button" onPress={performLookup} style={styles.masterItemButton}>
-        <Text style={styles.buttonText}>{t("drugSearchButton")}</Text>
-      </Pressable>
+            <AsOfDateField label={t("drugDateLabel")} onChange={setAsOfDate} value={asOfDate} />
 
-      {sectionFilter === undefined ? null : (
-        <View style={styles.sectionFilterNotice}>
-          <Text style={styles.sectionFilterText}>
-            {t("sectionFilter", { section: protectedText(language, sectionFilter) })}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onClearSectionFilter}
-            style={styles.clearSectionButton}
-          >
-            <Text style={styles.clearSectionButtonText}>{t("clearSectionFilter")}</Text>
-          </Pressable>
-        </View>
-      )}
+            <button className="primary-button" onClick={performLookup} type="button">
+              {t("drugSearchButton")}
+            </button>
 
-      <View style={styles.filterBlock}>
-        <Text style={styles.filterTitle}>{t("resultFilter")}</Text>
-        <View style={styles.filterRow}>
-          {announcementFilters.map((filter) => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: announcementFilter === filter }}
-              key={filter}
-              onPress={() => setAnnouncementFilter(filter)}
-              style={[
-                styles.filterButton,
-                announcementFilter === filter ? styles.filterButtonSelected : null
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  announcementFilter === filter ? styles.filterButtonTextSelected : null
-                ]}
-              >
-                {t(announcementFilterKeys[filter])}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        {hasResult ? (
-          <DoseFilterRow
-            facets={doseFacets}
-            onSelect={setDoseFilter}
-            selected={doseFilter}
-            totalCount={announcementMatches.length}
-          />
-        ) : null}
-      </View>
+            <hr className="divider" />
 
-      {hasResult ? (
-        <View style={styles.results}>
-          <View style={styles.masterItemWarning} accessibilityRole="alert">
-            <Text style={styles.officialWarningTitle}>{t("officialWarningTitle")}</Text>
-            <Text style={styles.officialWarningText}>{drugItemsDataset.warning}</Text>
-            <OfficialOriginalLanguageNote />
-          </View>
-          <Text style={styles.resultTitle}>
-            {sectionFilter === undefined
-              ? t("resultTitle", {
+            <div className="filter-group">
+              <h3>{t("resultFilter")}</h3>
+              <div className="chip-row">
+                {announcementFilters.map((filter) => (
+                  <Chip
+                    key={filter}
+                    selected={announcementFilter === filter}
+                    small
+                    onClick={() => setAnnouncementFilter(filter)}
+                  >
+                    {t(announcementFilterKeys[filter])}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+
+            {hasResult ? (
+              <DoseFilterGroup
+                facets={doseFacets}
+                onSelect={setDoseFilter}
+                selected={doseFilter}
+                totalCount={announcementMatches.length}
+              />
+            ) : null}
+
+            <Disclosure className="flush" summary={t("advancedTitle")}>
+              <Field label={t("drugDatasetLabel")}>
+                <input
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  onChange={(event) => setDatasetVersion(event.target.value)}
+                  placeholder={t("datasetPlaceholder")}
+                  type="text"
+                  value={datasetVersion}
+                />
+              </Field>
+            </Disclosure>
+          </div>
+        </section>
+      </div>
+
+      <div className="results">
+        {!hasResult ? (
+          <section className="card">
+            <div className="placeholder">
+              <h2>{t("resultsEmptyTitle")}</h2>
+              <p>{t("resultsEmptyBody")}</p>
+            </div>
+          </section>
+        ) : (
+          <>
+            <dl className="stat-row">
+              <Stat label={t("statMatched")} value={String(visibleMatches.length)} />
+              <Stat label={t("statPriceChanged")} value={String(changedCount)} />
+              <Stat
+                label={t("statPriceUnchanged")}
+                value={String(unfilteredMatches.length - changedCount)}
+              />
+              <Stat label={t("statAsOfDate")} text value={protectedText(language, asOfDate)} />
+            </dl>
+
+            {sectionFilter !== undefined ? (
+              <p className="notice">
+                <span className="notice-strong">
+                  {t("sectionFilter", { section: protectedText(language, sectionFilter) })}
+                </span>{" "}
+                <button className="link-button" onClick={onClearSectionFilter} type="button">
+                  {t("clearSectionFilter")}
+                </button>
+              </p>
+            ) : (
+              <p className="notice">
+                {t("resultTitle", {
                   status: t(lookupStatusKeys[result?.status ?? "NOT_IN_VALIDATED_DATASET"])
-                })
-              : t("sectionItemsTitle", {
-                  section: protectedText(language, sectionFilter)
                 })}
-          </Text>
-          <Text style={styles.resultText}>
-            {t("resultMetadata", {
-              version: protectedText(language, drugItemsDataset.datasetVersion),
-              date: protectedText(language, asOfDate)
-            })}
-          </Text>
-          {reviewPresentation?.kind === "multipleCandidates" ? (
-            <Text style={styles.multipleReview}>
-              {t("multipleReviewDrug", {
-                count: String(reviewPresentation.visibleCandidateCount)
-              })}
-            </Text>
-          ) : reviewPresentation?.kind === "unavailable" ? (
-            <Text style={styles.review}>{t("manualReviewDrug")}</Text>
-          ) : null}
-          {result !== null && result.excludedZeroPriceCount > 0 ? (
-            <Text style={styles.multipleReview}>
-              {t("excludedZeroPrice", { count: String(result.excludedZeroPriceCount) })}
-            </Text>
-          ) : null}
-          {visibleMatches.map((match) => (
-            <DrugItemMasterCard
-              isDesktop={isDesktop}
-              key={match.item.nhiCode}
-              lookupAsOfDate={renderedLookupAsOfDate}
-              match={match}
-              onOpenRuleText={onOpenRuleText}
+              </p>
+            )}
+
+            {reviewPresentation?.kind === "multipleCandidates" ? (
+              <p className="notice">
+                {t("multipleReviewDrug", {
+                  count: String(reviewPresentation.visibleCandidateCount)
+                })}
+              </p>
+            ) : reviewPresentation?.kind === "unavailable" ? (
+              <p className="notice">{t("manualReviewDrug")}</p>
+            ) : null}
+
+            {result !== null && result.excludedZeroPriceCount > 0 ? (
+              <p className="notice">
+                {t("excludedZeroPrice", { count: String(result.excludedZeroPriceCount) })}
+              </p>
+            ) : null}
+
+            {visibleMatches.map((match) => (
+              <DrugItemCard
+                key={match.item.nhiCode}
+                lookupAsOfDate={sectionFilter === undefined ? (result?.asOfDate ?? asOfDate) : asOfDate}
+                match={match}
+                onOpenRuleText={onOpenRuleText}
+              />
+            ))}
+
+            {unfilteredMatches.length === 0 ? (
+              <p className="notice">{t("noValidatedItems")}</p>
+            ) : visibleMatches.length === 0 ? (
+              <p className="notice">
+                {t(doseFilter === undefined ? "noFilteredItems" : "doseSelectedEmpty")}
+              </p>
+            ) : null}
+
+            <OfficialSourcesDisclosure
+              entries={[
+                {
+                  labelKey: "sourceMasterLabel",
+                  version: drugItemsDataset.datasetVersion,
+                  warning: DRUG_ITEM_MASTER_WARNING
+                },
+                {
+                  labelKey: "sourceAnnouncementLabel",
+                  version: ITEM_DATASET_VERSION,
+                  warning: ITEM_WARNING
+                }
+              ]}
             />
-          ))}
-          {unfilteredMatches.length === 0 ? (
-            <Text style={styles.empty}>{t("noValidatedItems")}</Text>
-          ) : visibleMatches.length === 0 ? (
-            <Text style={styles.empty}>
-              {t(doseFilter === undefined ? "noFilteredItems" : "doseSelectedEmpty")}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
-    </View>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
-function RuleLookupResult({
-  result,
-  onOpenDrugItemsForSection,
-  isDesktop
-}: {
-  result: RuleTextLookupResult;
-  onOpenDrugItemsForSection: (section: NavigableDrugItemRuleSection) => void;
-  isDesktop: boolean;
-}): React.JSX.Element {
-  const { language, styles, t } = useUi();
-  const resultSections = NAVIGABLE_DRUG_ITEM_RULE_SECTIONS.filter((section) =>
-    result.units.some((unit) => unit.section === section)
+/* ------------------------------------------------------------- rule tree -- */
+
+export function RuleUnitNode({ unit }: { unit: RuleTextUnit }): React.JSX.Element {
+  const { language, t } = useUi();
+  const metadata = getRuleUnitStructuralMetadata(unit);
+  return (
+    <details className="unit">
+      <summary>
+        <span className="unit-id">{protectedText(language, metadata.unitId)}</span>
+        <span className="unit-meta">
+          {t("ruleUnitType", { value: protectedText(language, metadata.unitType) })}
+          {metadata.tableLabel.length > 0
+            ? ` · ${t("ruleUnitTableLabel", { value: protectedText(language, metadata.tableLabel) })}`
+            : ""}
+        </span>
+      </summary>
+      <div className="details-body">
+        {/* Verbatim: never reflowed, summarized, corrected or excerpted. */}
+        <p className="verbatim">{unit.verbatimText}</p>
+      </div>
+    </details>
   );
-  const ruleTextSections = groupRuleTextUnitsBySection(result.units);
+}
+
+export function RuleSectionNode({
+  section,
+  units
+}: {
+  section: string;
+  units: readonly RuleTextUnit[];
+}): React.JSX.Element {
+  const { language, t } = useUi();
+  return (
+    <Disclosure
+      className="tree-section"
+      summary={t("ruleTextSectionTitle", {
+        section: protectedText(language, section),
+        count: String(units.length)
+      })}
+    >
+      {units.map((unit) => (
+        <RuleUnitNode key={unit.unitId} unit={unit} />
+      ))}
+    </Disclosure>
+  );
+}
+
+/* ------------------------------------------------------ master identification */
+
+function RuleDrugMasterCard({
+  identification
+}: {
+  identification: RuleDrugMasterIdentification;
+}): React.JSX.Element {
+  const { language, t } = useUi();
+  const { masterItem, nhiCode } = identification;
+  const missing = t("missingField");
+  const value = (raw: string): string => protectedText(language, raw || missing);
+
+  if (masterItem === undefined) {
+    return (
+      <article className="item">
+        <div className="item-head">
+          <span className="code-badge">{protectedText(language, nhiCode)}</span>
+        </div>
+        <p className="notice">{t("ruleDrugMasterMissing")}</p>
+      </article>
+    );
+  }
 
   return (
-    <View style={styles.results}>
-      <View style={styles.officialWarning} accessibilityRole="alert">
-        <Text style={styles.officialWarningTitle}>{t("officialWarningTitle")}</Text>
-        <Text style={styles.officialWarningText}>{result.warning}</Text>
-        <OfficialOriginalLanguageNote />
-      </View>
-      <Text style={styles.resultTitle}>
-        {t("resultTitle", { status: t(lookupStatusKeys[result.status]) })}
-      </Text>
-      <Text style={styles.resultText}>
-        {t("ruleResultMetadata", {
-          version: protectedText(language, result.datasetVersion),
-          date: protectedText(language, result.effectiveFrom)
-        })}
-      </Text>
-      <Text style={styles.resultText}>
-        {t("ruleSourceTag", { value: protectedText(language, result.sourceTag) })}
-      </Text>
-      {result.manualReviewRequired ? (
-        <Text style={styles.review}>{t("manualReviewRule")}</Text>
-      ) : null}
-      {resultSections.map((section) => (
-        <Pressable
-          accessibilityRole="button"
-          key={section}
-          onPress={() => onOpenDrugItemsForSection(section)}
-          style={styles.sectionItemsButton}
-        >
-          <Text style={styles.sectionItemsButtonText}>
-            {t("viewSectionItems", { section: protectedText(language, section) })}
-          </Text>
-        </Pressable>
-      ))}
-      {result.units.length > 0 ? (
-        <RuleDrugMasterIdentificationBlock isDesktop={isDesktop} units={result.units} />
-      ) : null}
-      {ruleTextSections.map(({ section }) => (
-        <RuleVersionComparisonBlock
-          isDesktop={isDesktop}
-          key={`comparison:${section}`}
-          section={section}
-        />
-      ))}
-      <View style={styles.ruleTextTree}>
-        <Text accessibilityRole="header" style={styles.officialRuleTextTitle}>
-          {t("officialRuleTextTitle")}
-        </Text>
-        {ruleTextSections.map(({ section, units }) => (
-          <RuleTextSectionNode
-            key={`${section}:${units.map((unit) => unit.unitId).join(",")}`}
-            section={section}
-            units={units}
-          />
-        ))}
-        {result.units.length === 0 ? <Text style={styles.empty}>{t("noRuleUnits")}</Text> : null}
-      </View>
-    </View>
+    <article className="item">
+      <div className="item-head">
+        <h3 className="item-name">
+          {value(masterItem.drugNameZh)}
+          <span className="item-name-en">{value(masterItem.drugNameEn)}</span>
+        </h3>
+        <span className="code-badge">{protectedText(language, nhiCode)}</span>
+      </div>
+      <div className="field-grid">
+        <div>
+          {t("fieldMasterIngredient", { value: "" })}
+          <b>{value(masterItem.ingredient)}</b>
+        </div>
+        <div>
+          {t("fieldMasterDosageForm", { value: "" })}
+          <b>{value(masterItem.dosageForm)}</b>
+        </div>
+      </div>
+    </article>
   );
 }
-
-const ruleDiffKindKeys = Object.freeze({
-  unchanged: "ruleDiffKindUnchanged",
-  removed: "ruleDiffKindRemoved",
-  added: "ruleDiffKindAdded",
-  replaced: "ruleDiffKindReplaced"
-} as const satisfies Readonly<Record<RuleDiffRow["kind"], UiMessageKey>>);
 
 /**
- * Display-only rewrap. Both sources' own line breaks are layout artifacts and were
- * dropped before comparison, so a wholesale replacement arrives as one unbroken
- * paragraph. Breaking after a full stop restores readability without changing a
- * character; the unmodified text stays available above and below.
+ * Carries `{ nhiCode, masterItem }` only. Names are read from the master, never
+ * paired with a code by position in the rule text — that pairing was measured at
+ * 100/108 correct, and the 8 failures included one drug's name absorbing another
+ * drug's code.
  */
-function rewrapForReading(text: string): string {
-  return text.replace(/。(?!$)/g, "。\n");
-}
+export function RuleDrugMasterBlock({ units }: { units: readonly RuleTextUnit[] }): React.JSX.Element {
+  const { language, t } = useUi();
+  const identifications = useMemo(
+    () => identifyRuleDrugMasterRecords(units.map((unit) => unit.verbatimText)),
+    [units]
+  );
 
-function RuleDiffTable({
-  comparison,
-  isDesktop
-}: {
-  comparison: RuleSectionComparison;
-  isDesktop: boolean;
-}): React.JSX.Element {
-  const { language, styles, t } = useUi();
-  const { diff } = comparison;
+  if (identifications.length === 0) {
+    return <p className="notice">{t("ruleDrugMasterNoCodes")}</p>;
+  }
 
   return (
-    <View style={styles.diffBlock}>
-      <Text accessibilityRole="header" style={styles.comparisonTermGroupTitle}>
-        {t("ruleDiffTitle")}
-      </Text>
-      <Text style={styles.comparisonMethod}>
-        {t("ruleDiffStats", {
-          priorTokens: protectedText(language, String(diff.priorTokens)),
-          unchanged: protectedText(language, String(diff.unchangedTokens)),
-          added: protectedText(language, String(diff.addedTokens))
+    <Disclosure
+      summary={t("ruleDrugMasterTitle", { count: String(identifications.length) })}
+    >
+      <p className="hint">
+        {t("ruleDrugMasterDatasetVersion", {
+          version: protectedText(language, drugItemsDataset.datasetVersion)
         })}
-      </Text>
+      </p>
+      {identifications.map((identification) => (
+        <RuleDrugMasterCard identification={identification} key={identification.nhiCode} />
+      ))}
+    </Disclosure>
+  );
+}
+
+/* ------------------------------------------------------------------ diff -- */
+
+/**
+ * Display-only rewrap. Both sources' own line breaks were dropped before comparison
+ * because they are layout artifacts, so a wholesale replacement would otherwise
+ * arrive as one unbroken paragraph.
+ */
+function rewrapForReading(text: string): string {
+  return text.replace(/([。；])/g, "$1\n").trimEnd();
+}
+
+export function RuleDiffTable({ comparison }: { comparison: RuleSectionComparison }): React.JSX.Element {
+  const { language, t } = useUi();
+  const { diff } = comparison;
+  const cellClass: Readonly<Record<RuleDiffRow["kind"], [string, string]>> = {
+    unchanged: ["diff-cell diff-same", "diff-cell diff-same"],
+    removed: ["diff-cell diff-removed", "diff-cell"],
+    added: ["diff-cell", "diff-cell diff-added"],
+    replaced: ["diff-cell diff-removed", "diff-cell diff-added"]
+  };
+
+  return (
+    <div>
+      <p className="hint">
+        {t("ruleDiffStats", {
+          priorTokens: String(diff.priorTokens),
+          unchanged: String(diff.unchangedTokens),
+          added: String(diff.addedTokens)
+        })}
+      </p>
+
       {comparison.excludedDrugListings.map((listing) => (
-        <Text key={listing.unitId} style={styles.diffExcludedNotice}>
+        <p className="notice" key={listing.unitId}>
           {t("ruleDiffExcludedListing", {
             unitId: protectedText(language, listing.unitId),
-            characters: protectedText(language, String(listing.characterCount)),
-            codes: protectedText(language, String(listing.nhiCodeCount))
+            characters: String(listing.characterCount),
+            codes: String(listing.nhiCodeCount)
           })}
-        </Text>
+        </p>
       ))}
-      <View style={[styles.diffRow, isDesktop ? styles.diffRowDesktop : null]}>
-        <Text style={[styles.diffColumnHeader, isDesktop ? styles.diffCellDesktop : null]}>
+
+      <div className="diff-head">
+        <span>
           {t("ruleDiffPriorColumn", {
             effectiveTo: protectedText(language, comparison.priorEffectiveTo)
           })}
-        </Text>
-        <Text style={[styles.diffColumnHeader, isDesktop ? styles.diffCellDesktop : null]}>
+        </span>
+        <span>
           {t("ruleDiffCurrentColumn", {
             effectiveFrom: protectedText(language, comparison.currentEffectiveFrom)
           })}
-        </Text>
-      </View>
+        </span>
+      </div>
+
       {diff.rows.map((row, index) => (
-        <View accessibilityLabel={t(ruleDiffKindKeys[row.kind])} key={`${row.kind}:${index}`} style={styles.diffRowGroup}>
-          <Text style={styles.diffKindLabel}>{t(ruleDiffKindKeys[row.kind])}</Text>
-          <View style={[styles.diffRow, isDesktop ? styles.diffRowDesktop : null]}>
-          <View style={[styles.diffCell, isDesktop ? styles.diffCellDesktop : null]}>
-            {row.prior.length > 0 ? (
-              <Text style={[styles.diffText, row.kind === "unchanged" ? null : styles.diffRemoved]}>
-                {rewrapForReading(row.prior)}
-              </Text>
-            ) : null}
-          </View>
-          <View style={[styles.diffCell, isDesktop ? styles.diffCellDesktop : null]}>
-            {row.current.length > 0 ? (
-              <Text style={[styles.diffText, row.kind === "unchanged" ? null : styles.diffAdded]}>
-                {rewrapForReading(row.current)}
-              </Text>
-            ) : null}
-          </View>
-          </View>
-        </View>
+        <div className="diff-group" key={`${row.kind}:${String(index)}`}>
+          <span className="diff-kind">{t(ruleDiffKindKeys[row.kind])}</span>
+          <div className="diff-row">
+            <span className={cellClass[row.kind][0]}>{rewrapForReading(row.prior)}</span>
+            <span className={cellClass[row.kind][1]}>{rewrapForReading(row.current)}</span>
+          </div>
+        </div>
       ))}
-      <Text style={styles.comparisonMethod}>{t("ruleDiffMethod")}</Text>
-    </View>
+
+      <p className="hint">{t("ruleDiffMethod")}</p>
+    </div>
   );
 }
 
@@ -1508,344 +943,258 @@ function ComparedTermList({
   labelKey: UiMessageKey;
   terms: RuleSectionComparison["termsOnlyInPrior"];
 }): React.JSX.Element | null {
-  const { language, styles, t } = useUi();
+  const { language, t } = useUi();
   if (terms.length === 0) return null;
   return (
-    <View style={styles.comparisonTermGroup}>
-      <Text style={styles.comparisonTermGroupTitle}>
-        {t(labelKey, { count: String(terms.length) })}
-      </Text>
-      <View style={styles.comparisonTermRow}>
+    <div className="filter-group">
+      <h3>{t(labelKey, { count: String(terms.length) })}</h3>
+      <ul className="term-list">
         {terms.map((term) => (
-          <Text key={`${term.kind}:${term.text}`} style={styles.comparisonTerm}>
-            {/* Chip display only: the PDF's column layout breaks terms across lines, so
-                inner whitespace is collapsed to keep "6-\n8週" from reading as a typo. The
-                authoritative text is the unmodified full text below, and the domain layer
-                returns the term exactly as written. */}
-            {protectedText(language, term.text.replace(/\s+/g, ""))}
-          </Text>
+          <li key={`${term.kind}:${term.text}`}>{protectedText(language, term.text)}</li>
         ))}
-      </View>
-    </View>
+      </ul>
+    </div>
   );
 }
 
-function PriorRuleTextDisclosure({
-  comparison
-}: {
-  comparison: RuleSectionComparison;
-}): React.JSX.Element {
-  const { styles, t } = useUi();
-  const [expanded, setExpanded] = useState(false);
-  const controlKey = expanded ? "collapsePriorRuleText" : "expandPriorRuleText";
-
-  return (
-    <View style={styles.priorRuleTextBlock}>
-      <Pressable
-        accessibilityLabel={t(controlKey)}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        onPress={() => setExpanded((current) => !current)}
-        style={styles.ruleSectionToggle}
-      >
-        <Text style={styles.comparisonTermGroupTitle}>{t("ruleComparisonPriorTextTitle")}</Text>
-        <Text style={styles.ruleSectionToggleText}>{t(controlKey)}</Text>
-      </Pressable>
-      {expanded ? (
-        <Text style={styles.verbatimText}>{comparison.prior.verbatimText}</Text>
-      ) : null}
-    </View>
-  );
-}
-
-function RuleVersionComparisonBlock({
-  section,
-  isDesktop
-}: {
-  section: string;
-  isDesktop: boolean;
-}): React.JSX.Element | null {
-  const { language, styles, t } = useUi();
-  const [expanded, setExpanded] = useState(false);
+export function RuleComparisonBlock({ section }: { section: string }): React.JSX.Element | null {
+  const { language, t } = useUi();
   const comparison = useMemo(() => compareRuleSectionVersions(section), [section]);
   if (comparison === undefined) return null;
 
-  const controlKey = expanded ? "collapseRuleComparison" : "expandRuleComparison";
-  const sectionLabel = protectedText(language, section);
-  const hasTerms =
-    comparison.termsOnlyInPrior.length +
-      comparison.termsOnlyInCurrent.length +
-      comparison.termsInBoth.length >
-    0;
-
   return (
-    <View style={styles.comparisonBlock}>
-      <Pressable
-        accessibilityLabel={t(controlKey, { section: sectionLabel })}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        onPress={() => setExpanded((current) => !current)}
-        style={styles.ruleSectionToggle}
-      >
-        <Text style={styles.comparisonTitle}>
-          {t("ruleComparisonTitle", { section: sectionLabel })}
-        </Text>
-        <Text style={styles.ruleSectionToggleText}>
-          {t(controlKey, { section: sectionLabel })}
-        </Text>
-      </Pressable>
-      {expanded ? (
-        <View style={styles.comparisonContent}>
-          <View style={styles.masterItemWarning} accessibilityRole="alert">
-            <Text style={styles.officialWarningTitle}>{t("officialWarningTitle")}</Text>
-            <Text style={styles.officialWarningText}>{PRIOR_RULE_WARNING}</Text>
-            <OfficialOriginalLanguageNote />
-          </View>
-          <Text style={styles.sourceBlockMeta}>
-            {t("ruleComparisonPriorMeta", {
-              revision: protectedText(language, comparison.prior.lastRevisionEffectiveFrom),
-              history: protectedText(language, comparison.prior.revisionDates.join("、"))
-            })}
-          </Text>
-          <Text style={styles.sourceBlockMeta}>
-            {t("ruleComparisonPriorDataset", {
-              version: protectedText(language, comparison.priorDatasetVersion),
-              effectiveTo: protectedText(language, comparison.priorEffectiveTo)
-            })}
-          </Text>
-          <Text style={styles.sourceBlockMeta}>
-            {t("ruleComparisonCurrentDataset", {
-              version: protectedText(language, comparison.currentDatasetVersion),
-              effectiveFrom: protectedText(language, comparison.currentEffectiveFrom),
-              count: String(comparison.currentUnitCount)
-            })}
-          </Text>
-          <Text style={styles.sourceBlockMeta}>
-            {t("ruleComparisonSourcePdf", {
-              name: protectedText(language, comparison.prior.sourcePdfDeclaredName),
-              bytes: protectedText(language, String(comparison.prior.sourcePdfBytes)),
-              hash: protectedText(language, comparison.prior.sourcePdfSha256)
-            })}
-          </Text>
-          <RuleDiffTable comparison={comparison} isDesktop={isDesktop} />
-          <Text accessibilityRole="header" style={styles.comparisonTermGroupTitle}>
-            {t("ruleComparisonTermsTitle")}
-          </Text>
-          <Text style={styles.comparisonMethod}>{t("ruleComparisonMethod")}</Text>
-          {hasTerms ? (
-            <>
-              <ComparedTermList labelKey="ruleComparisonRemoved" terms={comparison.termsOnlyInPrior} />
-              <ComparedTermList labelKey="ruleComparisonAdded" terms={comparison.termsOnlyInCurrent} />
-              <ComparedTermList labelKey="ruleComparisonRetained" terms={comparison.termsInBoth} />
-            </>
-          ) : (
-            <Text style={styles.empty}>{t("ruleComparisonNone")}</Text>
-          )}
-          <PriorRuleTextDisclosure comparison={comparison} />
-        </View>
-      ) : null}
-    </View>
+    <Disclosure
+      summary={t("ruleComparisonTitle", { section: protectedText(language, section) })}
+    >
+      <p className="hint">
+        {t("ruleComparisonPriorMeta", {
+          revision: protectedText(language, comparison.prior.lastRevisionEffectiveFrom),
+          history: protectedText(language, comparison.prior.revisionDates.join("、"))
+        })}
+      </p>
+      <p className="hint mono">
+        {t("ruleComparisonSourcePdf", {
+          name: protectedText(language, comparison.prior.sourcePdfDeclaredName),
+          bytes: String(comparison.prior.sourcePdfBytes),
+          hash: protectedText(language, comparison.prior.sourcePdfSha256)
+        })}
+      </p>
+
+      <RuleDiffTable comparison={comparison} />
+
+      <h3 className="diff-kind">{t("ruleComparisonTermsTitle")}</h3>
+      <p className="hint">{t("ruleComparisonMethod")}</p>
+      <ComparedTermList labelKey="ruleComparisonRemoved" terms={comparison.termsOnlyInPrior} />
+      <ComparedTermList labelKey="ruleComparisonAdded" terms={comparison.termsOnlyInCurrent} />
+      <ComparedTermList labelKey="ruleComparisonRetained" terms={comparison.termsInBoth} />
+
+      <Disclosure summary={t("ruleComparisonPriorTextTitle")}>
+        {/* Verbatim prior text, exactly as extracted from the official PDF. */}
+        <p className="verbatim">{comparison.prior.verbatimText}</p>
+      </Disclosure>
+    </Disclosure>
   );
 }
 
-function RuleDrugMasterIdentificationCard({
-  identification,
-  isDesktop
+/* -------------------------------------------------------- rule lookup ----- */
+
+function RuleLookupMode({
+  initialQuery,
+  onOpenDrugItemsForSection
 }: {
-  identification: RuleDrugMasterIdentification;
-  isDesktop: boolean;
+  initialQuery: string;
+  onOpenDrugItemsForSection: (section: NavigableDrugItemRuleSection) => void;
 }): React.JSX.Element {
-  const { language, styles, t } = useUi();
-  const { masterItem, nhiCode } = identification;
-  const missingField = t("missingField");
-  const sourceValue = (value: string): string => protectedText(language, value || missingField);
-
-  if (masterItem === undefined) {
-    return (
-      <View style={styles.ruleDrugIdentificationCard} accessibilityRole="summary">
-        <Text style={styles.code}>{t("fieldNhiCode", { value: protectedText(language, nhiCode) })}</Text>
-        <Text style={styles.empty}>{t("ruleDrugMasterMissing")}</Text>
-      </View>
-    );
-  }
-
-  const specification = [masterItem.specificationAmount, masterItem.specificationUnit]
-    .filter((value) => value.length > 0)
-    .join(" ");
-
-  return (
-    <View style={styles.ruleDrugIdentificationCard} accessibilityRole="summary">
-      <Text style={styles.code}>
-        {t("fieldNhiCode", { value: protectedText(language, nhiCode) })}
-      </Text>
-      <View style={styles.ruleDrugIdentificationDetails}>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>
-            {t("fieldMasterChineseName", { value: sourceValue(masterItem.drugNameZh) })}
-          </Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>
-            {t("fieldMasterEnglishName", { value: sourceValue(masterItem.drugNameEn) })}
-          </Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>
-            {t("fieldMasterIngredient", { value: sourceValue(masterItem.ingredient) })}
-          </Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>
-            {t("fieldMasterSpecification", { value: sourceValue(specification) })}
-          </Text>
-        </MasterDetailCell>
-        <MasterDetailCell isDesktop={isDesktop}>
-          <Text style={styles.detail}>
-            {t("fieldMasterDosageForm", { value: sourceValue(masterItem.dosageForm) })}
-          </Text>
-        </MasterDetailCell>
-      </View>
-    </View>
+  const { language, t } = useUi();
+  const [query, setQuery] = useState(initialQuery);
+  const [asOfDate, setAsOfDate] = useState<string>(ruleTextDataset.effectiveFrom);
+  const [datasetVersion, setDatasetVersion] = useState<string>(ruleTextDataset.datasetVersion);
+  const [result, setResult] = useState<RuleTextLookupResult | null>(
+    initialQuery.length > 0
+      ? lookupRuleText({ query: initialQuery, as_of_date: ruleTextDataset.effectiveFrom })
+      : null
   );
-}
 
-function RuleDrugMasterIdentificationBlock({
-  units,
-  isDesktop
-}: {
-  units: readonly RuleTextUnit[];
-  isDesktop: boolean;
-}): React.JSX.Element {
-  const { language, styles, t } = useUi();
-  const [expanded, setExpanded] = useState(false);
-  const identifications = useMemo(
-    () => identifyRuleDrugMasterRecords(units.map((unit) => unit.verbatimText)),
-    [units]
-  );
-  const count = String(identifications.length);
-  const controlKey = expanded ? "collapseRuleDrugMaster" : "expandRuleDrugMaster";
+  const sections = result === null ? [] : groupRuleTextUnitsBySection(result.units);
+  const resultSections =
+    result === null
+      ? []
+      : NAVIGABLE_DRUG_ITEM_RULE_SECTIONS.filter((section) =>
+          result.units.some((unit) => unit.section === section)
+        );
+  const codeCount =
+    result === null
+      ? 0
+      : identifyRuleDrugMasterRecords(result.units.map((unit) => unit.verbatimText)).length;
 
-  if (identifications.length === 0) {
-    return (
-      <View style={styles.ruleDrugIdentificationBlock}>
-        <Text style={styles.ruleDrugIdentificationTitle}>
-          {t("ruleDrugMasterTitle", { count })}
-        </Text>
-        <View style={styles.ruleDrugIdentificationContent}>
-          <Text style={styles.empty}>{t("ruleDrugMasterNoCodes")}</Text>
-          <Text style={styles.sourceBlockMeta}>
-            {t("ruleDrugMasterDatasetVersion", {
-              version: protectedText(language, DRUG_ITEMS_DATASET_VERSION)
-            })}
-          </Text>
-          <View style={styles.masterItemWarning} accessibilityRole="alert">
-            <Text style={styles.officialWarningTitle}>{t("officialWarningTitle")}</Text>
-            <Text style={styles.officialWarningText}>{DRUG_ITEM_MASTER_WARNING}</Text>
-            <OfficialOriginalLanguageNote />
-          </View>
-        </View>
-      </View>
+  function performLookup(): void {
+    setResult(
+      lookupRuleText({
+        query,
+        as_of_date: asOfDate,
+        ...(datasetVersion.trim().length > 0 ? { dataset_version: datasetVersion } : {})
+      })
     );
   }
 
   return (
-    <View style={styles.ruleDrugIdentificationBlock}>
-      <Pressable
-        accessibilityLabel={t(controlKey, { count })}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        onPress={() => setExpanded((current) => !current)}
-        style={styles.ruleDrugIdentificationToggle}
-      >
-        <Text style={styles.ruleDrugIdentificationTitle}>
-          {t("ruleDrugMasterTitle", { count })}
-        </Text>
-        <Text style={styles.ruleDrugIdentificationToggleText}>
-          {t(controlKey, { count })}
-        </Text>
-      </Pressable>
-      {expanded ? (
-        <View style={styles.ruleDrugIdentificationContent}>
-          <Text style={styles.sourceBlockMeta}>
-            {t("ruleDrugMasterDatasetVersion", {
-              version: protectedText(language, DRUG_ITEMS_DATASET_VERSION)
-            })}
-          </Text>
-          <View style={styles.masterItemWarning} accessibilityRole="alert">
-            <Text style={styles.officialWarningTitle}>{t("officialWarningTitle")}</Text>
-            <Text style={styles.officialWarningText}>{DRUG_ITEM_MASTER_WARNING}</Text>
-            <OfficialOriginalLanguageNote />
-          </View>
-          {identifications.map((identification) => (
-            <RuleDrugMasterIdentificationCard
-              identification={identification}
-              isDesktop={isDesktop}
-              key={identification.nhiCode}
+    <div className="workspace">
+      <div className="query-column">
+        <section className="card">
+          <div className="card-head">
+            <span className="step-badge">1</span>
+            <h2>{t("queryPanelTitle")}</h2>
+          </div>
+          <div className="card-body">
+            <Field label={t("ruleSearchLabel")}>
+              <input
+                autoCorrect="off"
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") performLookup();
+                }}
+                placeholder={t("ruleSearchPlaceholder")}
+                type="text"
+                value={query}
+              />
+            </Field>
+
+            <Field label={t("ruleDateLabel")}>
+              <input
+                onChange={(event) => setAsOfDate(event.target.value)}
+                placeholder={t("datePlaceholder")}
+                type="date"
+                value={asOfDate}
+              />
+            </Field>
+
+            <button className="primary-button" onClick={performLookup} type="button">
+              {t("ruleSearchButton")}
+            </button>
+
+            <Disclosure className="flush" summary={t("advancedTitle")}>
+              <Field label={t("ruleDatasetLabel")}>
+                <input
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  onChange={(event) => setDatasetVersion(event.target.value)}
+                  placeholder={t("datasetPlaceholder")}
+                  type="text"
+                  value={datasetVersion}
+                />
+              </Field>
+            </Disclosure>
+          </div>
+        </section>
+      </div>
+
+      <div className="results">
+        {result === null ? (
+          <section className="card">
+            <div className="placeholder">
+              <h2>{t("ruleResultsEmptyTitle")}</h2>
+              <p>{t("ruleResultsEmptyBody")}</p>
+            </div>
+          </section>
+        ) : (
+          <>
+            <dl className="stat-row">
+              <Stat label={t("statRuleUnits")} value={String(result.units.length)} />
+              <Stat label={t("statRuleCodes")} value={String(codeCount)} />
+              <Stat label={t("statRuleSections")} value={String(sections.length)} />
+              <Stat
+                label={t("statAsOfDate")}
+                text
+                value={protectedText(language, result.effectiveFrom)}
+              />
+            </dl>
+
+            <p className="notice">
+              {t("resultTitle", { status: t(lookupStatusKeys[result.status]) })}
+            </p>
+            {result.manualReviewRequired ? (
+              <p className="notice">{t("manualReviewRule")}</p>
+            ) : null}
+
+            {resultSections.map((section) => (
+              <button
+                className="link-button"
+                key={section}
+                onClick={() => onOpenDrugItemsForSection(section)}
+                type="button"
+              >
+                {t("viewSectionItems", { section: protectedText(language, section) })}
+              </button>
+            ))}
+
+            {result.units.length > 0 ? <RuleDrugMasterBlock units={result.units} /> : null}
+
+            {sections.map(({ section }) => (
+              <RuleComparisonBlock key={`comparison:${section}`} section={section} />
+            ))}
+
+            <section className="card">
+              <div className="card-head">
+                <span className="step-badge">2</span>
+                <h2>{t("officialRuleTextTitle")}</h2>
+              </div>
+              <div className="card-body">
+                <div className="tree">
+                  {sections.map(({ section, units }) => (
+                    <RuleSectionNode key={section} section={section} units={units} />
+                  ))}
+                  {result.units.length === 0 ? (
+                    <p className="notice">{t("noRuleUnits")}</p>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+
+            <OfficialSourcesDisclosure
+              entries={[
+                {
+                  labelKey: "sourceRulesLabel",
+                  version: result.datasetVersion,
+                  warning: result.warning
+                },
+                {
+                  labelKey: "sourceRulesPriorLabel",
+                  version: "nhi-lipid-rules-prior-2026-09-01-r1",
+                  warning: PRIOR_RULE_WARNING
+                }
+              ]}
             />
-          ))}
-        </View>
-      ) : null}
-    </View>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
-function PrivacyNotice(): React.JSX.Element {
-  const { styles, t } = useUi();
-  return (
-    <View style={styles.privacyNotice}>
-      <Text style={styles.privacyNoticeTitle}>{t("privacyTitle")}</Text>
-      <Text style={styles.privacyNoticeText}>{t("privacyText")}</Text>
-    </View>
-  );
-}
-
-function Footer(): React.JSX.Element {
-  const { styles, t } = useUi();
-  return (
-    <View style={styles.footer}>
-      <Text style={styles.footerText}>{t("footerAttribution")}</Text>
-      <Text style={styles.footerText}>{t("footerPrivacy")}</Text>
-      <PrivacyNotice />
-    </View>
-  );
-}
+/* -------------------------------------------------------------------- app -- */
 
 export default function App(): React.JSX.Element {
-  const { width } = useWindowDimensions();
-  const systemTheme = useColorScheme();
-  const isDesktop = getClinicianLayoutMode(width) === "desktop";
   const [mode, setMode] = useState<LookupMode>("drugItems");
   const [ruleQuerySeed, setRuleQuerySeed] = useState("");
-  const [masterSectionFilter, setMasterSectionFilter] =
-    useState<NavigableDrugItemRuleSection>();
+  const [sectionFilter, setSectionFilter] = useState<NavigableDrugItemRuleSection>();
   const [themePreference, setThemePreference] = useState(() =>
     loadThemePreference(preferenceStorage)
   );
   const [language, setLanguage] = useState<InterfaceLanguage>(() =>
     loadInterfaceLanguage(preferenceStorage)
   );
-  const theme = resolveThemePreference(themePreference, systemTheme === "dark" ? "dark" : "light");
-  const tokens = THEME_TOKENS[theme];
-  const styles = useMemo(() => createStyles(tokens), [tokens]);
+
+  const systemDark =
+    typeof globalThis.matchMedia === "function" &&
+    globalThis.matchMedia("(prefers-color-scheme: dark)").matches;
+  const theme = resolveThemePreference(themePreference, systemDark ? "dark" : "light");
+
   const t = useMemo<Translator>(
     () => (key, replacements) =>
       translateMessage(UI_COPY, language, key, UI_COPY.zh[key], replacements),
     [language]
   );
-  const uiContextValue = useMemo<UiContextValue>(
-    () => ({ language, styles, t, theme, tokens }),
-    [language, styles, t, theme, tokens]
-  );
-
-  function openRuleText(coverageRule: string): void {
-    setRuleQuerySeed(coverageRule);
-    setMode("rules");
-  }
-
-  function openDrugItemsForSection(section: NavigableDrugItemRuleSection): void {
-    setMasterSectionFilter(section);
-    setMode("drugItems");
-  }
+  const uiContextValue = useMemo<UiContextValue>(() => ({ language, t }), [language, t]);
 
   function toggleTheme(): void {
     const nextTheme: ThemeName = theme === "light" ? "dark" : "light";
@@ -1853,640 +1202,101 @@ export default function App(): React.JSX.Element {
     saveThemePreference(preferenceStorage, nextTheme);
   }
 
-  function selectLanguage(nextLanguage: InterfaceLanguage): void {
-    setLanguage(nextLanguage);
-    saveInterfaceLanguage(preferenceStorage, nextLanguage);
+  function selectLanguage(next: InterfaceLanguage): void {
+    setLanguage(next);
+    saveInterfaceLanguage(preferenceStorage, next);
   }
 
   return (
     <UiContext.Provider value={uiContextValue}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          contentContainerStyle={[
-            styles.container,
-            isDesktop ? styles.containerDesktop : styles.containerMobile
-          ]}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.settingsRow}>
-            <Pressable
-              accessibilityLabel={t(theme === "light" ? "themeLightButton" : "themeDarkButton")}
-              accessibilityRole="button"
-              onPress={toggleTheme}
-              style={styles.themeButton}
-            >
-              <Text style={styles.themeButtonText}>
-                {t(theme === "light" ? "themeLightButton" : "themeDarkButton")}
-              </Text>
-            </Pressable>
-            <View accessibilityLabel={t("languageControlLabel")} style={styles.languageControls}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: language === "zh" }}
-                onPress={() => selectLanguage("zh")}
-                style={[
-                  styles.languageButton,
-                  language === "zh" ? styles.languageButtonSelected : null
-                ]}
+      <div className="app" data-theme={theme}>
+        <header className="hero">
+          <div className="shell">
+            <div className="hero-bar">
+              <button
+                className="ghost-button"
+                onClick={toggleTheme}
+                type="button"
               >
-                <Text
-                  style={[
-                    styles.languageButtonText,
-                    language === "zh" ? styles.languageButtonTextSelected : null
-                  ]}
+                {t(theme === "light" ? "themeLightButton" : "themeDarkButton")}
+              </button>
+              <span aria-label={t("languageControlLabel")} className="lang-group" role="group">
+                <button
+                  aria-pressed={language === "zh"}
+                  className="ghost-button"
+                  onClick={() => selectLanguage("zh")}
+                  type="button"
                 >
                   {t("languageChinese")}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: language === "en" }}
-                onPress={() => selectLanguage("en")}
-                style={[
-                  styles.languageButton,
-                  language === "en" ? styles.languageButtonSelected : null
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.languageButtonText,
-                    language === "en" ? styles.languageButtonTextSelected : null
-                  ]}
+                </button>
+                <button
+                  aria-pressed={language === "en"}
+                  className="ghost-button"
+                  onClick={() => selectLanguage("en")}
+                  type="button"
                 >
                   {t("languageEnglish")}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
+                </button>
+              </span>
+            </div>
+            <p className="hero-eyebrow">{t("appEyebrow")}</p>
+            <h1>{t("appTitle")}</h1>
+            <p className="hero-tagline">{t("appTagline")}</p>
+            <span className="hero-pill">{t("versionPill")}</span>
+          </div>
+        </header>
 
-          <View accessibilityRole="tablist" style={styles.modeTabs}>
-            <Pressable
-              accessibilityRole="tab"
-              accessibilityState={{ selected: mode === "drugItems" }}
-              onPress={() => setMode("drugItems")}
-              style={[styles.modeTab, mode === "drugItems" ? styles.modeTabSelected : null]}
-            >
-              <Text
-                style={[
-                  styles.modeTabText,
-                  mode === "drugItems" ? styles.modeTabTextSelected : null
-                ]}
-              >
-                {t("drugLookupTab")}
-              </Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="tab"
-              accessibilityState={{ selected: mode === "rules" }}
-              onPress={() => setMode("rules")}
-              style={[styles.modeTab, mode === "rules" ? styles.modeTabSelected : null]}
-            >
-              <Text
-                style={[styles.modeTabText, mode === "rules" ? styles.modeTabTextSelected : null]}
-              >
-                {t("ruleLookupTab")}
-              </Text>
-            </Pressable>
-          </View>
+        <div className="shell">
+          {/* One disclaimer for the whole screen, not one per result card. */}
+          <p className="disclaimer">{t("disclaimer")}</p>
 
-          {mode === "rules" ? (
-            <RuleLookupMode
-              initialQuery={ruleQuerySeed}
-              isDesktop={isDesktop}
-              onOpenDrugItemsForSection={openDrugItemsForSection}
+          <div className="tabs" role="tablist">
+            <button
+              aria-selected={mode === "drugItems"}
+              className="tab"
+              onClick={() => setMode("drugItems")}
+              role="tab"
+              type="button"
+            >
+              {t("drugLookupTab")}
+            </button>
+            <button
+              aria-selected={mode === "rules"}
+              className="tab"
+              onClick={() => setMode("rules")}
+              role="tab"
+              type="button"
+            >
+              {t("ruleLookupTab")}
+            </button>
+          </div>
+
+          {mode === "drugItems" ? (
+            <DrugLookupMode
+              onClearSectionFilter={() => setSectionFilter(undefined)}
+              onOpenRuleText={(coverageRule) => {
+                setRuleQuerySeed(coverageRule);
+                setMode("rules");
+              }}
+              sectionFilter={sectionFilter}
             />
           ) : (
-            <DrugItemMasterLookupMode
-              isDesktop={isDesktop}
-              onClearSectionFilter={() => setMasterSectionFilter(undefined)}
-              onOpenRuleText={openRuleText}
-              sectionFilter={masterSectionFilter}
+            <RuleLookupMode
+              initialQuery={ruleQuerySeed}
+              onOpenDrugItemsForSection={(section) => {
+                setSectionFilter(section);
+                setMode("drugItems");
+              }}
             />
           )}
 
-          <Footer />
-        </ScrollView>
-      </SafeAreaView>
+          <footer className="footer">
+            <p>{t("privacyText")}</p>
+            <p>{t("footerPrivacy")}</p>
+            <p>{t("footerAttribution")}</p>
+          </footer>
+        </div>
+      </div>
     </UiContext.Provider>
   );
-}
-
-function createStyles(theme: ThemeTokens) {
-  return StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: theme.color.background },
-    container: { width: "100%", alignSelf: "center" },
-    containerDesktop: { maxWidth: 960, padding: 24, gap: 20 },
-    containerMobile: { maxWidth: 767, padding: 16, gap: 16 },
-    settingsRow: {
-      alignItems: "center",
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 10,
-      justifyContent: "space-between"
-    },
-    themeButton: {
-      alignItems: "center",
-      backgroundColor: theme.color.ruleAction,
-      borderRadius: 10,
-      justifyContent: "center",
-      minHeight: 48,
-      paddingHorizontal: 14
-    },
-    themeButtonText: { color: theme.color.actionText, fontWeight: "800" },
-    languageControls: {
-      backgroundColor: theme.color.tabSurface,
-      borderRadius: 10,
-      flexDirection: "row",
-      gap: 4,
-      padding: 4
-    },
-    languageButton: {
-      alignItems: "center",
-      borderRadius: 7,
-      justifyContent: "center",
-      minHeight: 44,
-      minWidth: 82,
-      paddingHorizontal: 12
-    },
-    languageButtonSelected: { backgroundColor: theme.color.controlSelectedSurface },
-    languageButtonText: { color: theme.color.textMuted, fontWeight: "700" },
-    languageButtonTextSelected: { color: theme.color.actionText },
-    modeTabs: {
-      backgroundColor: theme.color.tabSurface,
-      borderRadius: 12,
-      flexDirection: "row",
-      gap: 4,
-      padding: 4
-    },
-    modeTab: {
-      alignItems: "center",
-      borderRadius: 9,
-      flex: 1,
-      minHeight: 48,
-      justifyContent: "center"
-    },
-    modeTabSelected: { backgroundColor: theme.color.surface },
-    modeTabText: { color: theme.color.textMuted, fontSize: 16, fontWeight: "700" },
-    modeTabTextSelected: { color: theme.color.textStrong },
-    modeContent: { gap: 14 },
-    title: { color: theme.color.textStrong, fontSize: 26, fontWeight: "800", marginTop: 6 },
-    subtitle: { color: theme.color.textMuted, fontSize: 16, lineHeight: 23 },
-    input: {
-      backgroundColor: theme.color.surface,
-      borderColor: theme.color.inputBorder,
-      borderRadius: 10,
-      borderWidth: 1,
-      color: theme.color.textStrong,
-      fontSize: 18,
-      minHeight: 52,
-      paddingHorizontal: 14
-    },
-    ruleButton: {
-      alignItems: "center",
-      backgroundColor: theme.color.ruleAction,
-      borderRadius: 10,
-      minHeight: 50,
-      justifyContent: "center"
-    },
-    masterItemButton: {
-      alignItems: "center",
-      backgroundColor: theme.color.masterAction,
-      borderRadius: 10,
-      minHeight: 50,
-      justifyContent: "center"
-    },
-    buttonText: { color: theme.color.actionText, fontSize: 17, fontWeight: "700" },
-    privacyNotice: {
-      backgroundColor: theme.color.privacySurface,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: theme.color.privacyBorder,
-      padding: 14
-    },
-    privacyNoticeTitle: {
-      color: theme.color.privacyText,
-      fontWeight: "800",
-      marginBottom: 4
-    },
-    privacyNoticeText: { color: theme.color.privacyText, lineHeight: 21 },
-    footer: {
-      borderTopColor: theme.color.divider,
-      borderTopWidth: 1,
-      gap: 10,
-      marginTop: 12,
-      paddingTop: 18
-    },
-    footerText: { color: theme.color.textMuted, fontSize: 13, lineHeight: 20 },
-    results: { gap: 10, marginTop: 8 },
-    resultTitle: { color: theme.color.textStrong, fontSize: 18, fontWeight: "800" },
-    resultText: { color: theme.color.textMuted },
-    multipleReview: { color: theme.color.textMuted, fontSize: 14, lineHeight: 20 },
-    review: {
-      backgroundColor: theme.color.reviewSurface,
-      borderRadius: 8,
-      color: theme.color.reviewText,
-      lineHeight: 21,
-      padding: 12
-    },
-    code: { color: theme.color.codeText, fontFamily: "monospace", fontWeight: "800" },
-    detail: { color: theme.color.detailText, lineHeight: 20 },
-    empty: { color: theme.color.textMuted, fontStyle: "italic", lineHeight: 21 },
-    officialWarning: {
-      backgroundColor: theme.color.ruleWarningSurface,
-      borderRadius: 10,
-      padding: 14
-    },
-    officialWarningTitle: { color: theme.color.warningText, fontWeight: "800", marginBottom: 4 },
-    officialWarningText: { color: theme.color.warningText, fontSize: 15, lineHeight: 22 },
-    originalLanguageNote: {
-      color: theme.color.warningText,
-      fontSize: 13,
-      fontStyle: "italic",
-      lineHeight: 19,
-      marginTop: 6
-    },
-    masterItemWarning: {
-      backgroundColor: theme.color.masterWarningSurface,
-      borderRadius: 10,
-      padding: 14
-    },
-    masterItemCard: {
-      backgroundColor: theme.color.surface,
-      borderColor: theme.color.cardBorder,
-      borderRadius: 10,
-      borderWidth: 1,
-      gap: 9,
-      padding: 14
-    },
-    masterProductName: { color: theme.color.textStrong, fontSize: 20, fontWeight: "800" },
-    masterDetailsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-    masterDetailCell: { width: "100%" },
-    masterDetailCellDesktop: { width: "49%" },
-    masterPrice: { color: theme.color.priceText, fontSize: 20, fontWeight: "800" },
-    applicablePriceBlock: {
-      backgroundColor: theme.color.priceSurface,
-      borderRadius: 8,
-      gap: 4,
-      padding: 12
-    },
-    masterSnapshotNotice: {
-      backgroundColor: theme.color.masterWarningSurface,
-      borderRadius: 8,
-      color: theme.color.warningText,
-      lineHeight: 21,
-      padding: 12
-    },
-    priceHistoryBlock: {
-      borderTopColor: theme.color.subtleDivider,
-      borderTopWidth: 1,
-      gap: 5,
-      paddingTop: 10
-    },
-    priceHistoryToggle: {
-      alignItems: "center",
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 8,
-      justifyContent: "space-between",
-      minHeight: 44
-    },
-    priceHistoryToggleText: {
-      color: theme.color.linkText,
-      flexShrink: 1,
-      fontWeight: "700",
-      lineHeight: 20
-    },
-    priceHistoryHeader: { gap: 4, paddingBottom: 3 },
-    priceHistoryRow: {
-      borderBottomColor: theme.color.rowDivider,
-      borderBottomWidth: 1,
-      gap: 3,
-      paddingVertical: 6
-    },
-    priceHistoryRowDesktop: { alignItems: "center", flexDirection: "row" },
-    pricePeriodDesktop: { flex: 3 },
-    priceValueDesktop: { flex: 1 },
-    coverageSectionBlock: {
-      borderTopColor: theme.color.subtleDivider,
-      borderTopWidth: 1,
-      gap: 5,
-      paddingTop: 10
-    },
-    announcementSourceBlock: {
-      backgroundColor: theme.color.announcementSurface,
-      borderColor: theme.color.announcementBorder,
-      borderRadius: 8,
-      borderWidth: 1,
-      gap: 7,
-      marginTop: 6,
-      padding: 12
-    },
-    announcementFactBlock: { gap: 6 },
-    announcementFactTitle: {
-      color: theme.color.announcementText,
-      fontSize: 16,
-      fontWeight: "800"
-    },
-    announcementPriceComparison: {
-      color: theme.color.announcementText,
-      flexShrink: 1,
-      fontSize: 21,
-      fontWeight: "900",
-      lineHeight: 30
-    },
-    sourceBlockTitle: { color: theme.color.textStrong, fontWeight: "800" },
-    sourceBlockMeta: { color: theme.color.textMuted, fontSize: 13 },
-    sourceBlockWarning: { color: theme.color.announcementText, fontSize: 13, lineHeight: 19 },
-    announcementOriginalLanguageNote: {
-      color: theme.color.announcementText,
-      fontSize: 13,
-      fontStyle: "italic",
-      lineHeight: 19
-    },
-    tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-    factTag: {
-      backgroundColor: theme.color.tagSurface,
-      borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 5
-    },
-    factTagText: { color: theme.color.announcementText, fontSize: 13, fontWeight: "700" },
-    filterBlock: { gap: 8 },
-    filterTitle: { color: theme.color.detailText, fontWeight: "800" },
-    filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-    doseFilterBlock: {
-      gap: 8,
-      marginTop: 4,
-      borderTopWidth: 1,
-      borderTopColor: theme.color.controlBorder,
-      paddingTop: 12
-    },
-    doseNote: { color: theme.color.textMuted, fontSize: 13, lineHeight: 19 },
-    filterButton: {
-      borderColor: theme.color.controlBorder,
-      borderRadius: 999,
-      borderWidth: 1,
-      minHeight: 44,
-      justifyContent: "center",
-      paddingHorizontal: 14
-    },
-    filterButtonSelected: {
-      backgroundColor: theme.color.controlSelectedSurface,
-      borderColor: theme.color.controlSelectedSurface
-    },
-    filterButtonText: { color: theme.color.detailText, fontWeight: "700" },
-    filterButtonTextSelected: { color: theme.color.actionText },
-    sectionFilterNotice: {
-      alignItems: "center",
-      backgroundColor: theme.color.sectionFilterSurface,
-      borderRadius: 9,
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 10,
-      justifyContent: "space-between",
-      padding: 10
-    },
-    sectionFilterText: { color: theme.color.textStrong, fontWeight: "800" },
-    clearSectionButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
-    clearSectionButtonText: { color: theme.color.linkText, fontWeight: "700" },
-    sectionItemsButton: {
-      alignItems: "center",
-      backgroundColor: theme.color.sectionFilterSurface,
-      borderRadius: 9,
-      minHeight: 46,
-      justifyContent: "center",
-      paddingHorizontal: 12
-    },
-    sectionItemsButtonText: { color: theme.color.linkText, fontWeight: "800" },
-    coverageLink: {
-      color: theme.color.linkText,
-      fontWeight: "700",
-      textDecorationLine: "underline"
-    },
-    ruleTextTree: { gap: 10, marginTop: 4 },
-    officialRuleTextTitle: {
-      color: theme.color.textStrong,
-      fontSize: 18,
-      fontWeight: "800",
-      lineHeight: 25
-    },
-    ruleSectionNode: {
-      backgroundColor: theme.color.surface,
-      borderColor: theme.color.cardBorder,
-      borderRadius: 10,
-      borderWidth: 1,
-      gap: 8,
-      padding: 12
-    },
-    ruleSectionToggle: {
-      alignItems: "center",
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 8,
-      justifyContent: "space-between",
-      minHeight: 44
-    },
-    ruleSectionTitle: {
-      color: theme.color.textStrong,
-      flexShrink: 1,
-      fontSize: 17,
-      fontWeight: "800",
-      lineHeight: 24
-    },
-    ruleSectionToggleText: {
-      color: theme.color.linkText,
-      flexShrink: 1,
-      fontWeight: "700",
-      lineHeight: 20
-    },
-    ruleSectionBulkControls: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-    ruleSectionBulkButton: {
-      borderColor: theme.color.controlBorder,
-      borderRadius: 8,
-      borderWidth: 1,
-      justifyContent: "center",
-      minHeight: 44,
-      paddingHorizontal: 12
-    },
-    ruleSectionBulkButtonText: { color: theme.color.linkText, fontWeight: "700", lineHeight: 20 },
-    ruleSectionUnits: { gap: 8 },
-    ruleCard: {
-      backgroundColor: theme.color.surface,
-      borderColor: theme.color.divider,
-      borderRadius: 10,
-      borderWidth: 1,
-      gap: 8,
-      padding: 14
-    },
-    ruleUnitToggle: {
-      alignItems: "center",
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 8,
-      justifyContent: "space-between",
-      minHeight: 44
-    },
-    ruleUnitMetadata: { flexShrink: 1, gap: 3 },
-    ruleUnitId: { color: theme.color.detailText, fontFamily: "monospace", fontWeight: "800" },
-    rulePath: { color: theme.color.textMuted, fontSize: 13 },
-    ruleUnitToggleText: {
-      color: theme.color.linkText,
-      flexShrink: 1,
-      fontWeight: "700",
-      lineHeight: 20
-    },
-    verbatimText: {
-      color: theme.color.textStrong,
-      fontFamily: "monospace",
-      lineHeight: 22
-    },
-    diffBlock: {
-      borderColor: theme.color.subtleDivider,
-      borderRadius: 8,
-      borderWidth: 1,
-      gap: 8,
-      padding: 12
-    },
-    diffRowGroup: {
-      borderTopColor: theme.color.rowDivider,
-      borderTopWidth: 1,
-      gap: 4,
-      paddingTop: 8
-    },
-    diffRow: { gap: 6 },
-    diffRowDesktop: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
-    diffCell: { flexShrink: 1, gap: 4 },
-    diffCellDesktop: { flexBasis: 0, flexGrow: 1 },
-    diffColumnHeader: {
-      color: theme.color.textMuted,
-      flexShrink: 1,
-      fontSize: 13,
-      fontWeight: "800",
-      lineHeight: 18
-    },
-    diffKindLabel: {
-      color: theme.color.textMuted,
-      fontSize: 12,
-      fontWeight: "700",
-      lineHeight: 16
-    },
-    diffText: {
-      color: theme.color.textStrong,
-      fontSize: 15,
-      lineHeight: 24
-    },
-    diffRemoved: {
-      backgroundColor: theme.color.reviewSurface,
-      color: theme.color.reviewText
-    },
-    diffAdded: {
-      backgroundColor: theme.color.priceSurface,
-      color: theme.color.priceText
-    },
-    asOfDateBlock: { gap: 8 },
-    asOfDateHint: { color: theme.color.textMuted, fontSize: 13, lineHeight: 19 },
-    comparisonBlock: {
-      backgroundColor: theme.color.surface,
-      borderColor: theme.color.cardBorder,
-      borderRadius: 10,
-      borderWidth: 1,
-      gap: 8,
-      marginTop: 4,
-      padding: 14
-    },
-    comparisonTitle: {
-      color: theme.color.textStrong,
-      flexShrink: 1,
-      fontSize: 17,
-      fontWeight: "800",
-      lineHeight: 24
-    },
-    comparisonContent: { gap: 9 },
-    comparisonMethod: {
-      color: theme.color.textMuted,
-      fontSize: 14,
-      lineHeight: 20
-    },
-    diffExcludedNotice: {
-      backgroundColor: theme.color.tabSurface,
-      borderRadius: 6,
-      color: theme.color.detailText,
-      fontSize: 14,
-      lineHeight: 21,
-      padding: 10
-    },
-    comparisonTermGroup: { gap: 6 },
-    comparisonTermGroupTitle: {
-      color: theme.color.textStrong,
-      flexShrink: 1,
-      fontWeight: "700",
-      lineHeight: 22
-    },
-    comparisonTermRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 6
-    },
-    comparisonTerm: {
-      backgroundColor: theme.color.tagSurface,
-      borderColor: theme.color.subtleDivider,
-      borderRadius: 6,
-      borderWidth: 1,
-      color: theme.color.textStrong,
-      fontFamily: "monospace",
-      lineHeight: 20,
-      paddingHorizontal: 8,
-      paddingVertical: 3
-    },
-    priorRuleTextBlock: {
-      borderColor: theme.color.subtleDivider,
-      borderRadius: 8,
-      borderWidth: 1,
-      gap: 8,
-      padding: 12
-    },
-    ruleDrugIdentificationBlock: {
-      backgroundColor: theme.color.surface,
-      borderColor: theme.color.cardBorder,
-      borderRadius: 10,
-      borderWidth: 1,
-      gap: 8,
-      marginTop: 4,
-      padding: 14
-    },
-    ruleDrugIdentificationToggle: {
-      alignItems: "center",
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 8,
-      justifyContent: "space-between",
-      minHeight: 44
-    },
-    ruleDrugIdentificationTitle: {
-      color: theme.color.textStrong,
-      flexShrink: 1,
-      fontSize: 17,
-      fontWeight: "800",
-      lineHeight: 24
-    },
-    ruleDrugIdentificationToggleText: {
-      color: theme.color.linkText,
-      flexShrink: 1,
-      fontWeight: "700",
-      lineHeight: 20
-    },
-    ruleDrugIdentificationContent: { gap: 9 },
-    ruleDrugIdentificationCard: {
-      borderColor: theme.color.subtleDivider,
-      borderRadius: 8,
-      borderWidth: 1,
-      gap: 8,
-      padding: 12
-    },
-    ruleDrugIdentificationDetails: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 8
-    }
-  });
 }

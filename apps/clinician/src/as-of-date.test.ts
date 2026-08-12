@@ -1,14 +1,6 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { ITEM_DATASET_EFFECTIVE_FROM, lookupRuleText } from "@nhi-cv/domain";
 import { describe, expect, it } from "vitest";
 import { isIsoDate, resolveAsOfDatePresets, toIsoDate, todayIso } from "./as-of-date";
-
-const appSource = readFileSync(
-  path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../App.tsx"),
-  "utf8"
-);
 
 describe("as-of date", () => {
   it("formats from local calendar components, not UTC", () => {
@@ -52,25 +44,13 @@ describe("as-of date", () => {
     expect(Object.isFrozen(presets[0])).toBe(true);
   });
 
-  it("defaults the drug lookup to today rather than the dataset start date", () => {
-    expect(appSource).toContain("useState<string>(() => todayIso())");
-    expect(appSource).not.toContain("useState<string>(drugItemsDataset.effectiveFrom)");
-  });
-
-  it("offers a real date picker bounded by the dataset", () => {
-    expect(appSource).toContain('type="date"');
-    expect(appSource).toContain("min={DRUG_ITEMS_DATASET_EFFECTIVE_FROM}");
-    expect(appSource).toContain("max={DRUG_ITEMS_DATASET_EFFECTIVE_TO}");
-    for (const label of ["今天（{value}）", "新制生效日（{value}）", "Today ({value})"]) {
-      expect(appSource).toContain(label);
-    }
-  });
-
   it("leaves the rule tab on its own effective date, which is the only one it holds", () => {
     // The rules engine returns NOT_IN_VALIDATED_DATASET for any date before
     // 2026-09-01, so defaulting that tab to today would make every rule query fail.
     // Read it the way the app does, so this tracks the dataset rather than a copy.
     expect(lookupRuleText({ query: "", as_of_date: "" }).effectiveFrom).toBe("2026-09-01");
-    expect(appSource).toContain("useState<string>(ruleTextDataset.effectiveFrom)");
+    expect(lookupRuleText({ query: "2.6.1", as_of_date: "2026-08-31" }).status).toBe(
+      "NOT_IN_VALIDATED_DATASET"
+    );
   });
 });

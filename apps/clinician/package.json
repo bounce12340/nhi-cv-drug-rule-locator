@@ -12,8 +12,7 @@
   "dependencies": {
     "@nhi-cv/domain": "workspace:*",
     "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "react-native-web": "^0.21.0"
+    "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
