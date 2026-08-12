@@ -38,12 +38,9 @@ describe("the rendered page", () => {
     expect(markup).toContain(UI_COPY.zh.privacyText);
   });
 
-  it("opens on the drug tab with both tabs present", () => {
-    expect(markup).toContain(UI_COPY.zh.drugLookupTab);
-    expect(markup).toContain(UI_COPY.zh.ruleLookupTab);
-    expect(occurrences(markup, 'role="tab"')).toBe(2);
-    // aria-selected="true" appears once, on the drug tab.
-    expect(occurrences(markup, 'aria-selected="true"')).toBe(1);
+  it("is a single screen with no tab bar", () => {
+    expect(markup).not.toContain('role="tab"');
+    expect(markup).not.toContain('role="tablist"');
   });
 
   it("shows a placeholder rather than results before a query is run", () => {

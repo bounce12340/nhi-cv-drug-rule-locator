@@ -1,4 +1,4 @@
-import { ITEM_DATASET_EFFECTIVE_FROM, lookupRuleText } from "@nhi-cv/domain";
+import { ITEM_DATASET_EFFECTIVE_FROM } from "@nhi-cv/domain";
 import { describe, expect, it } from "vitest";
 import { isIsoDate, resolveAsOfDatePresets, toIsoDate, todayIso } from "./as-of-date";
 
@@ -44,13 +44,4 @@ describe("as-of date", () => {
     expect(Object.isFrozen(presets[0])).toBe(true);
   });
 
-  it("leaves the rule tab on its own effective date, which is the only one it holds", () => {
-    // The rules engine returns NOT_IN_VALIDATED_DATASET for any date before
-    // 2026-09-01, so defaulting that tab to today would make every rule query fail.
-    // Read it the way the app does, so this tracks the dataset rather than a copy.
-    expect(lookupRuleText({ query: "", as_of_date: "" }).effectiveFrom).toBe("2026-09-01");
-    expect(lookupRuleText({ query: "2.6.1", as_of_date: "2026-08-31" }).status).toBe(
-      "NOT_IN_VALIDATED_DATASET"
-    );
-  });
 });

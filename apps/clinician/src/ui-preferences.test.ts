@@ -2,9 +2,7 @@ import {
   DRUG_ITEM_MASTER_WARNING,
   DRUG_ITEM_MASTER_RECORDS,
   ITEM_RECORDS,
-  ITEM_WARNING,
-  RULE_TEXT_WARNING,
-  lookupRuleText
+  ITEM_WARNING
 } from "@nhi-cv/domain";
 import { describe, expect, it } from "vitest";
 import {
@@ -95,13 +93,10 @@ describe("clinician localization guardrails", () => {
     );
   });
 
-  it("keeps official wording, RA warnings, and source data byte-identical in both languages", () => {
-    const ruleResult = lookupRuleText({ query: "2.6.1", as_of_date: "2026-09-01" });
+  it("keeps official wording and source data byte-identical in both languages", () => {
     const sourceItem = ITEM_RECORDS[0]!;
     const masterItem = DRUG_ITEM_MASTER_RECORDS[0]!;
     const protectedValues = [
-      ruleResult.units[0]!.verbatimText,
-      RULE_TEXT_WARNING,
       ITEM_WARNING,
       DRUG_ITEM_MASTER_WARNING,
       masterItem.drugNameZh,
