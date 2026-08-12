@@ -7,30 +7,16 @@ import {
   ITEM_DATASET_EFFECTIVE_FROM,
   ITEM_DATASET_VERSION,
   ITEM_WARNING,
-  NAVIGABLE_DRUG_ITEM_RULE_SECTIONS,
-  PRIOR_RULE_WARNING,
   collectDrugDoseFacets,
-  compareRuleSectionVersions,
   getDrugItemAnnouncementMembership,
   getDrugItemDoses,
-  getNavigableDrugItemRuleSections,
-  identifyRuleDrugMasterRecords,
-  listDrugItemMasterRecordsByRuleSection,
   lookupDrugItemMaster,
-  lookupRuleText,
   matchesDrugDoseFilter,
   matchesDrugItemAnnouncementFilter,
   type DrugDoseFacet,
   type DrugItemAnnouncementFilter,
   type DrugItemMasterLookupResult,
-  type DrugItemMasterMatch,
-  type DrugItemMasterRecord,
-  type NavigableDrugItemRuleSection,
-  type RuleDiffRow,
-  type RuleDrugMasterIdentification,
-  type RuleSectionComparison,
-  type RuleTextLookupResult,
-  type RuleTextUnit
+  type DrugItemMasterMatch
 } from "@nhi-cv/domain";
 import "./src/app.css";
 import { UI_COPY, type Translator, type UiMessageKey } from "./src/copy";
@@ -43,7 +29,6 @@ import {
   type AnnouncementPriceComparison
 } from "./src/drug-item-ui";
 import { resolveDrugReviewPresentation } from "./src/drug-review-presentation";
-import { getRuleUnitStructuralMetadata, groupRuleTextUnitsBySection } from "./src/rule-text-tree";
 import {
   loadInterfaceLanguage,
   loadThemePreference,
@@ -56,8 +41,6 @@ import {
   type InterfaceLanguage,
   type ThemeName
 } from "./src/ui-preferences";
-
-type LookupMode = "drugItems" | "rules";
 
 interface UiContextValue {
   readonly language: InterfaceLanguage;
@@ -72,7 +55,6 @@ function useUi(): UiContextValue {
   return context;
 }
 
-const ruleTextDataset = lookupRuleText({ query: "", as_of_date: "" });
 const drugItemsDataset = lookupDrugItemMaster({ query: "", as_of_date: "" });
 
 const announcementFilters: readonly DrugItemAnnouncementFilter[] = Object.freeze([
@@ -92,14 +74,7 @@ const lookupStatusKeys = Object.freeze({
   EXACT_MATCH: "statusExact",
   MULTIPLE_MATCHES: "statusMultiple",
   NOT_IN_VALIDATED_DATASET: "statusUnavailable"
-} satisfies Readonly<Record<RuleTextLookupResult["status"], UiMessageKey>>);
-
-const ruleDiffKindKeys = Object.freeze({
-  unchanged: "ruleDiffKindUnchanged",
-  removed: "ruleDiffKindRemoved",
-  added: "ruleDiffKindAdded",
-  replaced: "ruleDiffKindReplaced"
-} as const satisfies Readonly<Record<RuleDiffRow["kind"], UiMessageKey>>);
+} satisfies Readonly<Record<DrugItemMasterLookupResult["status"], UiMessageKey>>);
 
 function protectedText(language: InterfaceLanguage, value: string): string {
   return preserveProtectedText(language, value);
@@ -353,12 +328,10 @@ function AnnouncementBlock({
 
 export function DrugItemCard({
   match,
-  lookupAsOfDate,
-  onOpenRuleText
+  lookupAsOfDate
 }: {
   match: DrugItemMasterMatch;
   lookupAsOfDate: string;
-  onOpenRuleText: (coverageRule: string) => void;
 }): React.JSX.Element {
   const { language, t } = useUi();
   const { item, applicablePricePeriod } = match;
@@ -367,7 +340,6 @@ export function DrugItemCard({
   const membership = getDrugItemAnnouncementMembership(item.nhiCode);
   const comparison = resolveAnnouncementPriceComparison(item.nhiCode);
   const doses = getDrugItemDoses(item);
-  const sections = getNavigableDrugItemRuleSections(item.coverageRuleSection);
 
   return (
     <article className="item">
@@ -489,31 +461,13 @@ export function DrugItemCard({
         </div>
       </Disclosure>
 
-      {sections.map((section) => (
-        <button
-          className="link-button"
-          key={section}
-          onClick={() => onOpenRuleText(section)}
-          type="button"
-        >
-          {t("openRuleLink", { section: protectedText(language, section) })}
-        </button>
-      ))}
     </article>
   );
 }
 
 /* --------------------------------------------------------- drug lookup ---- */
 
-function DrugLookupMode({
-  sectionFilter,
-  onClearSectionFilter,
-  onOpenRuleText
-}: {
-  sectionFilter: NavigableDrugItemRuleSection | undefined;
-  onClearSectionFilter: () => void;
-  onOpenRuleText: (coverageRule: string) => void;
-}): React.JSX.Element {
+function DrugLookupMode(): React.JSX.Element {
   const { language, t } = useUi();
   const [query, setQuery] = useState("");
   const [asOfDate, setAsOfDate] = useState<string>(() => todayIso());
@@ -525,21 +479,7 @@ function DrugLookupMode({
   // drops to zero.
   const [doseFilter, setDoseFilter] = useState<DrugDoseFacet | undefined>(undefined);
 
-  const sectionMatches = useMemo<readonly DrugItemMasterMatch[]>(() => {
-    if (sectionFilter === undefined) return Object.freeze([]);
-    return Object.freeze(
-      listDrugItemMasterRecordsByRuleSection(sectionFilter).flatMap(
-        (item) =>
-          lookupDrugItemMaster({
-            query: item.nhiCode,
-            as_of_date: asOfDate,
-            dataset_version: datasetVersion
-          }).matches
-      )
-    );
-  }, [asOfDate, datasetVersion, sectionFilter]);
-
-  const unfilteredMatches = sectionFilter === undefined ? (result?.matches ?? []) : sectionMatches;
+  const unfilteredMatches: readonly DrugItemMasterMatch[] = result?.matches ?? [];
   const announcementMatches = unfilteredMatches.filter((match) =>
     matchesDrugItemAnnouncementFilter(match.item.nhiCode, announcementFilter)
   );
@@ -551,7 +491,7 @@ function DrugLookupMode({
   const visibleMatches = announcementMatches.filter((match) =>
     matchesDrugDoseFilter(match.item, doseFilter?.key)
   );
-  const hasResult = result !== null || sectionFilter !== undefined;
+  const hasResult = result !== null;
 
   const changedCount = unfilteredMatches.filter(
     (match) => getDrugItemAnnouncementMembership(match.item.nhiCode).priceChanged
@@ -559,12 +499,10 @@ function DrugLookupMode({
   const reviewPresentation = resolveDrugReviewPresentation({
     lookupStatus: result?.status,
     manualReviewRequired: result?.manualReviewRequired ?? false,
-    sectionCandidateCount: sectionFilter === undefined ? 0 : unfilteredMatches.length,
     visibleCandidateCount: visibleMatches.length
   });
 
   function performLookup(): void {
-    onClearSectionFilter();
     // A strength selected for the previous drug usually does not exist for the next
     // one. Carrying it over would show an empty screen that looks like "no such drug".
     setDoseFilter(undefined);
@@ -670,22 +608,11 @@ function DrugLookupMode({
               <Stat label={t("statAsOfDate")} text value={protectedText(language, asOfDate)} />
             </dl>
 
-            {sectionFilter !== undefined ? (
-              <p className="notice">
-                <span className="notice-strong">
-                  {t("sectionFilter", { section: protectedText(language, sectionFilter) })}
-                </span>{" "}
-                <button className="link-button" onClick={onClearSectionFilter} type="button">
-                  {t("clearSectionFilter")}
-                </button>
-              </p>
-            ) : (
-              <p className="notice">
-                {t("resultTitle", {
-                  status: t(lookupStatusKeys[result?.status ?? "NOT_IN_VALIDATED_DATASET"])
-                })}
-              </p>
-            )}
+            <p className="notice">
+              {t("resultTitle", {
+                status: t(lookupStatusKeys[result?.status ?? "NOT_IN_VALIDATED_DATASET"])
+              })}
+            </p>
 
             {reviewPresentation?.kind === "multipleCandidates" ? (
               <p className="notice">
@@ -706,9 +633,8 @@ function DrugLookupMode({
             {visibleMatches.map((match) => (
               <DrugItemCard
                 key={match.item.nhiCode}
-                lookupAsOfDate={sectionFilter === undefined ? (result?.asOfDate ?? asOfDate) : asOfDate}
+                lookupAsOfDate={result?.asOfDate ?? asOfDate}
                 match={match}
-                onOpenRuleText={onOpenRuleText}
               />
             ))}
 
@@ -741,442 +667,7 @@ function DrugLookupMode({
   );
 }
 
-/* ------------------------------------------------------------- rule tree -- */
-
-export function RuleUnitNode({ unit }: { unit: RuleTextUnit }): React.JSX.Element {
-  const { language, t } = useUi();
-  const metadata = getRuleUnitStructuralMetadata(unit);
-  return (
-    <details className="unit">
-      <summary>
-        <span className="unit-id">{protectedText(language, metadata.unitId)}</span>
-        <span className="unit-meta">
-          {t("ruleUnitType", { value: protectedText(language, metadata.unitType) })}
-          {metadata.tableLabel.length > 0
-            ? ` · ${t("ruleUnitTableLabel", { value: protectedText(language, metadata.tableLabel) })}`
-            : ""}
-        </span>
-      </summary>
-      <div className="details-body">
-        {/* Verbatim: never reflowed, summarized, corrected or excerpted. */}
-        <p className="verbatim">{unit.verbatimText}</p>
-      </div>
-    </details>
-  );
-}
-
-export function RuleSectionNode({
-  section,
-  units
-}: {
-  section: string;
-  units: readonly RuleTextUnit[];
-}): React.JSX.Element {
-  const { language, t } = useUi();
-  return (
-    <Disclosure
-      className="tree-section"
-      summary={t("ruleTextSectionTitle", {
-        section: protectedText(language, section),
-        count: String(units.length)
-      })}
-    >
-      {units.map((unit) => (
-        <RuleUnitNode key={unit.unitId} unit={unit} />
-      ))}
-    </Disclosure>
-  );
-}
-
-/* ------------------------------------------------------ master identification */
-
-function RuleDrugMasterCard({
-  identification
-}: {
-  identification: RuleDrugMasterIdentification;
-}): React.JSX.Element {
-  const { language, t } = useUi();
-  const { masterItem, nhiCode } = identification;
-  const missing = t("missingField");
-  const value = (raw: string): string => protectedText(language, raw || missing);
-
-  if (masterItem === undefined) {
-    return (
-      <article className="item">
-        <div className="item-head">
-          <span className="code-badge">{protectedText(language, nhiCode)}</span>
-        </div>
-        <p className="notice">{t("ruleDrugMasterMissing")}</p>
-      </article>
-    );
-  }
-
-  return (
-    <article className="item">
-      <div className="item-head">
-        <h3 className="item-name">
-          {value(masterItem.drugNameZh)}
-          <span className="item-name-en">{value(masterItem.drugNameEn)}</span>
-        </h3>
-        <span className="code-badge">{protectedText(language, nhiCode)}</span>
-      </div>
-      <div className="field-grid">
-        <div>
-          {t("fieldMasterIngredient", { value: "" })}
-          <b>{value(masterItem.ingredient)}</b>
-        </div>
-        <div>
-          {t("fieldMasterDosageForm", { value: "" })}
-          <b>{value(masterItem.dosageForm)}</b>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-/**
- * Carries `{ nhiCode, masterItem }` only. Names are read from the master, never
- * paired with a code by position in the rule text — that pairing was measured at
- * 100/108 correct, and the 8 failures included one drug's name absorbing another
- * drug's code.
- */
-export function RuleDrugMasterBlock({ units }: { units: readonly RuleTextUnit[] }): React.JSX.Element {
-  const { language, t } = useUi();
-  const identifications = useMemo(
-    () => identifyRuleDrugMasterRecords(units.map((unit) => unit.verbatimText)),
-    [units]
-  );
-
-  if (identifications.length === 0) {
-    return <p className="notice">{t("ruleDrugMasterNoCodes")}</p>;
-  }
-
-  return (
-    <Disclosure
-      summary={t("ruleDrugMasterTitle", { count: String(identifications.length) })}
-    >
-      <p className="hint">
-        {t("ruleDrugMasterDatasetVersion", {
-          version: protectedText(language, drugItemsDataset.datasetVersion)
-        })}
-      </p>
-      {identifications.map((identification) => (
-        <RuleDrugMasterCard identification={identification} key={identification.nhiCode} />
-      ))}
-    </Disclosure>
-  );
-}
-
-/* ------------------------------------------------------------------ diff -- */
-
-/**
- * Display-only rewrap. Both sources' own line breaks were dropped before comparison
- * because they are layout artifacts, so a wholesale replacement would otherwise
- * arrive as one unbroken paragraph.
- */
-function rewrapForReading(text: string): string {
-  return text.replace(/([。；])/g, "$1\n").trimEnd();
-}
-
-export function RuleDiffTable({ comparison }: { comparison: RuleSectionComparison }): React.JSX.Element {
-  const { language, t } = useUi();
-  const { diff } = comparison;
-  const cellClass: Readonly<Record<RuleDiffRow["kind"], [string, string]>> = {
-    unchanged: ["diff-cell diff-same", "diff-cell diff-same"],
-    removed: ["diff-cell diff-removed", "diff-cell"],
-    added: ["diff-cell", "diff-cell diff-added"],
-    replaced: ["diff-cell diff-removed", "diff-cell diff-added"]
-  };
-
-  return (
-    <div>
-      <p className="hint">
-        {t("ruleDiffStats", {
-          priorTokens: String(diff.priorTokens),
-          unchanged: String(diff.unchangedTokens),
-          added: String(diff.addedTokens)
-        })}
-      </p>
-
-      {comparison.excludedDrugListings.map((listing) => (
-        <p className="notice" key={listing.unitId}>
-          {t("ruleDiffExcludedListing", {
-            unitId: protectedText(language, listing.unitId),
-            characters: String(listing.characterCount),
-            codes: String(listing.nhiCodeCount)
-          })}
-        </p>
-      ))}
-
-      <div className="diff-head">
-        <span>
-          {t("ruleDiffPriorColumn", {
-            effectiveTo: protectedText(language, comparison.priorEffectiveTo)
-          })}
-        </span>
-        <span>
-          {t("ruleDiffCurrentColumn", {
-            effectiveFrom: protectedText(language, comparison.currentEffectiveFrom)
-          })}
-        </span>
-      </div>
-
-      {diff.rows.map((row, index) => (
-        <div className="diff-group" key={`${row.kind}:${String(index)}`}>
-          <span className="diff-kind">{t(ruleDiffKindKeys[row.kind])}</span>
-          <div className="diff-row">
-            <span className={cellClass[row.kind][0]}>{rewrapForReading(row.prior)}</span>
-            <span className={cellClass[row.kind][1]}>{rewrapForReading(row.current)}</span>
-          </div>
-        </div>
-      ))}
-
-      <p className="hint">{t("ruleDiffMethod")}</p>
-    </div>
-  );
-}
-
-function ComparedTermList({
-  labelKey,
-  terms
-}: {
-  labelKey: UiMessageKey;
-  terms: RuleSectionComparison["termsOnlyInPrior"];
-}): React.JSX.Element | null {
-  const { language, t } = useUi();
-  if (terms.length === 0) return null;
-  return (
-    <div className="filter-group">
-      <h3>{t(labelKey, { count: String(terms.length) })}</h3>
-      <ul className="term-list">
-        {terms.map((term) => (
-          <li key={`${term.kind}:${term.text}`}>{protectedText(language, term.text)}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-export function RuleComparisonBlock({ section }: { section: string }): React.JSX.Element | null {
-  const { language, t } = useUi();
-  const comparison = useMemo(() => compareRuleSectionVersions(section), [section]);
-  if (comparison === undefined) return null;
-
-  return (
-    <Disclosure
-      summary={t("ruleComparisonTitle", { section: protectedText(language, section) })}
-    >
-      <p className="hint">
-        {t("ruleComparisonPriorMeta", {
-          revision: protectedText(language, comparison.prior.lastRevisionEffectiveFrom),
-          history: protectedText(language, comparison.prior.revisionDates.join("、"))
-        })}
-      </p>
-      <p className="hint mono">
-        {t("ruleComparisonSourcePdf", {
-          name: protectedText(language, comparison.prior.sourcePdfDeclaredName),
-          bytes: String(comparison.prior.sourcePdfBytes),
-          hash: protectedText(language, comparison.prior.sourcePdfSha256)
-        })}
-      </p>
-
-      <RuleDiffTable comparison={comparison} />
-
-      <h3 className="diff-kind">{t("ruleComparisonTermsTitle")}</h3>
-      <p className="hint">{t("ruleComparisonMethod")}</p>
-      <ComparedTermList labelKey="ruleComparisonRemoved" terms={comparison.termsOnlyInPrior} />
-      <ComparedTermList labelKey="ruleComparisonAdded" terms={comparison.termsOnlyInCurrent} />
-      <ComparedTermList labelKey="ruleComparisonRetained" terms={comparison.termsInBoth} />
-
-      <Disclosure summary={t("ruleComparisonPriorTextTitle")}>
-        {/* Verbatim prior text, exactly as extracted from the official PDF. */}
-        <p className="verbatim">{comparison.prior.verbatimText}</p>
-      </Disclosure>
-    </Disclosure>
-  );
-}
-
-/* -------------------------------------------------------- rule lookup ----- */
-
-function RuleLookupMode({
-  initialQuery,
-  onOpenDrugItemsForSection
-}: {
-  initialQuery: string;
-  onOpenDrugItemsForSection: (section: NavigableDrugItemRuleSection) => void;
-}): React.JSX.Element {
-  const { language, t } = useUi();
-  const [query, setQuery] = useState(initialQuery);
-  const [asOfDate, setAsOfDate] = useState<string>(ruleTextDataset.effectiveFrom);
-  const [datasetVersion, setDatasetVersion] = useState<string>(ruleTextDataset.datasetVersion);
-  const [result, setResult] = useState<RuleTextLookupResult | null>(
-    initialQuery.length > 0
-      ? lookupRuleText({ query: initialQuery, as_of_date: ruleTextDataset.effectiveFrom })
-      : null
-  );
-
-  const sections = result === null ? [] : groupRuleTextUnitsBySection(result.units);
-  const resultSections =
-    result === null
-      ? []
-      : NAVIGABLE_DRUG_ITEM_RULE_SECTIONS.filter((section) =>
-          result.units.some((unit) => unit.section === section)
-        );
-  const codeCount =
-    result === null
-      ? 0
-      : identifyRuleDrugMasterRecords(result.units.map((unit) => unit.verbatimText)).length;
-
-  function performLookup(): void {
-    setResult(
-      lookupRuleText({
-        query,
-        as_of_date: asOfDate,
-        ...(datasetVersion.trim().length > 0 ? { dataset_version: datasetVersion } : {})
-      })
-    );
-  }
-
-  return (
-    <div className="workspace">
-      <div className="query-column">
-        <section className="card">
-          <div className="card-head">
-            <span className="step-badge">1</span>
-            <h2>{t("queryPanelTitle")}</h2>
-          </div>
-          <div className="card-body">
-            <Field label={t("ruleSearchLabel")}>
-              <input
-                autoCorrect="off"
-                onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") performLookup();
-                }}
-                placeholder={t("ruleSearchPlaceholder")}
-                type="text"
-                value={query}
-              />
-            </Field>
-
-            <Field label={t("ruleDateLabel")}>
-              <input
-                onChange={(event) => setAsOfDate(event.target.value)}
-                placeholder={t("datePlaceholder")}
-                type="date"
-                value={asOfDate}
-              />
-            </Field>
-
-            <button className="primary-button" onClick={performLookup} type="button">
-              {t("ruleSearchButton")}
-            </button>
-
-            <Disclosure className="flush" summary={t("advancedTitle")}>
-              <Field label={t("ruleDatasetLabel")}>
-                <input
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  onChange={(event) => setDatasetVersion(event.target.value)}
-                  placeholder={t("datasetPlaceholder")}
-                  type="text"
-                  value={datasetVersion}
-                />
-              </Field>
-            </Disclosure>
-          </div>
-        </section>
-      </div>
-
-      <div className="results">
-        {result === null ? (
-          <section className="card">
-            <div className="placeholder">
-              <h2>{t("ruleResultsEmptyTitle")}</h2>
-              <p>{t("ruleResultsEmptyBody")}</p>
-            </div>
-          </section>
-        ) : (
-          <>
-            <dl className="stat-row">
-              <Stat label={t("statRuleUnits")} value={String(result.units.length)} />
-              <Stat label={t("statRuleCodes")} value={String(codeCount)} />
-              <Stat label={t("statRuleSections")} value={String(sections.length)} />
-              <Stat
-                label={t("statAsOfDate")}
-                text
-                value={protectedText(language, result.effectiveFrom)}
-              />
-            </dl>
-
-            <p className="notice">
-              {t("resultTitle", { status: t(lookupStatusKeys[result.status]) })}
-            </p>
-            {result.manualReviewRequired ? (
-              <p className="notice">{t("manualReviewRule")}</p>
-            ) : null}
-
-            {resultSections.map((section) => (
-              <button
-                className="link-button"
-                key={section}
-                onClick={() => onOpenDrugItemsForSection(section)}
-                type="button"
-              >
-                {t("viewSectionItems", { section: protectedText(language, section) })}
-              </button>
-            ))}
-
-            {result.units.length > 0 ? <RuleDrugMasterBlock units={result.units} /> : null}
-
-            {sections.map(({ section }) => (
-              <RuleComparisonBlock key={`comparison:${section}`} section={section} />
-            ))}
-
-            <section className="card">
-              <div className="card-head">
-                <span className="step-badge">2</span>
-                <h2>{t("officialRuleTextTitle")}</h2>
-              </div>
-              <div className="card-body">
-                <div className="tree">
-                  {sections.map(({ section, units }) => (
-                    <RuleSectionNode key={section} section={section} units={units} />
-                  ))}
-                  {result.units.length === 0 ? (
-                    <p className="notice">{t("noRuleUnits")}</p>
-                  ) : null}
-                </div>
-              </div>
-            </section>
-
-            <OfficialSourcesDisclosure
-              entries={[
-                {
-                  labelKey: "sourceRulesLabel",
-                  version: result.datasetVersion,
-                  warning: result.warning
-                },
-                {
-                  labelKey: "sourceRulesPriorLabel",
-                  version: "nhi-lipid-rules-prior-2026-09-01-r1",
-                  warning: PRIOR_RULE_WARNING
-                }
-              ]}
-            />
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------- app -- */
-
 export default function App(): React.JSX.Element {
-  const [mode, setMode] = useState<LookupMode>("drugItems");
-  const [ruleQuerySeed, setRuleQuerySeed] = useState("");
-  const [sectionFilter, setSectionFilter] = useState<NavigableDrugItemRuleSection>();
   const [themePreference, setThemePreference] = useState(() =>
     loadThemePreference(preferenceStorage)
   );
@@ -1250,45 +741,7 @@ export default function App(): React.JSX.Element {
           {/* One disclaimer for the whole screen, not one per result card. */}
           <p className="disclaimer">{t("disclaimer")}</p>
 
-          <div className="tabs" role="tablist">
-            <button
-              aria-selected={mode === "drugItems"}
-              className="tab"
-              onClick={() => setMode("drugItems")}
-              role="tab"
-              type="button"
-            >
-              {t("drugLookupTab")}
-            </button>
-            <button
-              aria-selected={mode === "rules"}
-              className="tab"
-              onClick={() => setMode("rules")}
-              role="tab"
-              type="button"
-            >
-              {t("ruleLookupTab")}
-            </button>
-          </div>
-
-          {mode === "drugItems" ? (
-            <DrugLookupMode
-              onClearSectionFilter={() => setSectionFilter(undefined)}
-              onOpenRuleText={(coverageRule) => {
-                setRuleQuerySeed(coverageRule);
-                setMode("rules");
-              }}
-              sectionFilter={sectionFilter}
-            />
-          ) : (
-            <RuleLookupMode
-              initialQuery={ruleQuerySeed}
-              onOpenDrugItemsForSection={(section) => {
-                setSectionFilter(section);
-                setMode("drugItems");
-              }}
-            />
-          )}
+          <DrugLookupMode />
 
           <footer className="footer">
             <p>{t("privacyText")}</p>

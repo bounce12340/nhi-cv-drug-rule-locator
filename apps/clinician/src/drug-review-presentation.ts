@@ -15,20 +15,13 @@ type DrugReviewPresentation =
 export function resolveDrugReviewPresentation({
   lookupStatus,
   manualReviewRequired,
-  sectionCandidateCount,
   visibleCandidateCount
 }: Readonly<{
   lookupStatus: DrugReviewLookupStatus | undefined;
   manualReviewRequired: boolean;
-  sectionCandidateCount: number;
   visibleCandidateCount: number;
 }>): DrugReviewPresentation | undefined {
-  const isMultipleLookup =
-    lookupStatus === "MULTIPLE_MATCHES" && manualReviewRequired;
-  const isMultipleSectionView =
-    lookupStatus === undefined && sectionCandidateCount > 1;
-
-  if (isMultipleLookup || isMultipleSectionView) {
+  if (lookupStatus === "MULTIPLE_MATCHES" && manualReviewRequired) {
     return Object.freeze({
       kind: "multipleCandidates",
       visibleCandidateCount

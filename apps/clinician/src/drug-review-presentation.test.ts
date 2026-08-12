@@ -9,7 +9,6 @@ describe("drug manual-review presentation", () => {
       resolveDrugReviewPresentation({
         lookupStatus: "EXACT_MATCH",
         manualReviewRequired: false,
-        sectionCandidateCount: 0,
         visibleCandidateCount: 1
       })
     ).toBeUndefined();
@@ -20,7 +19,6 @@ describe("drug manual-review presentation", () => {
       resolveDrugReviewPresentation({
         lookupStatus: "MULTIPLE_MATCHES",
         manualReviewRequired: true,
-        sectionCandidateCount: 0,
         visibleCandidateCount: 7
       })
     ).toEqual({ kind: "multipleCandidates", visibleCandidateCount: 7 });

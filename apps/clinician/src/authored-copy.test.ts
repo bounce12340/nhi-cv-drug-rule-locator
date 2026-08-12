@@ -53,18 +53,16 @@ describe("authored copy", () => {
   });
 });
 
-describe("section matching in the layout", () => {
-  it("uses the exact-token domain helpers, never a substring test", () => {
-    // "2.6.1" is a prefix of "2.6.10". Matching coverage sections with `includes`
-    // would silently widen every chapter navigation.
-    expect(appSource).toContain("getNavigableDrugItemRuleSections(item.coverageRuleSection)");
-    expect(appSource).toContain("listDrugItemMasterRecordsByRuleSection(sectionFilter)");
-    expect(appSource).not.toContain("coverageRuleSection.includes(");
-  });
-
+describe("the layout file", () => {
   it("holds no authored prose of its own — every string comes from the dictionary", () => {
     // A Chinese string literal in the layout file is copy that escaped the checks above.
-    const chineseLiterals = appSource.match(/"[^"\n]*[一-鿿][^"\n]*"/g) ?? [];
+    const chineseLiterals = appSource.match(/"[^"\n]*[\u4e00-\u9fff][^"\n]*"/g) ?? [];
     expect(chineseLiterals).toEqual([]);
+  });
+
+  it("no longer references the removed verbatim-rule surface", () => {
+    for (const gone of ["lookupRuleText", "compareRuleSectionVersions", "RuleTextUnit", "rule-text-tree"]) {
+      expect(appSource).not.toContain(gone);
+    }
   });
 });

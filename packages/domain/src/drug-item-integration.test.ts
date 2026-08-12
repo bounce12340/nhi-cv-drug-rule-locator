@@ -8,9 +8,6 @@ import { ITEM_RECORDS } from "./item-lookup";
 import {
   findAnnouncementItemByExactCode,
   getDrugItemAnnouncementMembership,
-  getNavigableDrugItemRuleSections,
-  hasExactCoverageRuleSectionToken,
-  listDrugItemMasterRecordsByRuleSection,
   matchesDrugItemAnnouncementFilter
 } from "./drug-item-integration";
 
@@ -72,33 +69,8 @@ describe("drug-item master and announcement display integration", () => {
     expect(getDrugItemAnnouncementMembership(nearCode)).toEqual({ priceChanged: false });
   });
 
-  it("keeps membership results and section result arrays frozen", () => {
+  it("keeps membership results frozen", () => {
     expect(Object.isFrozen(getDrugItemAnnouncementMembership(ITEM_RECORDS[0]!.nhiCode))).toBe(true);
-    expect(Object.isFrozen(listDrugItemMasterRecordsByRuleSection("2.6.1"))).toBe(true);
-  });
-
-  it("matches a chapter only as a complete comma-delimited source token", () => {
-    expect(hasExactCoverageRuleSectionToken("2.6.1.", "2.6.1")).toBe(true);
-    expect(hasExactCoverageRuleSectionToken("2.6.2., 2.6.1.", "2.6.1")).toBe(true);
-    expect(hasExactCoverageRuleSectionToken("8.2.6.1.", "2.6.1")).toBe(false);
-    expect(hasExactCoverageRuleSectionToken("2.6.10.", "2.6.1")).toBe(false);
-    expect(hasExactCoverageRuleSectionToken("2.6.1.1.", "2.6.1")).toBe(false);
-  });
-
-  it("enumerates only master rows carrying the requested exact chapter token", () => {
-    for (const section of ["2.6.1", "2.6.2", "2.6.3"] as const) {
-      const items = listDrugItemMasterRecordsByRuleSection(section);
-      expect(items.length).toBeGreaterThan(0);
-      expect(
-        items.every((item) => hasExactCoverageRuleSectionToken(item.coverageRuleSection, section))
-      ).toBe(true);
-    }
-    expect(listDrugItemMasterRecordsByRuleSection("8.2.6.1")).toEqual([]);
-  });
-
-  it("returns exact navigable sections without substring-derived links", () => {
-    expect(getNavigableDrugItemRuleSections("2.6.1.,2.6.3.")).toEqual(["2.6.1", "2.6.3"]);
-    expect(getNavigableDrugItemRuleSections("8.2.6.1.")).toEqual([]);
   });
 
   it("exposes the r2 trial item through the master while preserving its blank chapter", () => {
