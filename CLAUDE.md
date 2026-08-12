@@ -129,6 +129,30 @@ nothing. A record whose strength cannot be read falls into a `DRUG_DOSE_UNSPECIF
 rather than out of every filter; no record is in it today, and a test asserts that by measurement so
 a later snapshot cannot quietly strand one.
 
+## The one query box
+
+`packages/domain/src/drug-query.ts` reads a single typed line into the controls the
+screen already has — a name search, a dose, a repriced/not-repriced filter and an
+as-of date. `atorvastatin 40mg 這次調價的` sets all four in one action.
+
+It resolves nothing about a patient and reaches no conclusion. It only decides which
+existing control a typed word was meant for. Three properties keep it honest:
+
+1. **Nothing is dropped.** Every character ends in a recognized facet or in the text
+   handed to the name search. A word the parser does not understand is searched for.
+2. **Nothing is hidden.** Each facet carries the exact substring it came from, and
+   `SmartQueryReadout` prints it back. The chips below are the same controls, so the
+   clinician can override any reading.
+3. **Ambiguity resolves toward the drug.** `10/20mg` is a compound strength, not the
+   twentieth of October — the month/day pattern refuses a match followed by a unit.
+
+Filler words (`請`, `幫我`, `查`, `的`…) are removed as `ignored` facets and shown as
+set aside. That list exists because every remaining word has to be found: lifting
+`這次調價` out of `atorvastatin 40mg 這次調價的` left `的` behind, and the search then
+returned nothing. Each word on the list was checked against all 607 records first and
+appears in none of them. **和 is deliberately not on it** — it appears in 8 records,
+all of the manufacturer 正和.
+
 ## Dates
 
 Official texts use ROC years: **民國 115 = 2026** (ROC + 1911). So 115/9/1 is 2026-09-01 — the date

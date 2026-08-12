@@ -13,7 +13,9 @@ import {
   lookupDrugItemMaster,
   matchesDrugDoseFilter,
   matchesDrugItemAnnouncementFilter,
+  parseDrugQuery,
   type DrugDoseFacet,
+  type DrugQueryFacet,
   type DrugItemAnnouncementFilter,
   type DrugItemMasterLookupResult,
   type DrugItemMasterMatch
@@ -209,6 +211,66 @@ function AsOfDateField({
       </div>
       <p className="hint">{t("asOfDatePickerHint")}</p>
     </Field>
+  );
+}
+
+/* ----------------------------------------------------------- smart query -- */
+
+const announcementFacetKeys: Readonly<Record<string, UiMessageKey>> = Object.freeze({
+  priceChanged: "smartQueryFacetPriceChanged",
+  priceUnchanged: "smartQueryFacetPriceUnchanged"
+});
+
+/**
+ * Says back what the typed line was read as, quoting the characters each reading
+ * came from. The clinician can see the parse was right — or override it with the
+ * chips and the date field below, which are the same controls it set.
+ */
+export function SmartQueryReadout({
+  facets,
+  searchText
+}: {
+  facets: readonly DrugQueryFacet[];
+  searchText: string;
+}): React.JSX.Element | null {
+  const { language, t } = useUi();
+  if (facets.length === 0) return null;
+
+  function describe(facet: DrugQueryFacet): string {
+    if (facet.kind === "dose") return t("smartQueryFacetDose", { value: facet.label });
+    if (facet.kind === "date") {
+      return t("smartQueryFacetDate", { value: protectedText(language, facet.value) });
+    }
+    if (facet.kind === "ignored") {
+      return t("smartQueryFacetIgnored", { value: protectedText(language, facet.label) });
+    }
+    return t(announcementFacetKeys[facet.value] ?? "smartQueryFacetPriceChanged");
+  }
+
+  return (
+    <div className="readout">
+      <p className="readout-line">
+        <b>{t("smartQueryUnderstood")}</b>
+        {facets.map((facet, index) => (
+          <span
+            className={facet.kind === "ignored" ? "readout-chip readout-aside" : "readout-chip"}
+            key={`${facet.kind}:${String(index)}`}
+          >
+            {describe(facet)}
+            {facet.kind === "ignored" ? null : (
+              <span className="readout-raw">
+                {t("smartQueryFacetFrom", { raw: protectedText(language, facet.raw) })}
+              </span>
+            )}
+          </span>
+        ))}
+      </p>
+      <p className="hint">
+        {searchText.length > 0
+          ? t("smartQuerySearchedFor", { value: protectedText(language, searchText) })
+          : t("smartQueryNoText")}
+      </p>
+    </div>
   );
 }
 
@@ -478,6 +540,9 @@ function DrugLookupMode(): React.JSX.Element {
   // so a selection can still be labelled after the other filters move and its count
   // drops to zero.
   const [doseFilter, setDoseFilter] = useState<DrugDoseFacet | undefined>(undefined);
+  // What the last search read out of the typed line, kept only to show it back.
+  const [queryFacets, setQueryFacets] = useState<readonly DrugQueryFacet[]>([]);
+  const [searchedText, setSearchedText] = useState("");
 
   const unfilteredMatches: readonly DrugItemMasterMatch[] = result?.matches ?? [];
   const announcementMatches = unfilteredMatches.filter((match) =>
@@ -503,13 +568,33 @@ function DrugLookupMode(): React.JSX.Element {
   });
 
   function performLookup(): void {
+    /*
+     * One box, then the controls it implies. A strength, a repriced/not-repriced
+     * word and a date are lifted out of the line and applied to the same filters the
+     * chips below drive; everything the parser did not recognize is what the name
+     * search receives. `SmartQueryReadout` shows that split back, so nothing the
+     * parser decided is hidden, and the chips still override it afterwards.
+     */
+    const parsed = parseDrugQuery(query, {
+      today: todayIso(),
+      announcementDate: ITEM_DATASET_EFFECTIVE_FROM
+    });
+    const lookupDate = parsed.asOfDate ?? asOfDate;
+    if (parsed.asOfDate !== undefined) setAsOfDate(parsed.asOfDate);
+    setAnnouncementFilter(parsed.announcementFilter ?? "all");
     // A strength selected for the previous drug usually does not exist for the next
     // one. Carrying it over would show an empty screen that looks like "no such drug".
-    setDoseFilter(undefined);
+    setDoseFilter(
+      parsed.doseKey === undefined
+        ? undefined
+        : { key: parsed.doseKey, label: parsed.doseLabel ?? parsed.doseKey, count: 0 }
+    );
+    setQueryFacets(parsed.facets);
+    setSearchedText(parsed.searchText);
     setResult(
       lookupDrugItemMaster({
-        query,
-        as_of_date: asOfDate,
+        query: parsed.searchText,
+        as_of_date: lookupDate,
         ...(datasetVersion.trim().length > 0 ? { dataset_version: datasetVersion } : {})
       })
     );
@@ -537,6 +622,7 @@ function DrugLookupMode(): React.JSX.Element {
                 type="text"
                 value={query}
               />
+              <p className="hint">{t("smartQueryHint")}</p>
             </Field>
 
             <AsOfDateField label={t("drugDateLabel")} onChange={setAsOfDate} value={asOfDate} />
@@ -544,6 +630,8 @@ function DrugLookupMode(): React.JSX.Element {
             <button className="primary-button" onClick={performLookup} type="button">
               {t("drugSearchButton")}
             </button>
+
+            <SmartQueryReadout facets={queryFacets} searchText={searchedText} />
 
             <hr className="divider" />
 
