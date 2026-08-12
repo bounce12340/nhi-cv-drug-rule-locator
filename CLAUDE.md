@@ -40,10 +40,34 @@ directly (`"exports": { ".": "./src/index.ts" }`), and Vite compiles it as part 
 - `scripts/*-codegen.mjs` — regenerate `packages/domain/src/generated/*` from `data/governed/*`.
   Run these when NHI publishes new data; never hand-edit the generated files.
 
-The UI is written against React Native primitives (`View`, `Text`, `Pressable`, `StyleSheet`) which
-Vite aliases to `react-native-web`. `apps/clinician/src/react-native-web.d.ts` supplies the types,
-since react-native-web ships none. This is a leftover from the app's Expo origins — porting the JSX
-to plain DOM elements would let `react-native-web` be dropped entirely.
+The UI is plain DOM and plain CSS. It used to be written against React Native primitives aliased to
+`react-native-web`, a leftover from the app's Expo origins; that dependency, its type shim and the
+Vite alias are gone, which is what makes the current layout (CSS grid, sticky column, `<details>`
+disclosures, real media queries) expressible at all. The bundle lost 109 KB with it.
+
+Inside `apps/clinician`:
+
+- `App.tsx` — layout only. It contains **no prose**: every string comes from the dictionary, and a
+  test fails on any Chinese string literal that appears in the file.
+- `src/copy.ts` — the zh/en dictionary, one entry per message.
+- `src/app.css` — the whole stylesheet. Colours are custom properties on `:root`, swapped by
+  `[data-theme]`; no component names a colour. The themed wrapper sets `color` and `background`
+  itself, because `body` sits outside it and its children would otherwise inherit an
+  already-resolved light value — that bug rendered dark mode near-black on near-black.
+- `src/*.ts` — pure helpers (`as-of-date`, `drug-item-ui`, `rule-text-tree`, `ui-preferences`,
+  `drug-review-presentation`). No JSX, so they are testable directly.
+
+### Testing the UI
+
+App tests render with `renderToStaticMarkup` and assert on the markup. There is no jsdom and no
+testing library — `react-dom/server` needs neither, so this costs no dependency. Components the
+tests render in isolation are exported from `App.tsx` and wrapped in the exported `UiProvider`.
+
+They replaced 153 assertions that grepped `App.tsx`'s **source text** for strings like
+`type="date"`. That regime had the failure mode backwards: a purely visual change broke 40 of them,
+while the real defect they should have caught — the same official-warning paragraph rendered inside
+every result card, 55 copies and 59 warning lines on one screen — passed all 153. Assert on what the
+screen renders, not on how the file is written.
 
 ## Datasets
 
