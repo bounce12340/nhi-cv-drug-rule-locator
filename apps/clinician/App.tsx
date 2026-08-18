@@ -1322,7 +1322,16 @@ export default function App(): React.JSX.Element {
             </button>
           </div>
 
-          {mode === "drug" ? <DrugLookupMode /> : <RiskTierMode />}
+          {/*
+            Asymmetric on purpose. The drug lookup stays mounted so a search
+            survives a look at the other tab. The risk tab does not: unmounting
+            drops the clinical values the moment you leave it, which is earlier
+            than the "gone on reload" the disclaimer promises, not later.
+          */}
+          <div hidden={mode !== "drug"}>
+            <DrugLookupMode />
+          </div>
+          {mode === "risk" ? <RiskTierMode /> : null}
 
           <footer className="footer">
             <p>{t("privacyText")}</p>

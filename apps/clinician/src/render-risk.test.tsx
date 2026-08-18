@@ -155,3 +155,17 @@ describe("the item list under a tier", () => {
     expect(occurrences(column, UI_COPY.zh.riskNoDrugAdvice)).toBe(1);
   });
 });
+
+describe("switching tabs", () => {
+  const markup = renderToStaticMarkup(<App />);
+
+  it("keeps the drug lookup mounted so a search survives a look at the other tab", () => {
+    expect(markup).toContain(UI_COPY.zh.queryPanelTitle);
+  });
+
+  it("does not mount the risk tab until it is chosen, so its values start empty", () => {
+    // Unmounting drops the clinical values on leaving, which is earlier than the
+    // "gone on reload" the disclaimer promises — the asymmetry is the point.
+    expect(markup).not.toContain(UI_COPY.zh.riskPanelTitle);
+  });
+});
