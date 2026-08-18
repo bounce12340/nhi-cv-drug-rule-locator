@@ -38,9 +38,12 @@ describe("the rendered page", () => {
     expect(markup).toContain(UI_COPY.zh.privacyText);
   });
 
-  it("is a single screen with no tab bar", () => {
-    expect(markup).not.toContain('role="tab"');
-    expect(markup).not.toContain('role="tablist"');
+  it("offers exactly two modes, with the drug lookup selected first", () => {
+    expect(occurrences(markup, 'role="tab"')).toBe(2);
+    expect(markup).toContain(UI_COPY.zh.tabDrugLookup);
+    expect(markup).toContain(UI_COPY.zh.tabRiskTier);
+    // The risk questionnaire is behind its tab, not stacked onto the first screen.
+    expect(markup).not.toContain(UI_COPY.zh.riskPanelTitle);
   });
 
   it("shows a placeholder rather than results before a query is run", () => {

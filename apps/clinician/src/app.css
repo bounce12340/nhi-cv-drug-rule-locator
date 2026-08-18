@@ -951,3 +951,230 @@ details.flush > .details-body {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* ------------------------------------------------------------ risk tiering */
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  appearance: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 650;
+  padding: 9px 14px;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab[aria-selected="true"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.ask-remaining {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ask-answered-list {
+  display: grid;
+  gap: 6px;
+}
+
+.ask-answered {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.ask-answered b {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ask-answered button {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  flex: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.ask-current {
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  background: var(--bg-elevated);
+}
+
+.ask-question {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 750;
+}
+
+/* Announcement wording, shown as written. */
+.ask-verbatim {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.6;
+}
+
+.ask-source,
+.ask-hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.ask-options {
+  display: grid;
+  gap: 6px;
+}
+
+.ask-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ask-option[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 650;
+}
+
+.ask-box {
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 4px;
+  flex: none;
+}
+
+.ask-option[aria-pressed="true"] .ask-box {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--bg-elevated);
+}
+
+.ask-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ask-no {
+  border: 1px solid var(--border-strong);
+}
+
+.tier-hero {
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  display: grid;
+  gap: 4px;
+  background: linear-gradient(115deg, var(--hero-from), var(--hero-to));
+  color: var(--hero-text);
+}
+
+.tier-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.tier-name {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.tier-because {
+  font-size: 13px;
+  opacity: 0.92;
+  line-height: 1.6;
+}
+
+.step-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Each card holds one of the announcement's own numbered items, unedited. It
+ * carries no step badge of its own: the text already opens with 一、二、三, and a
+ * second set of numbers beside it would be the tool's count rather than the
+ * announcement's.
+ */
+.step-card {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  background: var(--surface);
+  font-size: 13.5px;
+  line-height: 1.75;
+}
+
+.provenance {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .tier-name {
+    font-size: 25px;
+  }
+
+  .tabs {
+    overflow-x: auto;
+  }
+}

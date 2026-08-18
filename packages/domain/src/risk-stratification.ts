@@ -1,4 +1,6 @@
 import {
+  RISK_DATASET_EFFECTIVE_FROM,
+  RISK_DATASET_VERSION,
   RISK_FACTORS,
   RISK_TIERS,
   TIER_CRITERIA,
@@ -321,5 +323,11 @@ export function nextRiskQuestion(answers: RiskAnswers = {}): RiskQuestion | null
   return assessment.status === "undetermined" ? (assessment.missing[0] ?? null) : null;
 }
 
-export { RISK_FACTORS, RISK_TIERS, TIER_CRITERIA };
+export {
+  RISK_DATASET_EFFECTIVE_FROM,
+  RISK_DATASET_VERSION,
+  RISK_FACTORS,
+  RISK_TIERS,
+  TIER_CRITERIA
+};
 export type { RiskFactorRecord, RiskTierRecord, TierCriterionRecord };

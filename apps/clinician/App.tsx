@@ -14,6 +14,12 @@ import {
   matchesDrugDoseFilter,
   matchesDrugItemAnnouncementFilter,
   parseDrugQuery,
+  RISK_DATASET_VERSION,
+  RISK_FACTORS,
+  TIER_CRITERIA,
+  stratifyRisk,
+  type RiskAssessment,
+  type RiskQuestion,
   type DrugDoseFacet,
   type DrugQueryFacet,
   type DrugItemAnnouncementFilter,
@@ -755,6 +761,379 @@ function DrugLookupMode(): React.JSX.Element {
   );
 }
 
+/* ---------------------------------------------------------- risk tiering -- */
+
+/** The LDL-C criterion is answered by the number field, not by a yes/no box. */
+const LDL_C_CRITERION_ID = "high-3";
+
+interface RiskAnswerState {
+  readonly prerequisites: Record<string, boolean>;
+  readonly criteria: Record<string, boolean>;
+  readonly factors: Record<string, boolean>;
+}
+
+const EMPTY_RISK_ANSWERS: RiskAnswerState = Object.freeze({
+  prerequisites: {},
+  criteria: {},
+  factors: {}
+});
+
+interface RiskQuestionGroup {
+  readonly kind: RiskQuestion["kind"];
+  readonly headingRaw: string | null;
+  readonly questions: readonly RiskQuestion[];
+}
+
+/**
+ * The next thing to put on screen. Alternatives that share a heading are asked
+ * together, because the announcement lists them under one heading as any-one-of.
+ * Asking them one at a time would misrepresent a single either/or as five
+ * separate decisions.
+ */
+function nextQuestionGroup(missing: readonly RiskQuestion[]): RiskQuestionGroup | null {
+  const pending = missing.filter((question) => question.id !== LDL_C_CRITERION_ID);
+  const head = pending[0];
+  if (head === undefined) return null;
+  if (head.kind === "prerequisite") {
+    return { kind: head.kind, headingRaw: head.headingRaw, questions: [head] };
+  }
+  return {
+    kind: head.kind,
+    headingRaw: head.headingRaw,
+    questions: pending.filter(
+      (question) => question.kind === head.kind && question.headingRaw === head.headingRaw
+    )
+  };
+}
+
+/** Label for an answered id, taken from the dataset rather than authored here. */
+function answeredLabel(kind: keyof RiskAnswerState, id: string): string {
+  if (kind === "prerequisites") {
+    return TIER_CRITERIA.find((criterion) => criterion.groupId === id)?.prerequisiteLabelZh ?? id;
+  }
+  if (kind === "criteria") {
+    return TIER_CRITERIA.find((criterion) => criterion.criterionId === id)?.textRaw ?? id;
+  }
+  return RISK_FACTORS.find((factor) => factor.factorId === id)?.textRaw ?? id;
+}
+
+/**
+ * Splits the announcement's rule text on its own numbering. Nothing is reworded:
+ * each card holds one of the source's 一、二、三 items exactly as transcribed.
+ */
+function prescriptionSteps(text: string): readonly string[] {
+  return text
+    .split(/(?=[一二三四五六七八九十]、)/u)
+    .map((step) => step.trim())
+    .filter((step) => step !== "");
+}
+
+export function RiskQuestionCard({
+  group,
+  onAnswer
+}: {
+  group: RiskQuestionGroup;
+  onAnswer: (answers: Readonly<Record<string, boolean>>) => void;
+}): React.JSX.Element {
+  const { t } = useUi();
+  const [ticked, setTicked] = useState<Readonly<Record<string, boolean>>>({});
+
+  if (group.kind === "prerequisite") {
+    const question = group.questions[0]!;
+    return (
+      <div className="ask-current">
+        <p className="ask-question">{t("riskPrerequisiteQuestion")}</p>
+        <p className="ask-verbatim">{question.labelZh}</p>
+        {question.headingRaw === null ? null : (
+          <p className="ask-source">{question.headingRaw}</p>
+        )}
+        <div className="ask-actions">
+          <button
+            className="primary-button"
+            onClick={() => onAnswer({ [question.id]: true })}
+            type="button"
+          >
+            {t("riskYes")}
+          </button>
+          <button
+            className="ghost-button ask-no"
+            onClick={() => onAnswer({ [question.id]: false })}
+            type="button"
+          >
+            {t("riskNo")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ask-current">
+      {group.headingRaw === null ? null : <p className="ask-source">{group.headingRaw}</p>}
+      <p className="ask-hint">{t("riskAnyOfHint")}</p>
+      <div className="ask-options">
+        {group.questions.map((question) => (
+          <button
+            aria-pressed={ticked[question.id] === true}
+            className="ask-option"
+            key={question.id}
+            onClick={() =>
+              setTicked((current) => ({ ...current, [question.id]: current[question.id] !== true }))
+            }
+            type="button"
+          >
+            <span aria-hidden="true" className="ask-box" />
+            <span>{question.labelZh}</span>
+          </button>
+        ))}
+      </div>
+      <div className="ask-actions">
+        <button
+          className="primary-button"
+          onClick={() =>
+            onAnswer(
+              Object.fromEntries(
+                group.questions.map((question) => [question.id, ticked[question.id] === true])
+              )
+            )
+          }
+          type="button"
+        >
+          {t("riskNext")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function RiskTierResult({
+  assessment,
+  ldlC
+}: {
+  assessment: RiskAssessment;
+  ldlC: number | null;
+}): React.JSX.Element {
+  const { language, t } = useUi();
+
+  if (assessment.status === "undetermined") {
+    return (
+      <section className="card">
+        <div className="card-head">
+          <h2>{t("riskUndeterminedTitle")}</h2>
+        </div>
+        <div className="card-body">
+          <p className="notice">
+            {t("riskUndeterminedBody", {
+              count: String(assessment.missing.length),
+              tiers: assessment.possibleTiers.map((tier) => tier.labelZh).join(" / ")
+            })}
+          </p>
+          <p className="hint">{t("riskUndeterminedWhy")}</p>
+        </div>
+      </section>
+    );
+  }
+
+  const { tier, reason } = assessment;
+  const because =
+    reason.kind === "criterion"
+      ? reason.prerequisiteLabelZh === null
+        ? t("riskReasonCriterion", { text: reason.criterion.textRaw })
+        : t("riskReasonWithPrerequisite", {
+            prerequisite: reason.prerequisiteLabelZh,
+            text: reason.criterion.textRaw
+          })
+      : t("riskReasonFactorCount", {
+          rule: reason.ruleRaw ?? "",
+          count: String(reason.count)
+        });
+
+  return (
+    <>
+      <div className="tier-hero">
+        <span className="tier-eyebrow">{t("riskTierEyebrow")}</span>
+        <span className="tier-name">{protectedText(language, tier.labelZh)}</span>
+        <span className="tier-because">{because}</span>
+      </div>
+
+      <dl className="stat-row">
+        <Stat
+          label={t("riskStatLdl")}
+          text
+          value={ldlC === null ? t("riskStatBlank") : String(ldlC)}
+        />
+        <Stat label={t("riskStatThreshold")} text value={tier.initiationThresholdRaw} />
+        <Stat label={t("riskStatPrimary")} text value={tier.primaryTargetRaw} />
+        <Stat
+          label={t("riskStatSecondary")}
+          text
+          value={tier.secondaryTargetRaw ?? t("riskStatNone")}
+        />
+      </dl>
+
+      <section className="card">
+        <div className="card-head">
+          <h2>{t("riskPrescriptionTitle")}</h2>
+        </div>
+        <div className="card-body">
+          {tier.prescriptionRuleText === null ? (
+            <p className="notice">{t("riskPrescriptionNone")}</p>
+          ) : (
+            <>
+              <p className="hint">{t("riskPrescriptionNote")}</p>
+              <ol className="step-list">
+                {prescriptionSteps(tier.prescriptionRuleText).map((step) => (
+                  <li className="step-card" key={step}>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+              <Disclosure summary={t("riskPrescriptionVerbatim")}>
+                <p className="verbatim">{tier.prescriptionRuleText}</p>
+              </Disclosure>
+            </>
+          )}
+          <p className="provenance">
+            {t("riskProvenance", { version: RISK_DATASET_VERSION })}
+          </p>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function RiskTierMode(): React.JSX.Element {
+  const { t } = useUi();
+  const [answers, setAnswers] = useState<RiskAnswerState>(EMPTY_RISK_ANSWERS);
+  const [ldlCText, setLdlCText] = useState("");
+
+  const parsedLdlC = ldlCText.trim() === "" ? null : Number(ldlCText.trim());
+  const ldlCValid =
+    parsedLdlC === null || (Number.isFinite(parsedLdlC) && parsedLdlC >= 0 && parsedLdlC <= 1000);
+  const ldlC = ldlCValid ? parsedLdlC : null;
+
+  const assessment = useMemo(
+    () => stratifyRisk({ ...answers, ldlC }),
+    [answers, ldlC]
+  );
+  const group =
+    assessment.status === "undetermined" ? nextQuestionGroup(assessment.missing) : null;
+  const needsLdlC =
+    assessment.status === "undetermined" && group === null && ldlC === null;
+
+  const answered = (["prerequisites", "criteria", "factors"] as const).flatMap((kind) =>
+    Object.entries(answers[kind]).map(([id, value]) => ({ kind, id, value }))
+  );
+
+  function record(kind: keyof RiskAnswerState, values: Readonly<Record<string, boolean>>): void {
+    setAnswers((current) => ({ ...current, [kind]: { ...current[kind], ...values } }));
+  }
+
+  function forget(kind: keyof RiskAnswerState, id: string): void {
+    setAnswers((current) => {
+      const next = { ...current[kind] };
+      delete next[id];
+      return { ...current, [kind]: next };
+    });
+  }
+
+  const questionKind: keyof RiskAnswerState =
+    group === null
+      ? "criteria"
+      : group.kind === "prerequisite"
+        ? "prerequisites"
+        : group.kind === "factor"
+          ? "factors"
+          : "criteria";
+
+  return (
+    <div className="workspace">
+      <div className="query-column">
+        <section className="card">
+          <div className="card-head">
+            <h2>{t("riskPanelTitle")}</h2>
+            {assessment.status === "undetermined" ? (
+              <span className="ask-remaining">
+                {t("riskRemaining", { count: String(assessment.missing.length) })}
+              </span>
+            ) : null}
+          </div>
+          <div className="card-body">
+            <Field label={t("riskLdlLabel")}>
+              <input
+                inputMode="decimal"
+                onChange={(event) => setLdlCText(event.target.value)}
+                placeholder={t("riskLdlPlaceholder")}
+                type="text"
+                value={ldlCText}
+              />
+            </Field>
+            {ldlCValid ? null : <p className="notice">{t("riskLdlInvalid")}</p>}
+            {needsLdlC ? <p className="notice">{t("riskNeedLdl")}</p> : null}
+            <p className="hint">{t("riskLdlWhy")}</p>
+
+            {answered.length === 0 ? null : (
+              <div className="ask-answered-list">
+                {answered.map(({ kind, id, value }) => (
+                  <div className="ask-answered" key={`${kind}:${id}`}>
+                    <span>
+                      {answeredLabel(kind, id)}{" "}
+                      <b>{t(value ? "riskAnsweredYes" : "riskAnsweredNo")}</b>
+                    </span>
+                    <button onClick={() => forget(kind, id)} type="button">
+                      {t("riskEdit")}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {group === null ? null : (
+              <RiskQuestionCard
+                group={group}
+                key={group.questions.map((question) => question.id).join(",")}
+                onAnswer={(values) => record(questionKind, values)}
+              />
+            )}
+
+            {answered.length === 0 && ldlCText === "" ? null : (
+              <>
+                <hr className="divider" />
+                <Chip
+                  onClick={() => {
+                    setAnswers(EMPTY_RISK_ANSWERS);
+                    setLdlCText("");
+                  }}
+                  selected={false}
+                  small
+                >
+                  {t("riskReset")}
+                </Chip>
+              </>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="results">
+        {answered.length === 0 && ldlC === null ? (
+          <section className="card">
+            <div className="card-head">
+              <h2>{t("riskEmptyTitle")}</h2>
+            </div>
+            <div className="card-body">
+              <p className="hint">{t("riskEmptyBody")}</p>
+            </div>
+          </section>
+        ) : (
+          <RiskTierResult assessment={assessment} ldlC={ldlC} />
+        )}
+        <p className="hint">{t("riskNoDrugAdvice")}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function App(): React.JSX.Element {
   const [themePreference, setThemePreference] = useState(() =>
     loadThemePreference(preferenceStorage)
@@ -762,6 +1141,7 @@ export default function App(): React.JSX.Element {
   const [language, setLanguage] = useState<InterfaceLanguage>(() =>
     loadInterfaceLanguage(preferenceStorage)
   );
+  const [mode, setMode] = useState<"drug" | "risk">("drug");
 
   const systemDark =
     typeof globalThis.matchMedia === "function" &&
@@ -829,7 +1209,28 @@ export default function App(): React.JSX.Element {
           {/* One disclaimer for the whole screen, not one per result card. */}
           <p className="disclaimer">{t("disclaimer")}</p>
 
-          <DrugLookupMode />
+          <div aria-label={t("tabGroupLabel")} className="tabs" role="tablist">
+            <button
+              aria-selected={mode === "drug"}
+              className="tab"
+              onClick={() => setMode("drug")}
+              role="tab"
+              type="button"
+            >
+              {t("tabDrugLookup")}
+            </button>
+            <button
+              aria-selected={mode === "risk"}
+              className="tab"
+              onClick={() => setMode("risk")}
+              role="tab"
+              type="button"
+            >
+              {t("tabRiskTier")}
+            </button>
+          </div>
+
+          {mode === "drug" ? <DrugLookupMode /> : <RiskTierMode />}
 
           <footer className="footer">
             <p>{t("privacyText")}</p>
