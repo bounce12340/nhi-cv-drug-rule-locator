@@ -1,0 +1,37 @@
+{
+  "schema": "storage-manifest/v1",
+  "datasetVersion": "nhi-lipid-risk-2026-09-01-r1",
+  "derivedFrom": {
+    "datasetVersion": "nhi-lipid-rules-2026-09-01-r1",
+    "declaredName": "attachment-2-rule-revision-table.pdf",
+    "sha256": "6389a5f654e0cb755d006f04ed47eca6ada9f867873f43c5088f79db6bb6c1c2",
+    "section": "全民健康保險降膽固醇藥物給付規定表一",
+    "transcriber": "scripts/risk-transcribe.mjs"
+  },
+  "sourceRegisterRefs": [
+    "docs/source-register/attachment-2-rule-revision-table.md"
+  ],
+  "effectiveFrom": "2026-09-01",
+  "effectiveTo": "9999-12-31",
+  "files": [
+    {
+      "declaredName": "risk-factors.jsonl",
+      "sha256": "f877d2a7a4d86b9161584216cabde000890f64bb2353bd1cfd9ebd42f1bd54d5",
+      "bytes": 1633,
+      "recordCount": 11
+    },
+    {
+      "declaredName": "risk-tiers.jsonl",
+      "sha256": "d32822010c90340eddd6af9a1f9e48c4c94281896af657386fa3e660eda40ab5",
+      "bytes": 8939,
+      "recordCount": 6
+    },
+    {
+      "declaredName": "tier-criteria.jsonl",
+      "sha256": "809f7949eafcc7df3139694b158d6713f6bf4a5e0b6a7ae2d51cf1387e8bec5e",
+      "bytes": 4895,
+      "recordCount": 18
+    }
+  ],
+  "revoked": false
+}

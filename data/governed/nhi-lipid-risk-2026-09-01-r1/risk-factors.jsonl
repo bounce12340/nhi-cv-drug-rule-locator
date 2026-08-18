@@ -1,0 +1,11 @@
+{"factorId":"factor-1","ordinal":"一、","textRaw":"高血壓。","parentFactorId":null,"requiredSubCount":null}
+{"factorId":"factor-2","ordinal":"二、","textRaw":"男性≧45歲，女性≧55歲。","parentFactorId":null,"requiredSubCount":null}
+{"factorId":"factor-3","ordinal":"三、","textRaw":"早發性冠心病家族史(男性≦55歲，女性≦65歲)。","parentFactorId":null,"requiredSubCount":null}
+{"factorId":"factor-4","ordinal":"四、","textRaw":"HDL-C：男性<40mg/dL，女性<50mg/dL。","parentFactorId":null,"requiredSubCount":null}
+{"factorId":"factor-5","ordinal":"五、","textRaw":"抽菸。","parentFactorId":null,"requiredSubCount":null}
+{"factorId":"factor-6","ordinal":"六、","textRaw":"代謝性症候群(符合以下至少三項)：","parentFactorId":null,"requiredSubCount":3}
+{"factorId":"factor-6-1","ordinal":"(一)","textRaw":"腹部肥胖(男性≧90cm，女性≧80cm)。","parentFactorId":"factor-6","requiredSubCount":null}
+{"factorId":"factor-6-2","ordinal":"(二)","textRaw":"血壓偏高(≧130/85mmHg 或使用高血壓藥物)。","parentFactorId":"factor-6","requiredSubCount":null}
+{"factorId":"factor-6-3","ordinal":"(三)","textRaw":"空腹血糖偏高(≧100mg/dL 或使用糖尿病藥物)。","parentFactorId":"factor-6","requiredSubCount":null}
+{"factorId":"factor-6-4","ordinal":"(四)","textRaw":"空腹 TG 偏高(≧150mg/dL 或使用治療 TG 血脂藥物)。","parentFactorId":"factor-6","requiredSubCount":null}
+{"factorId":"factor-6-5","ordinal":"(五)","textRaw":"HDL-C 偏低(男性<40mg/dL，女性<50mg/dL)。","parentFactorId":"factor-6","requiredSubCount":null}
