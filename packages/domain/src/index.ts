@@ -4,3 +4,4 @@ export * from "./drug-item-integration";
 export * from "./drug-dose";
 export * from "./drug-query";
 export * from "./risk-stratification";
+export * from "./drug-class";

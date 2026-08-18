@@ -14,10 +14,13 @@ import {
   matchesDrugDoseFilter,
   matchesDrugItemAnnouncementFilter,
   parseDrugQuery,
+  LIPID_CLASSES_ABSENT_FROM_MASTER,
   RISK_DATASET_VERSION,
   RISK_FACTORS,
   TIER_CRITERIA,
+  listLipidDrugItems,
   stratifyRisk,
+  type LipidDrugClass,
   type RiskAssessment,
   type RiskQuestion,
   type DrugDoseFacet,
@@ -906,12 +909,99 @@ export function RiskQuestionCard({
   );
 }
 
+/**
+ * Lists the master items behind the classes a tier's prescribing rule names.
+ *
+ * It picks nothing. The rule says 中至高強度 statin; the master records no intensity,
+ * so the tool cannot say which item satisfies that without inventing the mapping —
+ * and the screen says as much rather than implying the list is a shortlist.
+ */
+export function RiskDrugItems({ asOfDate }: { asOfDate: string }): React.JSX.Element {
+  const { t } = useUi();
+  const [drugClass, setDrugClass] = useState<LipidDrugClass>("statin");
+  const [generic, setGeneric] = useState<string | null>(null);
+
+  const listing = useMemo(
+    () => listLipidDrugItems({ drugClass, asOfDate }),
+    [drugClass, asOfDate]
+  );
+  const shown = useMemo(
+    () =>
+      generic === null
+        ? []
+        : listing.matches.filter((match) =>
+            match.item.ingredient.toUpperCase().includes(generic)
+          ),
+    [generic, listing]
+  );
+
+  function selectClass(next: LipidDrugClass): void {
+    setDrugClass(next);
+    setGeneric(null);
+  }
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>{t("riskItemsTitle")}</h2>
+      </div>
+      <div className="card-body">
+        <p className="notice">
+          {t("riskItemsPartial", { classes: LIPID_CLASSES_ABSENT_FROM_MASTER.join("、") })}
+        </p>
+        <div className="chip-row">
+          <Chip onClick={() => selectClass("statin")} selected={drugClass === "statin"} small>
+            {t("riskClassStatin", { count: String(listing.counts.statin) })}
+          </Chip>
+          <Chip
+            onClick={() => selectClass("ezetimibe")}
+            selected={drugClass === "ezetimibe"}
+            small
+          >
+            {t("riskClassEzetimibe", { count: String(listing.counts.ezetimibe) })}
+          </Chip>
+        </div>
+        <p className="hint">{t("riskGenericPrompt")}</p>
+        <div className="chip-row">
+          {listing.generics.map((option) => (
+            <Chip
+              key={option.name}
+              onClick={() => setGeneric(generic === option.name ? null : option.name)}
+              selected={generic === option.name}
+              small
+            >
+              {t("riskGenericChip", { name: option.name, count: String(option.count) })}
+            </Chip>
+          ))}
+        </div>
+        {listing.excludedZeroPriceCount === 0 ? null : (
+          <p className="hint">
+            {t("riskItemsExcluded", { count: String(listing.excludedZeroPriceCount) })}
+          </p>
+        )}
+        {generic === null ? (
+          <p className="hint">{t("riskItemsPickGeneric")}</p>
+        ) : (
+          <>
+            <p className="hint">{t("riskItemsNote", { generic, date: asOfDate })}</p>
+            {shown.map((match) => (
+              <DrugItemCard key={match.item.nhiCode} lookupAsOfDate={asOfDate} match={match} />
+            ))}
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function RiskTierResult({
   assessment,
-  ldlC
+  ldlC,
+  itemsAsOfDate
 }: {
   assessment: RiskAssessment;
   ldlC: number | null;
+  itemsAsOfDate: string;
 }): React.JSX.Element {
   const { language, t } = useUi();
 
@@ -998,11 +1088,13 @@ export function RiskTierResult({
           </p>
         </div>
       </section>
+
+      <RiskDrugItems asOfDate={itemsAsOfDate} />
     </>
   );
 }
 
-function RiskTierMode(): React.JSX.Element {
+export function RiskTierMode(): React.JSX.Element {
   const { t } = useUi();
   const [answers, setAnswers] = useState<RiskAnswerState>(EMPTY_RISK_ANSWERS);
   const [ldlCText, setLdlCText] = useState("");
@@ -1126,7 +1218,7 @@ function RiskTierMode(): React.JSX.Element {
             </div>
           </section>
         ) : (
-          <RiskTierResult assessment={assessment} ldlC={ldlC} />
+          <RiskTierResult assessment={assessment} itemsAsOfDate={todayIso()} ldlC={ldlC} />
         )}
         <p className="hint">{t("riskNoDrugAdvice")}</p>
       </div>

@@ -1,7 +1,7 @@
-import { RISK_TIERS, stratifyRisk } from "@nhi-cv/domain";
+import { LIPID_CLASSES_ABSENT_FROM_MASTER, RISK_TIERS, stratifyRisk } from "@nhi-cv/domain";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import App, { RiskTierResult, UiProvider } from "../App";
+import App, { RiskDrugItems, RiskTierMode, RiskTierResult, UiProvider } from "../App";
 import { UI_COPY } from "./copy";
 
 /**
@@ -26,7 +26,7 @@ const extreme = stratifyRisk({
 const undetermined = stratifyRisk({ criteria: { "high-1": true } });
 
 describe("the tier result", () => {
-  const markup = render(<RiskTierResult assessment={extreme} ldlC={145} />);
+  const markup = render(<RiskTierResult assessment={extreme} itemsAsOfDate="2026-08-12" ldlC={145} />);
 
   it("never names a tier without the criterion it came from", () => {
     expect(markup).toContain("極高風險");
@@ -43,7 +43,7 @@ describe("the tier result", () => {
   });
 
   it("says the LDL-C box is empty rather than showing it as zero", () => {
-    const blank = render(<RiskTierResult assessment={extreme} ldlC={null} />);
+    const blank = render(<RiskTierResult assessment={extreme} itemsAsOfDate="2026-08-12" ldlC={null} />);
     expect(blank).toContain(UI_COPY.zh.riskStatBlank);
     expect(blank).not.toMatch(/<dd[^>]*>0<\/dd>/u);
   });
@@ -95,7 +95,7 @@ describe("the 0-factor row", () => {
         "factor-6-5": false
       }
     });
-    const markup = render(<RiskTierResult assessment={assessment} ldlC={120} />);
+    const markup = render(<RiskTierResult assessment={assessment} itemsAsOfDate="2026-08-12" ldlC={120} />);
     expect(noFactors.prescriptionRuleText).toBeNull();
     expect(markup).toContain(UI_COPY.zh.riskPrescriptionNone);
     expect(markup).toContain(UI_COPY.zh.riskStatNone);
@@ -104,7 +104,7 @@ describe("the 0-factor row", () => {
 });
 
 describe("before the answers reach a tier", () => {
-  const markup = render(<RiskTierResult assessment={undetermined} ldlC={null} />);
+  const markup = render(<RiskTierResult assessment={undetermined} itemsAsOfDate="2026-08-12" ldlC={null} />);
 
   it("names no tier at all", () => {
     expect(markup).toContain(UI_COPY.zh.riskUndeterminedTitle);
@@ -127,5 +127,31 @@ describe("the whole screen", () => {
     const markup = renderToStaticMarkup(<App />);
     expect(occurrences(markup, UI_COPY.zh.disclaimer)).toBe(1);
     expect(markup).toContain(UI_COPY.zh.tabRiskTier);
+  });
+});
+
+describe("the item list under a tier", () => {
+  const markup = render(<RiskDrugItems asOfDate="2026-08-12" />);
+
+  it("says up front that it covers only part of what the rule names", () => {
+    // The rule also names PCSK9 monoclonals, siRNA and ATP citrate lyase
+    // inhibitors, and the master holds no item of any of them.
+    for (const absent of LIPID_CLASSES_ABSENT_FROM_MASTER) expect(markup).toContain(absent);
+  });
+
+  it("offers the two classes with the counts the master really has today", () => {
+    expect(markup).toContain("statin");
+    expect(markup).toContain("ezetimibe");
+    expect(markup).toContain("ATORVASTATIN");
+  });
+
+  it("lists no item until an ingredient is chosen, rather than dumping 396 cards", () => {
+    expect(markup).toContain(UI_COPY.zh.riskItemsPickGeneric);
+    expect(markup).not.toContain('class="item"');
+  });
+
+  it("says on the column, not per card, that it selects nothing", () => {
+    const column = render(<RiskTierMode />);
+    expect(occurrences(column, UI_COPY.zh.riskNoDrugAdvice)).toBe(1);
   });
 });
