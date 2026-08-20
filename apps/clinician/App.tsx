@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useRef, useState } from "react";
 import {
   DRUG_DOSE_UNSPECIFIED_KEY,
   DRUG_ITEMS_DATASET_EFFECTIVE_FROM,
@@ -192,6 +192,17 @@ function Disclosure({
  * understates how many items matched.
  */
 const RESULT_PAGE_SIZE = 30;
+
+/**
+ * The two screens, in the order their tabs appear. Named once so the tab list, the
+ * arrow-key handler and the panel ids cannot drift apart.
+ */
+const MODES = ["drug", "risk"] as const;
+type Mode = (typeof MODES)[number];
+const MODE_LABEL_KEYS: Readonly<Record<Mode, UiMessageKey>> = Object.freeze({
+  drug: "tabDrugLookup",
+  risk: "tabRiskTier"
+});
 
 export function ShowMoreResults({
   shown,
@@ -1307,7 +1318,32 @@ export default function App(): React.JSX.Element {
   const [language, setLanguage] = useState<InterfaceLanguage>(() =>
     loadInterfaceLanguage(preferenceStorage)
   );
-  const [mode, setMode] = useState<"drug" | "risk">("drug");
+  const [mode, setMode] = useState<Mode>("drug");
+  const tabRefs = useRef<Record<Mode, HTMLButtonElement | null>>({ drug: null, risk: null });
+
+  /*
+   * The tabs pattern moves between tabs with the arrow keys, not Tab: only the
+   * selected tab is in the tab order, so a keyboard user reaches the panel in one
+   * press instead of stepping through every tab first. Focus and selection move
+   * together, which is the recommended behaviour when switching panels is cheap.
+   */
+  function moveTab(event: React.KeyboardEvent<HTMLDivElement>): void {
+    const index = MODES.indexOf(mode);
+    const next =
+      event.key === "ArrowRight"
+        ? MODES[(index + 1) % MODES.length]
+        : event.key === "ArrowLeft"
+          ? MODES[(index - 1 + MODES.length) % MODES.length]
+          : event.key === "Home"
+            ? MODES[0]
+            : event.key === "End"
+              ? MODES[MODES.length - 1]
+              : undefined;
+    if (next === undefined) return;
+    event.preventDefault();
+    setMode(next);
+    tabRefs.current[next]?.focus();
+  }
 
   const systemDark =
     typeof globalThis.matchMedia === "function" &&
@@ -1375,25 +1411,30 @@ export default function App(): React.JSX.Element {
           {/* One disclaimer for the whole screen, not one per result card. */}
           <p className="disclaimer">{t("disclaimer")}</p>
 
-          <div aria-label={t("tabGroupLabel")} className="tabs" role="tablist">
-            <button
-              aria-selected={mode === "drug"}
-              className="tab"
-              onClick={() => setMode("drug")}
-              role="tab"
-              type="button"
-            >
-              {t("tabDrugLookup")}
-            </button>
-            <button
-              aria-selected={mode === "risk"}
-              className="tab"
-              onClick={() => setMode("risk")}
-              role="tab"
-              type="button"
-            >
-              {t("tabRiskTier")}
-            </button>
+          <div
+            aria-label={t("tabGroupLabel")}
+            className="tabs"
+            onKeyDown={moveTab}
+            role="tablist"
+          >
+            {MODES.map((name) => (
+              <button
+                aria-controls={`panel-${name}`}
+                aria-selected={mode === name}
+                className="tab"
+                id={`tab-${name}`}
+                key={name}
+                onClick={() => setMode(name)}
+                ref={(node) => {
+                  tabRefs.current[name] = node;
+                }}
+                role="tab"
+                tabIndex={mode === name ? 0 : -1}
+                type="button"
+              >
+                {t(MODE_LABEL_KEYS[name])}
+              </button>
+            ))}
           </div>
 
           {/*
@@ -1402,10 +1443,19 @@ export default function App(): React.JSX.Element {
             drops the clinical values the moment you leave it, which is earlier
             than the "gone on reload" the disclaimer promises, not later.
           */}
-          <div hidden={mode !== "drug"}>
+          <div
+            aria-labelledby="tab-drug"
+            hidden={mode !== "drug"}
+            id="panel-drug"
+            role="tabpanel"
+          >
             <DrugLookupMode />
           </div>
-          {mode === "risk" ? <RiskTierMode /> : null}
+          {mode === "risk" ? (
+            <div aria-labelledby="tab-risk" id="panel-risk" role="tabpanel">
+              <RiskTierMode />
+            </div>
+          ) : null}
 
           <footer className="footer">
             <p>{t("privacyText")}</p>
