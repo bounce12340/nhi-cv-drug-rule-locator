@@ -334,3 +334,67 @@ describe("results are frozen", () => {
     expect(Object.isFrozen(assessment)).toBe(true);
   });
 });
+
+describe("one clinical fact is one question", () => {
+  /*
+   * 冠狀動脈疾病 appears twice in the announcement: as the prerequisite of 極高風險
+   * (一), and again as an alternative under (二). Asking it twice let the two
+   * answers disagree — and a patient marked as not having it could still be handed
+   * 極高風險 by ticking it the second time.
+   */
+  it("does not ask again for something already answered as a prerequisite", () => {
+    const assessment = stratifyRisk({
+      prerequisites: { "extreme-1": false, "extreme-2": true }
+    });
+    expect(assessment.status).toBe("undetermined");
+    if (assessment.status !== "undetermined") return;
+    expect(assessment.missing.map((question) => question.id)).not.toContain("extreme-2-1");
+    expect(nextRiskQuestion({ prerequisites: { "extreme-1": false, "extreme-2": true } })?.id).toBe(
+      "extreme-2-2"
+    );
+  });
+
+  it("carries a prerequisite answer over to the criterion that repeats it", () => {
+    // 周邊動脈疾病 plus 冠狀動脈疾病 is 極高風險 (二). The second is answered only
+    // once, as (一)'s prerequisite, and must still satisfy (二)'s alternative.
+    const assessment = stratifyRisk({
+      prerequisites: { "extreme-1": true, "extreme-2": true }
+    });
+    expect(assessment.status).toBe("determined");
+    if (assessment.status !== "determined") return;
+    expect(assessment.tier.tierId).toBe("extreme");
+  });
+
+  it("refuses to name a tier when the two answers for one fact disagree", () => {
+    const assessment = stratifyRisk({
+      prerequisites: { "extreme-1": false, "extreme-2": true },
+      criteria: { "extreme-2-1": true }
+    });
+    expect(assessment.status).toBe("undetermined");
+  });
+
+  it("accepts the pair when they agree, from either side", () => {
+    const bothWays: readonly RiskAnswers[] = [
+      { prerequisites: { "extreme-1": true, "extreme-2": true }, criteria: { "extreme-2-1": true } },
+      { prerequisites: { "extreme-2": true }, criteria: { "extreme-2-1": true } }
+    ];
+    for (const answers of bothWays) {
+      const assessment = stratifyRisk(answers);
+      expect(assessment.status).toBe("determined");
+      if (assessment.status !== "determined") return;
+      expect(assessment.tier.tierId).toBe("extreme");
+    }
+  });
+
+  it("links only wording the announcement repeats exactly, nothing merely similar", () => {
+    // 一年內曾經歷心肌梗塞 is not a prerequisite anywhere, so it stays its own
+    // question; 周邊動脈疾病或頸動脈狹窄 is a compound and must not fold into
+    // 周邊動脈疾病.
+    const assessment = stratifyRisk({ prerequisites: { "extreme-2": false } });
+    expect(assessment.status).toBe("undetermined");
+    if (assessment.status !== "undetermined") return;
+    const asked = assessment.missing.map((question) => question.id);
+    expect(asked).toContain("extreme-1-1");
+    expect(asked).toContain("extreme-1-5");
+  });
+});

@@ -213,6 +213,12 @@ Four things it must keep doing:
    typed value and a ticked box cannot disagree. Consequence, and correct: with LDL-C blank, 高風險
    cannot be ruled out, so no factor-count tier is ever named.
 4. **代謝性症候群 counts three of five** and contributes one factor, not three.
+5. **One clinical fact is one question.** The announcement states 冠狀動脈疾病 twice — as
+   極高風險 (一)'s prerequisite and again as an alternative under (二) — so answering either
+   answers both, and the screen never asks it a second time. Before that, a patient marked as not
+   having it could still be handed 極高風險 by ticking it the second time. The pairing is exact
+   string equality once the source's trailing `。` is dropped, never a similarity judgement; two
+   answers that disagree make the fact **unknown** rather than letting one win.
 
 The dataset's own transcription decisions are in
 `data/governed/nhi-lipid-risk-2026-09-01-r1/TRANSCRIPTION.md` — read it before touching the JSONL.

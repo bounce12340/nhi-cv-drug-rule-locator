@@ -121,3 +121,28 @@ describe("authorship", () => {
     expect(UI_COPY.zh.footerCredit).toContain("天義企業");
   });
 });
+
+describe("the tab list", () => {
+  it("links each tab to the panel it controls, both ways", () => {
+    for (const name of ["drug", "risk"]) {
+      expect(markup).toContain(`id="tab-${name}"`);
+      expect(markup).toContain(`aria-controls="panel-${name}"`);
+    }
+    // Only the selected panel is mounted or shown, so only it is in the markup
+    // as a live region; the risk panel appears once its tab is chosen.
+    expect(markup).toContain('id="panel-drug"');
+    expect(markup).toContain('aria-labelledby="tab-drug"');
+    expect(markup).toContain('role="tabpanel"');
+  });
+
+  it("keeps only the selected tab in the tab order", () => {
+    // Roving tabindex: a keyboard user reaches the panel in one press instead of
+    // stepping through every tab first, and moves between tabs with the arrows.
+    expect(markup).toContain('tabindex="0"');
+    expect(markup).toContain('tabindex="-1"');
+    const selected = markup.match(/<button[^>]*aria-selected="true"[^>]*>/u)?.[0] ?? "";
+    expect(selected).toContain('tabindex="0"');
+    const unselected = markup.match(/<button[^>]*aria-selected="false"[^>]*>/u)?.[0] ?? "";
+    expect(unselected).toContain('tabindex="-1"');
+  });
+});

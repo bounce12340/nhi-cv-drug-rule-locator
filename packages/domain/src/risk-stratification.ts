@@ -92,6 +92,64 @@ function truthOf(answers: Readonly<Record<string, boolean>> | undefined, id: str
   return answer ? "yes" : "no";
 }
 
+/**
+ * The announcement states 冠狀動脈疾病 twice: as the prerequisite of 極高風險 (一),
+ * and again as an alternative under (二). They are one clinical fact, so asking it
+ * twice both wastes a question and lets the two answers disagree — and a patient
+ * marked as not having it could still reach 極高風險 by ticking it the second time.
+ *
+ * The pairing is exact string equality once the source's trailing 。 is dropped, not
+ * a similarity judgement: nothing is linked that the announcement does not word
+ * identically. Anything less certain is left as two separate questions.
+ */
+function buildPrerequisiteAliases(): ReadonlyMap<string, string> {
+  const prerequisiteByLabel = new Map<string, string>();
+  for (const criterion of TIER_CRITERIA) {
+    if (criterion.groupId === null || criterion.prerequisiteLabelZh === null) continue;
+    prerequisiteByLabel.set(criterion.prerequisiteLabelZh, criterion.groupId);
+  }
+  const aliases = new Map<string, string>();
+  for (const criterion of TIER_CRITERIA) {
+    const groupId = prerequisiteByLabel.get(criterion.textRaw.replace(/。$/u, ""));
+    // A group's own prerequisite is not an alias of itself.
+    if (groupId === undefined || groupId === criterion.groupId) continue;
+    aliases.set(criterion.criterionId, groupId);
+  }
+  return aliases;
+}
+
+/** criterionId → the group whose prerequisite states the same fact. */
+const PREREQUISITE_ALIASES = buildPrerequisiteAliases();
+
+/**
+ * Reads one fact from both places it can be answered.
+ *
+ * Answering either side answers both, so the screen never asks twice. If a caller
+ * supplies both and they disagree, the fact is unknown rather than one side winning:
+ * the tool cannot tell which answer to believe, and saying so is the same stance it
+ * takes everywhere else.
+ */
+function aliasedTruth(criterion: TierCriterionRecord, answers: RiskAnswers): Truth {
+  const own = truthOf(answers.criteria, criterion.criterionId);
+  const groupId = PREREQUISITE_ALIASES.get(criterion.criterionId);
+  if (groupId === undefined) return own;
+  const shared = truthOf(answers.prerequisites, groupId);
+  if (own === "unknown") return shared;
+  if (shared === "unknown" || shared === own) return own;
+  return "unknown";
+}
+
+/** The same, read from the prerequisite side. */
+function prerequisiteTruth(groupId: string, answers: RiskAnswers): Truth {
+  const own = truthOf(answers.prerequisites, groupId);
+  const twin = [...PREREQUISITE_ALIASES].find(([, target]) => target === groupId)?.[0];
+  if (twin === undefined) return own;
+  const shared = truthOf(answers.criteria, twin);
+  if (own === "unknown") return shared;
+  if (shared === "unknown" || shared === own) return own;
+  return "unknown";
+}
+
 /** Kleene OR: one yes settles it; otherwise an unknown keeps it open. */
 function anyOf(values: readonly Truth[]): Truth {
   if (values.includes("yes")) return "yes";
@@ -119,7 +177,7 @@ function criterionTruth(criterion: TierCriterionRecord, answers: RiskAnswers): T
     if (typeof ldlC !== "number" || !Number.isFinite(ldlC)) return "unknown";
     return ldlC >= LDL_C_HIGH_RISK_THRESHOLD ? "yes" : "no";
   }
-  return truthOf(answers.criteria, criterion.criterionId);
+  return aliasedTruth(criterion, answers);
 }
 
 /**
@@ -163,7 +221,7 @@ function evaluateCriterionTier(tier: RiskTierRecord, answers: RiskAnswers): Tier
 
   for (const [groupId, members] of groups) {
     const flat = groupId === null;
-    const prerequisite: Truth = flat ? "yes" : truthOf(answers.prerequisites, groupId);
+    const prerequisite: Truth = flat ? "yes" : prerequisiteTruth(groupId, answers);
     const memberTruths = members.map((criterion) => criterionTruth(criterion, answers));
     const truth = allOf([prerequisite, anyOf(memberTruths)]);
     groupTruths.push(truth);
