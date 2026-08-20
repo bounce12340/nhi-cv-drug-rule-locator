@@ -299,7 +299,7 @@ export const UI_COPY = Object.freeze({
       "Source: National Health Insurance Administration, Ministry of Health and Welfare, NHI Drug Item Query File (data.gov.tw), used under the Open Government Data License, Version 1.0.",
     footerPrivacy:
       "This site has no accounts and collects no personal data; lookup content is neither logged nor stored.",
-    footerCredit: "Planned, developed and produced by Josh Tsai, 天義企業."
+    footerCredit: "Planned, developed and produced by Josh Tsai, Universal Integrated Corp."
   })
 });
 
