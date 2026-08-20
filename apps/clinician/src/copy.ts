@@ -147,7 +147,8 @@ export const UI_COPY = Object.freeze({
     privacyText: "請勿輸入姓名、病歷號或任何可識別病人資訊。臨床數值不記錄、不儲存、不送出。",
     footerAttribution:
       "資料來源:衛生福利部中央健康保險署『健保用藥品項查詢項目檔』(政府資料開放平臺),依政府資料開放授權條款第1版利用",
-    footerPrivacy: "本站不設帳號、不蒐集任何個人資料;查詢內容不記錄、不儲存。"
+    footerPrivacy: "本站不設帳號、不蒐集任何個人資料;查詢內容不記錄、不儲存。",
+    footerCredit: "本系統之計畫、開發與製作:天義企業 Josh Tsai。"
   }),
   en: Object.freeze({
     themeLightButton: "Theme: Light (switch to Dark)",
@@ -297,7 +298,8 @@ export const UI_COPY = Object.freeze({
     footerAttribution:
       "Source: National Health Insurance Administration, Ministry of Health and Welfare, NHI Drug Item Query File (data.gov.tw), used under the Open Government Data License, Version 1.0.",
     footerPrivacy:
-      "This site has no accounts and collects no personal data; lookup content is neither logged nor stored."
+      "This site has no accounts and collects no personal data; lookup content is neither logged nor stored.",
+    footerCredit: "Planned, developed and produced by Josh Tsai, 天義企業."
   })
 });
 
