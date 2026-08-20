@@ -179,6 +179,39 @@ function Disclosure({
   );
 }
 
+/**
+ * How many result cards to build at once.
+ *
+ * Measured on the built bundle: the domain lookup for "statin" takes ~6 ms over all
+ * 607 records, while rendering its 179 cards takes ~515 ms — the cost is React
+ * building card components, not finding them. Nothing else moved that number
+ * (dropping 69% of the DOM by lazily rendering the collapsed price history changed
+ * it by less than the run-to-run noise), so the only lever is building fewer cards.
+ *
+ * The stat tile above the list keeps reporting the true total, so paging never
+ * understates how many items matched.
+ */
+const RESULT_PAGE_SIZE = 30;
+
+export function ShowMoreResults({
+  shown,
+  total,
+  onShowMore
+}: {
+  shown: number;
+  total: number;
+  onShowMore: () => void;
+}): React.JSX.Element | null {
+  const { t } = useUi();
+  if (total <= RESULT_PAGE_SIZE) return null;
+  if (shown >= total) return <p className="hint">{t("showingAll", { total: String(total) })}</p>;
+  return (
+    <button className="show-more" onClick={onShowMore} type="button">
+      {t("showMoreItems", { shown: String(shown), total: String(total) })}
+    </button>
+  );
+}
+
 /* ------------------------------------------------------------ date field -- */
 
 function AsOfDateField({
@@ -567,6 +600,27 @@ function DrugLookupMode(): React.JSX.Element {
   );
   const hasResult = result !== null;
 
+  /*
+   * Paging is derived, not stored per handler: any change to the query, the date, or
+   * either filter has to start the list over, and listing those places by hand would
+   * eventually miss one. Comparing a key during render is React's own documented way
+   * to reset state when an input changes.
+   */
+  const [shownCount, setShownCount] = useState(RESULT_PAGE_SIZE);
+  const resultKey = [
+    result?.asOfDate ?? "",
+    searchedText,
+    announcementFilter,
+    doseFilter?.key ?? "",
+    String(unfilteredMatches.length)
+  ].join("|");
+  const [lastResultKey, setLastResultKey] = useState(resultKey);
+  if (resultKey !== lastResultKey) {
+    setLastResultKey(resultKey);
+    setShownCount(RESULT_PAGE_SIZE);
+  }
+  const pagedMatches = visibleMatches.slice(0, shownCount);
+
   const changedCount = unfilteredMatches.filter(
     (match) => getDrugItemAnnouncementMembership(match.item.nhiCode).priceChanged
   ).length;
@@ -727,13 +781,19 @@ function DrugLookupMode(): React.JSX.Element {
               </p>
             ) : null}
 
-            {visibleMatches.map((match) => (
+            {pagedMatches.map((match) => (
               <DrugItemCard
                 key={match.item.nhiCode}
                 lookupAsOfDate={result?.asOfDate ?? asOfDate}
                 match={match}
               />
             ))}
+
+            <ShowMoreResults
+              onShowMore={() => setShownCount((count) => count + RESULT_PAGE_SIZE)}
+              shown={pagedMatches.length}
+              total={visibleMatches.length}
+            />
 
             {unfilteredMatches.length === 0 ? (
               <p className="notice">{t("noValidatedItems")}</p>
@@ -935,6 +995,15 @@ export function RiskDrugItems({ asOfDate }: { asOfDate: string }): React.JSX.Ele
     [generic, listing]
   );
 
+  const [shownCount, setShownCount] = useState(RESULT_PAGE_SIZE);
+  // Same reset rule as the drug lookup: a new class or ingredient starts the list over.
+  const listKey = `${drugClass}|${generic ?? ""}|${asOfDate}`;
+  const [lastListKey, setLastListKey] = useState(listKey);
+  if (listKey !== lastListKey) {
+    setLastListKey(listKey);
+    setShownCount(RESULT_PAGE_SIZE);
+  }
+
   function selectClass(next: LipidDrugClass): void {
     setDrugClass(next);
     setGeneric(null);
@@ -984,9 +1053,14 @@ export function RiskDrugItems({ asOfDate }: { asOfDate: string }): React.JSX.Ele
         ) : (
           <>
             <p className="hint">{t("riskItemsNote", { generic, date: asOfDate })}</p>
-            {shown.map((match) => (
+            {shown.slice(0, shownCount).map((match) => (
               <DrugItemCard key={match.item.nhiCode} lookupAsOfDate={asOfDate} match={match} />
             ))}
+            <ShowMoreResults
+              onShowMore={() => setShownCount((count) => count + RESULT_PAGE_SIZE)}
+              shown={Math.min(shownCount, shown.length)}
+              total={shown.length}
+            />
           </>
         )}
       </div>

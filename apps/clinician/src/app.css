@@ -1187,3 +1187,23 @@ details.flush > .details-body {
   color: var(--text);
   font-weight: 600;
 }
+
+/* Builds the next page of result cards. Sized like a chip, not a primary action. */
+.show-more {
+  justify-self: start;
+  appearance: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: inherit;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 9px 18px;
+  cursor: pointer;
+}
+
+.show-more:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

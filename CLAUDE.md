@@ -72,6 +72,20 @@ Inside `apps/clinician`:
 - `src/*.ts` — pure helpers (`as-of-date`, `drug-item-ui`, `ui-preferences`,
   `drug-review-presentation`). No JSX, so they are testable directly.
 
+### Result paging
+
+Result cards are built **30 at a time**, with a button for the next 30. Measured on the built
+bundle: for `statin` the domain lookup over all 607 records takes ~6 ms while rendering its 179
+cards takes ~506 ms — the cost is React building cards, not finding them. Paging took that to
+**104 ms**. Nothing else moved it: lazily rendering the collapsed price history dropped 69% of the
+DOM and changed the time by less than the run-to-run noise, so that idea was measured and dropped
+rather than shipped.
+
+The stat tile above the list keeps reporting the **true** match count, never the number rendered.
+Dose facets are likewise computed from the whole filtered set, so paging can never hide a filter
+option. Paging resets whenever the query, date or either filter changes, by comparing a derived key
+during render rather than by remembering to reset it in each handler.
+
 ### Testing the UI
 
 App tests render with `renderToStaticMarkup` and assert on the markup. There is no jsdom and no
@@ -135,8 +149,8 @@ Taking either field alone drops one of those. Three things this must keep doing:
    `444.4 mg` — it is a powder, not a 444.4 mg tablet, and a 444.4 mg filter must not reach it.
 3. **Units are part of the filter key**, so `4 g` never matches `4 mg`.
 
-Options offered on screen are computed from the records currently displayed, so no option can return
-nothing. A record whose strength cannot be read falls into a `DRUG_DOSE_UNSPECIFIED_KEY` bucket
+Options offered on screen are computed from every record the current filters match — not from the
+page of cards on screen, which is capped — so no option can return nothing. A record whose strength cannot be read falls into a `DRUG_DOSE_UNSPECIFIED_KEY` bucket
 rather than out of every filter; no record is in it today, and a test asserts that by measurement so
 a later snapshot cannot quietly strand one.
 
