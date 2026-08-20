@@ -6,7 +6,13 @@ import {
 } from "@nhi-cv/domain";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { DrugItemCard, OfficialSourcesDisclosure, SmartQueryReadout, UiProvider } from "../App";
+import {
+  DrugItemCard,
+  OfficialSourcesDisclosure,
+  ShowMoreResults,
+  SmartQueryReadout,
+  UiProvider
+} from "../App";
 
 /**
  * Renders each block against real dataset records and asserts on the markup the
@@ -110,5 +116,25 @@ describe("what the typed line was read as", () => {
       announcementDate: "2026-09-01"
     });
     expect(render(<SmartQueryReadout facets={plain.facets} searchText={plain.searchText} />)).toBe("");
+  });
+});
+
+describe("paging the result list", () => {
+  it("stays out of the way when everything already fits on one page", () => {
+    expect(render(<ShowMoreResults onShowMore={() => {}} shown={19} total={19} />)).toBe("");
+    expect(render(<ShowMoreResults onShowMore={() => {}} shown={30} total={30} />)).toBe("");
+  });
+
+  it("says how many of the total are on screen, so paging never hides the count", () => {
+    const markup = render(<ShowMoreResults onShowMore={() => {}} shown={30} total={179} />);
+    expect(markup).toContain("30");
+    expect(markup).toContain("179");
+    expect(markup).toContain("<button");
+  });
+
+  it("stops offering more once the last page is built", () => {
+    const markup = render(<ShowMoreResults onShowMore={() => {}} shown={179} total={179} />);
+    expect(markup).not.toContain("<button");
+    expect(markup).toContain("179");
   });
 });
