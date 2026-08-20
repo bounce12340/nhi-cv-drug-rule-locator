@@ -114,4 +114,10 @@ describe("authorship", () => {
     const header = markup.slice(0, markup.indexOf('class="disclaimer"'));
     expect(header).not.toContain("Josh Tsai");
   });
+
+  it("uses the registered company name in English, not a romanisation of the Chinese", () => {
+    expect(UI_COPY.en.footerCredit).toContain("Universal Integrated Corp.");
+    expect(UI_COPY.en.footerCredit).not.toContain("天義企業");
+    expect(UI_COPY.zh.footerCredit).toContain("天義企業");
+  });
 });
