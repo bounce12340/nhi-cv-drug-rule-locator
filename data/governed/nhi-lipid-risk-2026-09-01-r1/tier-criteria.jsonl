@@ -1,0 +1,18 @@
+{"criterionId":"extreme-1-1","tierId":"extreme","groupId":"extreme-1","groupHeadingRaw":"(一)冠狀動脈疾病合併下列任一臨床狀況：","prerequisiteLabelZh":"冠狀動脈疾病","ordinal":"1.","textRaw":"一年內曾經歷心肌梗塞。"}
+{"criterionId":"extreme-1-2","tierId":"extreme","groupId":"extreme-1","groupHeadingRaw":"(一)冠狀動脈疾病合併下列任一臨床狀況：","prerequisiteLabelZh":"冠狀動脈疾病","ordinal":"2.","textRaw":"≧兩次心肌梗塞病史。"}
+{"criterionId":"extreme-1-3","tierId":"extreme","groupId":"extreme-1","groupHeadingRaw":"(一)冠狀動脈疾病合併下列任一臨床狀況：","prerequisiteLabelZh":"冠狀動脈疾病","ordinal":"3.","textRaw":"多支冠狀動脈阻塞。"}
+{"criterionId":"extreme-1-4","tierId":"extreme","groupId":"extreme-1","groupHeadingRaw":"(一)冠狀動脈疾病合併下列任一臨床狀況：","prerequisiteLabelZh":"冠狀動脈疾病","ordinal":"4.","textRaw":"急性冠心症合併糖尿病。"}
+{"criterionId":"extreme-1-5","tierId":"extreme","groupId":"extreme-1","groupHeadingRaw":"(一)冠狀動脈疾病合併下列任一臨床狀況：","prerequisiteLabelZh":"冠狀動脈疾病","ordinal":"5.","textRaw":"周邊動脈疾病或頸動脈狹窄。"}
+{"criterionId":"extreme-2-1","tierId":"extreme","groupId":"extreme-2","groupHeadingRaw":"(二)周邊動脈疾病合併下列任一臨床狀況：","prerequisiteLabelZh":"周邊動脈疾病","ordinal":"1.","textRaw":"冠狀動脈疾病。"}
+{"criterionId":"extreme-2-2","tierId":"extreme","groupId":"extreme-2","groupHeadingRaw":"(二)周邊動脈疾病合併下列任一臨床狀況：","prerequisiteLabelZh":"周邊動脈疾病","ordinal":"2.","textRaw":"頸動脈狹窄。"}
+{"criterionId":"very-high-1-1","tierId":"very-high","groupId":"very-high-1","groupHeadingRaw":"(一)經臨床檢查確診為動脈硬化心血管疾病，包含：","prerequisiteLabelZh":"經臨床檢查確診為動脈硬化心血管疾病","ordinal":"1.","textRaw":"急性冠心症病史。"}
+{"criterionId":"very-high-1-2","tierId":"very-high","groupId":"very-high-1","groupHeadingRaw":"(一)經臨床檢查確診為動脈硬化心血管疾病，包含：","prerequisiteLabelZh":"經臨床檢查確診為動脈硬化心血管疾病","ordinal":"2.","textRaw":"接受血管再通術(心導管介入治療或外科冠狀動脈繞道手術)。"}
+{"criterionId":"very-high-1-3","tierId":"very-high","groupId":"very-high-1","groupHeadingRaw":"(一)經臨床檢查確診為動脈硬化心血管疾病，包含：","prerequisiteLabelZh":"經臨床檢查確診為動脈硬化心血管疾病","ordinal":"3.","textRaw":"缺血性中風/短暫性腦缺血發作合併動脈硬化相關疾病或病史。"}
+{"criterionId":"very-high-1-4","tierId":"very-high","groupId":"very-high-1","groupHeadingRaw":"(一)經臨床檢查確診為動脈硬化心血管疾病，包含：","prerequisiteLabelZh":"經臨床檢查確診為動脈硬化心血管疾病","ordinal":"4.","textRaw":"周邊動脈疾病(曾接受血管再通術、有肢體缺血相關症狀或截肢)。"}
+{"criterionId":"very-high-2-1","tierId":"very-high","groupId":"very-high-2","groupHeadingRaw":"(二)經影像檢查確認有顯著斑塊負擔，定義為≧50%直徑狹窄率，包含：","prerequisiteLabelZh":"經影像檢查確認有顯著斑塊負擔，定義為≧50%直徑狹窄率","ordinal":"1.","textRaw":"冠狀動脈血管攝影。"}
+{"criterionId":"very-high-2-2","tierId":"very-high","groupId":"very-high-2","groupHeadingRaw":"(二)經影像檢查確認有顯著斑塊負擔，定義為≧50%直徑狹窄率，包含：","prerequisiteLabelZh":"經影像檢查確認有顯著斑塊負擔，定義為≧50%直徑狹窄率","ordinal":"2.","textRaw":"冠狀動脈或周邊血管電腦斷層攝影。"}
+{"criterionId":"very-high-2-3","tierId":"very-high","groupId":"very-high-2","groupHeadingRaw":"(二)經影像檢查確認有顯著斑塊負擔，定義為≧50%直徑狹窄率，包含：","prerequisiteLabelZh":"經影像檢查確認有顯著斑塊負擔，定義為≧50%直徑狹窄率","ordinal":"3.","textRaw":"頸動脈或周邊血管超音波。"}
+{"criterionId":"high-1","tierId":"high","groupId":null,"groupHeadingRaw":null,"prerequisiteLabelZh":null,"ordinal":"(一)","textRaw":"糖尿病。"}
+{"criterionId":"high-2","tierId":"high","groupId":null,"groupHeadingRaw":null,"prerequisiteLabelZh":null,"ordinal":"(二)","textRaw":"慢性腎臟病(進入透析治療前的慢性腎臟病，包括 UACR≧30mg/g or eGFR<60mL/min/1.73m² 至少持續3個月)。"}
+{"criterionId":"high-3","tierId":"high","groupId":null,"groupHeadingRaw":null,"prerequisiteLabelZh":null,"ordinal":"(三)","textRaw":"LDL-C≧190mg/dL。"}
+{"criterionId":"high-4","tierId":"high","groupId":null,"groupHeadingRaw":null,"prerequisiteLabelZh":null,"ordinal":"(四)","textRaw":"冠狀動脈鈣化分數(CAC)≧400。"}

@@ -4,11 +4,18 @@ Guidance for Claude Code working in this repository.
 
 ## What this is
 
-A lookup tool for Taiwan NHI lipid-lowering drugs, for clinicians. It answers three questions:
+A lookup tool for Taiwan NHI lipid-lowering drugs, for clinicians. Two tabs.
+
+**Drug lookup** answers three questions:
 
 1. Which drugs did the 2026-09-01 announcement reprice, and which did it not?
 2. What is the price for each, on the date the clinician asks about?
 3. All prices come from NHI's own published data, never invented.
+
+**Risk tier** (added 2026-08) asks the announcement's own ASCVD criteria one at a time and reports
+the tier they put a patient in, that tier's payment threshold and treatment targets, the
+announcement's own prescribing rule, and the master items behind the drug classes that rule names.
+It reaches no conclusion the announcement does not state, and picks no drug.
 
 It used to also carry the 2.6.1–2.6.3 verbatim coverage rules and a prior/current comparison of
 them. That whole surface was removed in 2026-08 at the owner's request — the tab, the two rule
@@ -44,6 +51,9 @@ directly (`"exports": { ".": "./src/index.ts" }`), and Vite compiles it as part 
   Imports `@nhi-cv/domain` directly and makes no network calls at all.
 - `scripts/*-codegen.mjs` — regenerate `packages/domain/src/generated/*` from `data/governed/*`.
   Run these when NHI publishes new data; never hand-edit the generated files.
+- `scripts/risk-transcribe.mjs` — re-derives the risk dataset's three JSONL files from the
+  announcement PDF. A one-off tool, not part of CI: it needs poppler's `pdftotext`, which nothing
+  else here does. Committed so the transcription is reproducible and diffable rather than typed.
 
 The UI is plain DOM and plain CSS. It used to be written against React Native primitives aliased to
 `react-native-web`, a leftover from the app's Expo origins; that dependency, its type shim and the
@@ -83,6 +93,7 @@ publications, and `data/governed/` holds the sources they were generated from.
 | --- | --- |
 | `nhi-drug-items-2026-08-07-r2` | Item master: 607 records, 4,048 price periods |
 | `nhi-lipid-2026-09-01-r1` | The 2026-09-01 announcement: 187 changed items, before/after prices |
+| `nhi-lipid-risk-2026-09-01-r1` | 表一 of the announcement's attachment 2: 6 tiers, 18 criteria, 11 risk factors |
 
 `docs/source-register/` records where each source came from and its SHA-256. That is what backs the
 claim that prices are real rather than invented — keep it accurate if datasets change.
@@ -168,6 +179,42 @@ introduces. Choosing a date on or after the effective date therefore still shows
 `shouldShowMasterSnapshotNotice` surfaces that, and the new price stays where it actually is — the
 announcement's before/after comparison.
 
+## Risk stratification
+
+`packages/domain/src/risk-stratification.ts` turns answers into a tier. One rule governs the file:
+**an unanswered question is unknown, not no.** Reading a blank as "no" under-rates the patient and
+hands back a tier with a higher payment threshold than they qualify for, so every predicate is
+three-valued and `stratifyRisk` returns either a tier with the criterion it matched or an explicit
+list of what is still missing. It is the same stance as the drug lookup's "found nothing".
+
+Four things it must keep doing:
+
+1. **A prerequisite is not decoration.** 極高風險 and 非常高風險 are "prerequisite AND one of the
+   alternatives". `一年內曾經歷心肌梗塞` alone does not qualify without 冠狀動脈疾病. 高風險's four
+   entries genuinely are flat.
+2. **Precedence is the announcement's own numbering**, and a lower tier cannot settle the question
+   while a higher one is open — 糖尿病 with 極高風險 unanswered is undetermined across three tiers,
+   not 高風險.
+3. **LDL-C≧190mg/dL is a criterion, not just a threshold**, and is read off the entered number so a
+   typed value and a ticked box cannot disagree. Consequence, and correct: with LDL-C blank, 高風險
+   cannot be ruled out, so no factor-count tier is ever named.
+4. **代謝性症候群 counts three of five** and contributes one factor, not three.
+
+The dataset's own transcription decisions are in
+`data/governed/nhi-lipid-risk-2026-09-01-r1/TRANSCRIPTION.md` — read it before touching the JSONL.
+The load-bearing ones: prescription rules are paired to tiers by the heading the source text carries
+(the 處方規定 column does not line up with the tier rows beside it), rejoining hard-wrapped lines may
+add spaces but never change a character, and the 0-factor row's missing secondary target and missing
+prescribing rule are recorded as `null` rather than borrowed from the row above.
+
+`packages/domain/src/drug-class.ts` groups master items by the class a rule names. Measured, and
+these numbers belong in tests rather than in prose that can drift: **396** records name a statin,
+**27** name ezetimibe, **19** name both, **203** name neither. All 396 STATIN hits are the seven real
+statins, so nothing like nystatin is swept in. The rules also name PCSK9 monoclonals, siRNA and ATP
+citrate lyase inhibitors — the master holds **zero** of those, so any listing is partial and the
+screen says so. The tool never maps an item onto 中至高強度: the rule states an intensity, the master
+records none, and inventing that mapping would be the tool prescribing.
+
 ## Rules that protect correctness
 
 These exist because breaking them shows a clinician wrong drug information. They are not process.
@@ -182,8 +229,12 @@ These exist because breaking them shows a clinician wrong drug information. They
 4. **Official transcribed text is never edited.** The datasets' own warnings are rendered verbatim —
    not reformatted, not summarized, not excerpted. Collapsing them behind a disclosure is fine;
    altering them is not. They appear **once per screen**, never once per result card.
-5. **No patient data anywhere** — not in the UI, code, tests, or docs. The tool takes a drug query
-   and nothing else, and says so on screen.
+5. **No identifying patient data anywhere** — no names, no record numbers, no free text — in the
+   UI, code, tests, or docs. The risk tab does take clinical values (an LDL-C number, yes/no answers
+   to the announcement's criteria), so the older blanket "takes no patient data" no longer holds.
+   What replaced it has to stay true: values live in React state only, are never written to
+   `localStorage` and never leave the tab, and the screen says exactly that. `authored-copy.test.ts`
+   pins the wording.
 
 When changing lookup behavior, add the negative test alongside it (no auto-correct, no auto-select,
 fails closed). That is how these stay true.

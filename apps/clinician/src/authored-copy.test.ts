@@ -42,9 +42,15 @@ describe("authored copy", () => {
     }
   });
 
-  it("says on screen that the tool takes no patient data", () => {
+  it("says on screen which patient data the tool refuses, and what it does with the rest", () => {
+    // The risk-tier screen takes clinical values, so the old blanket "accepts no
+    // patient data" no longer holds. What replaces it has to be just as specific:
+    // identifying data is refused outright, and what is entered never leaves the tab.
     expect(UI_COPY.zh.privacyText).toContain("請勿輸入");
-    expect(UI_COPY.zh.disclaimer).toContain("不接受病人資料");
+    expect(UI_COPY.zh.disclaimer).toContain("不接受姓名、病歷號等可識別病人資料");
+    expect(UI_COPY.zh.disclaimer).toContain("重新整理即消失");
+    expect(UI_COPY.zh.disclaimer).toContain("不構成診斷");
+    expect(UI_COPY.en.disclaimer).toContain("no identifying patient data");
   });
 
   it("keeps the source-attribution and no-logging statements", () => {
