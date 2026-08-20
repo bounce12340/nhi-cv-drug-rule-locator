@@ -98,3 +98,20 @@ describe("copy", () => {
     }
   });
 });
+
+describe("authorship", () => {
+  it("credits who planned, developed and produced the system, once, in the footer", () => {
+    expect(occurrences(markup, UI_COPY.zh.footerCredit)).toBe(1);
+    expect(markup).toContain("Josh Tsai");
+    expect(markup).toContain("天義企業");
+    // Below the data-source line, not competing with it.
+    expect(markup.indexOf(UI_COPY.zh.footerCredit)).toBeGreaterThan(
+      markup.indexOf(UI_COPY.zh.footerAttribution)
+    );
+  });
+
+  it("keeps the credit out of the header, where the disclaimer belongs", () => {
+    const header = markup.slice(0, markup.indexOf('class="disclaimer"'));
+    expect(header).not.toContain("Josh Tsai");
+  });
+});

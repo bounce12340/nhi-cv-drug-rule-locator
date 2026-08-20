@@ -1337,6 +1337,8 @@ export default function App(): React.JSX.Element {
             <p>{t("privacyText")}</p>
             <p>{t("footerPrivacy")}</p>
             <p>{t("footerAttribution")}</p>
+            {/* Who built it, set apart from the data-source and privacy notices. */}
+            <p className="footer-credit">{t("footerCredit")}</p>
           </footer>
         </div>
       </div>
