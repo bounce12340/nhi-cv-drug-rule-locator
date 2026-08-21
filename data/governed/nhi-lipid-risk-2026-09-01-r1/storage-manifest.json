@@ -5,7 +5,7 @@
     "datasetVersion": "nhi-lipid-rules-2026-09-01-r1",
     "declaredName": "attachment-2-rule-revision-table.pdf",
     "sha256": "6389a5f654e0cb755d006f04ed47eca6ada9f867873f43c5088f79db6bb6c1c2",
-    "section": "全民健康保險降膽固醇藥物給付規定表一",
+    "section": "全民健康保險降膽固醇藥物給付規定表一、其後的 ASCVD 風險等級定義／心血管風險因子定義／各風險等級評估建議／non-HDL-C 註記,以及 2.6.2、2.6.3 之建議修訂後給付規定",
     "transcriber": "scripts/risk-transcribe.mjs"
   },
   "sourceRegisterRefs": [
@@ -14,6 +14,24 @@
   "effectiveFrom": "2026-09-01",
   "effectiveTo": "9999-12-31",
   "files": [
+    {
+      "declaredName": "assessment-advice.jsonl",
+      "sha256": "830e15cdbf143416f2c1b56a956c4f7adc3c60f3affa85daa8691602734f4bf8",
+      "bytes": 3200,
+      "recordCount": 6
+    },
+    {
+      "declaredName": "coverage-rule-conditions.jsonl",
+      "sha256": "6d7822f1341a49879bba04566ffa1caa38a6aba85b45028247fcd3f63c58437f",
+      "bytes": 2011,
+      "recordCount": 5
+    },
+    {
+      "declaredName": "coverage-rules.jsonl",
+      "sha256": "98106c0a81cd55881658ab477702143bc5e8a1c8c99d0630dae342eba9e4911e",
+      "bytes": 1086,
+      "recordCount": 2
+    },
     {
       "declaredName": "risk-factors.jsonl",
       "sha256": "f877d2a7a4d86b9161584216cabde000890f64bb2353bd1cfd9ebd42f1bd54d5",

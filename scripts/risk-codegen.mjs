@@ -20,11 +20,29 @@ const SCRIPT_NAME = "scripts/risk-codegen.mjs";
 const DATASET_VERSION = "nhi-lipid-risk-2026-09-01-r1";
 const EFFECTIVE_FROM = "2026-09-01";
 const EXPECTED_DATASET_DIGEST =
-  "a60ee155a9e631d2a4933c06f36297465a613c30de19fa4514877da708cf4082";
+  "3b17cf467900dcf4dde8c049ff4091f092dada8cbd482bda6ef6731e2614dfcf";
 const SOURCE_PDF_SHA256 =
   "6389a5f654e0cb755d006f04ed47eca6ada9f867873f43c5088f79db6bb6c1c2";
 
 const SOURCE_FILES = [
+  {
+    declaredName: "assessment-advice.jsonl",
+    sha256: "830e15cdbf143416f2c1b56a956c4f7adc3c60f3affa85daa8691602734f4bf8",
+    bytes: 3200,
+    recordCount: 6
+  },
+  {
+    declaredName: "coverage-rule-conditions.jsonl",
+    sha256: "6d7822f1341a49879bba04566ffa1caa38a6aba85b45028247fcd3f63c58437f",
+    bytes: 2011,
+    recordCount: 5
+  },
+  {
+    declaredName: "coverage-rules.jsonl",
+    sha256: "98106c0a81cd55881658ab477702143bc5e8a1c8c99d0630dae342eba9e4911e",
+    bytes: 1086,
+    recordCount: 2
+  },
   {
     declaredName: "risk-factors.jsonl",
     sha256: "f877d2a7a4d86b9161584216cabde000890f64bb2353bd1cfd9ebd42f1bd54d5",
@@ -68,6 +86,31 @@ const CRITERION_FIELDS = [
   "textRaw"
 ];
 const FACTOR_FIELDS = ["factorId", "ordinal", "textRaw", "parentFactorId", "requiredSubCount"];
+const ADVICE_FIELDS = [
+  "adviceId",
+  "groupId",
+  "groupHeadingRaw",
+  "appliesToTierIds",
+  "ordinal",
+  "textRaw",
+  "sourceLines"
+];
+const COVERAGE_RULE_FIELDS = [
+  "ruleId",
+  "headingRaw",
+  "headingLines",
+  "restrictionRaw",
+  "restrictionLines",
+  "exceptionNhiCodes"
+];
+const COVERAGE_CONDITION_FIELDS = [
+  "conditionId",
+  "ruleId",
+  "ordinal",
+  "textRaw",
+  "sourceLines"
+];
+const NHI_CODE_PATTERN = /^[A-Z0-9]{10}$/u;
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
@@ -213,7 +256,7 @@ function requireFields(record, fields, description) {
  * The structural claims the domain layer is allowed to rely on. Each one exists
  * because breaking it shows a clinician a tier they do not qualify for.
  */
-function checkStructure({ tiers, criteria, factors }) {
+function checkStructure({ tiers, criteria, factors, advice, rules, conditions }) {
   const tierIds = new Set();
   for (const [index, tier] of tiers.entries()) {
     requireFields(tier, TIER_FIELDS, `risk tier ${index + 1}`);
@@ -307,6 +350,130 @@ function checkStructure({ tiers, criteria, factors }) {
       );
     }
   }
+
+  const adviceIds = new Set();
+  for (const [index, item] of advice.entries()) {
+    requireFields(item, ADVICE_FIELDS, `assessment advice ${index + 1}`);
+    if (adviceIds.has(item.adviceId)) fail(`duplicate advice id ${item.adviceId}`);
+    adviceIds.add(item.adviceId);
+    if (typeof item.textRaw !== "string" || item.textRaw === "") {
+      fail(`advice ${item.adviceId} has no text`);
+    }
+    if (!Array.isArray(item.sourceLines) || item.sourceLines.length === 0) {
+      fail(`advice ${item.adviceId} has no source lines`);
+    }
+    // The join may add spaces; it may not change a character or swallow the
+    // ordinal that tells the reader which item of the source this is.
+    if (
+      withoutWhitespace(`${item.ordinal}${item.textRaw}`) !==
+      withoutWhitespace(item.sourceLines.join(""))
+    ) {
+      fail(`advice ${item.adviceId} differs from its source lines`);
+    }
+    const grouped = item.groupId !== null;
+    if (grouped !== (item.groupHeadingRaw !== null)) {
+      fail(`advice ${item.adviceId} is grouped but carries no group heading`);
+    }
+    // The non-HDL-C note names no tier. Handing it one would scope a sentence the
+    // announcement wrote for everybody, so null has to survive to the screen.
+    if (grouped !== (item.appliesToTierIds !== null)) {
+      fail(`advice ${item.adviceId} pairs a group with no tiers, or the reverse`);
+    }
+    if (item.appliesToTierIds === null) continue;
+    if (!Array.isArray(item.appliesToTierIds) || item.appliesToTierIds.length === 0) {
+      fail(`advice ${item.adviceId} applies to no tier`);
+    }
+    for (const tierId of item.appliesToTierIds) {
+      if (tierIds.has(tierId)) continue;
+      fail(`advice ${item.adviceId} names unknown tier ${tierId}`);
+    }
+  }
+
+  // 極高／非常高 and 高／中／低 are disjoint in the source. A tier reachable from two
+  // groups would be shown two different sets of advice with nothing to choose by.
+  const groupOfTier = new Map();
+  for (const item of advice) {
+    if (item.appliesToTierIds === null) continue;
+    for (const tierId of item.appliesToTierIds) {
+      const seen = groupOfTier.get(tierId);
+      if (seen !== undefined && seen !== item.groupId) {
+        fail(`tier ${tierId} is claimed by advice groups ${seen} and ${item.groupId}`);
+      }
+      groupOfTier.set(tierId, item.groupId);
+    }
+  }
+
+  const ruleIds = new Set();
+  const declaredCodes = new Set();
+  for (const [index, rule] of rules.entries()) {
+    requireFields(rule, COVERAGE_RULE_FIELDS, `coverage rule ${index + 1}`);
+    if (ruleIds.has(rule.ruleId)) fail(`duplicate coverage rule id ${rule.ruleId}`);
+    ruleIds.add(rule.ruleId);
+    if (typeof rule.headingRaw !== "string" || rule.headingRaw === "") {
+      fail(`coverage rule ${rule.ruleId} has no heading`);
+    }
+    if (
+      !Array.isArray(rule.headingLines) ||
+      withoutWhitespace(rule.headingRaw) !== withoutWhitespace(rule.headingLines.join(""))
+    ) {
+      fail(`coverage rule ${rule.ruleId}'s heading differs from its source lines`);
+    }
+    // 2.6.2 restricts the drug to three named conditions and then asks for 下列
+    // 條件之一; 2.6.3 numbers its requirements with no such connective. Carrying
+    // null rather than borrowing 2.6.2's wording is what stops the screen from
+    // printing an "any one of" the source never wrote.
+    const restricted = rule.restrictionRaw !== null;
+    if (restricted !== (rule.restrictionLines !== null)) {
+      fail(`coverage rule ${rule.ruleId} pairs a restriction with no source lines`);
+    }
+    if (
+      restricted &&
+      withoutWhitespace(rule.restrictionRaw) !== withoutWhitespace(rule.restrictionLines.join(""))
+    ) {
+      fail(`coverage rule ${rule.ruleId}'s restriction differs from its source lines`);
+    }
+    if (!Array.isArray(rule.exceptionNhiCodes) || rule.exceptionNhiCodes.length === 0) {
+      fail(`coverage rule ${rule.ruleId} points at 下表 but carries no codes`);
+    }
+    for (const code of rule.exceptionNhiCodes) {
+      if (typeof code !== "string" || !NHI_CODE_PATTERN.test(code)) {
+        fail(`coverage rule ${rule.ruleId} carries a malformed NHI code`);
+      }
+      if (declaredCodes.has(code)) fail(`NHI code ${code} is listed under two coverage rules`);
+      declaredCodes.add(code);
+    }
+  }
+
+  const conditionIds = new Set();
+  const conditionsPerRule = new Map();
+  for (const [index, condition] of conditions.entries()) {
+    requireFields(condition, COVERAGE_CONDITION_FIELDS, `coverage condition ${index + 1}`);
+    if (conditionIds.has(condition.conditionId)) {
+      fail(`duplicate coverage condition id ${condition.conditionId}`);
+    }
+    conditionIds.add(condition.conditionId);
+    if (!ruleIds.has(condition.ruleId)) {
+      fail(`condition ${condition.conditionId} names unknown rule ${condition.ruleId}`);
+    }
+    if (typeof condition.textRaw !== "string" || condition.textRaw === "") {
+      fail(`condition ${condition.conditionId} has no text`);
+    }
+    if (
+      !Array.isArray(condition.sourceLines) ||
+      withoutWhitespace(`${condition.ordinal}${condition.textRaw}`) !==
+        withoutWhitespace(condition.sourceLines.join(""))
+    ) {
+      fail(`condition ${condition.conditionId} differs from its source lines`);
+    }
+    conditionsPerRule.set(
+      condition.ruleId,
+      (conditionsPerRule.get(condition.ruleId) ?? 0) + 1
+    );
+  }
+  for (const ruleId of ruleIds) {
+    if (conditionsPerRule.get(ruleId) !== undefined) continue;
+    fail(`coverage rule ${ruleId} carries no conditions`);
+  }
 }
 
 function serialize(records, fields) {
@@ -322,15 +489,16 @@ function serialize(records, fields) {
 
 function renderModule() {
   const datasetDigest = parseManifest();
-  const [factors, tiers, criteria] = SOURCE_FILES.map(readJsonl);
-  checkStructure({ tiers, criteria, factors });
+  const [advice, conditions, rules, factors, tiers, criteria] = SOURCE_FILES.map(readJsonl);
+  checkStructure({ tiers, criteria, factors, advice, rules, conditions });
 
   return `// Generated file. Do not edit.
 //
 // Source dataset: ${DATASET_VERSION}
 // Transcribed from: attachment-2-rule-revision-table.pdf (${SOURCE_PDF_SHA256})
 // Dataset digest (SHA-256): ${datasetDigest}
-// Records: ${tiers.length} tiers, ${criteria.length} criteria, ${factors.length} factors
+// Records: ${tiers.length} tiers, ${criteria.length} criteria, ${factors.length} factors,
+//          ${advice.length} assessment notes, ${rules.length} coverage rules (${conditions.length} conditions)
 // Generator: ${SCRIPT_NAME}
 
 export interface RiskTierRecord {
@@ -365,6 +533,42 @@ export interface RiskFactorRecord {
   readonly requiredSubCount: number | null;
 }
 
+/**
+ * A note the announcement prints beneath the tier table. \`appliesToTierIds\` is
+ * null for the non-HDL-C note, which names no tier at all.
+ */
+export interface AssessmentAdviceRecord {
+  readonly adviceId: string;
+  readonly groupId: string | null;
+  readonly groupHeadingRaw: string | null;
+  readonly appliesToTierIds: readonly string[] | null;
+  readonly ordinal: string;
+  readonly textRaw: string;
+  readonly sourceLines: readonly string[];
+}
+
+/**
+ * 2.6.2 (ezetimibe on its own) and 2.6.3 (the ezetimibe + statin combinations),
+ * as revised on 2026-09-01. \`restrictionRaw\` is null for 2.6.3, which numbers its
+ * requirements without asking for any one of them.
+ */
+export interface CoverageRuleRecord {
+  readonly ruleId: string;
+  readonly headingRaw: string;
+  readonly headingLines: readonly string[];
+  readonly restrictionRaw: string | null;
+  readonly restrictionLines: readonly string[] | null;
+  readonly exceptionNhiCodes: readonly string[];
+}
+
+export interface CoverageRuleConditionRecord {
+  readonly conditionId: string;
+  readonly ruleId: string;
+  readonly ordinal: string;
+  readonly textRaw: string;
+  readonly sourceLines: readonly string[];
+}
+
 export const RISK_DATASET_VERSION = "${DATASET_VERSION}" as const;
 export const RISK_DATASET_EFFECTIVE_FROM = "${EFFECTIVE_FROM}" as const;
 
@@ -380,6 +584,18 @@ const generatedRiskFactors: RiskFactorRecord[] = [
 ${serialize(factors, FACTOR_FIELDS)}
 ];
 
+const generatedAssessmentAdvice: AssessmentAdviceRecord[] = [
+${serialize(advice, ADVICE_FIELDS)}
+];
+
+const generatedCoverageRules: CoverageRuleRecord[] = [
+${serialize(rules, COVERAGE_RULE_FIELDS)}
+];
+
+const generatedCoverageRuleConditions: CoverageRuleConditionRecord[] = [
+${serialize(conditions, COVERAGE_CONDITION_FIELDS)}
+];
+
 function deepFreeze<T>(value: T): T {
   if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
     for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
@@ -391,6 +607,12 @@ function deepFreeze<T>(value: T): T {
 export const RISK_TIERS: readonly RiskTierRecord[] = deepFreeze(generatedRiskTiers);
 export const TIER_CRITERIA: readonly TierCriterionRecord[] = deepFreeze(generatedTierCriteria);
 export const RISK_FACTORS: readonly RiskFactorRecord[] = deepFreeze(generatedRiskFactors);
+export const ASSESSMENT_ADVICE: readonly AssessmentAdviceRecord[] =
+  deepFreeze(generatedAssessmentAdvice);
+export const COVERAGE_RULES: readonly CoverageRuleRecord[] = deepFreeze(generatedCoverageRules);
+export const COVERAGE_RULE_CONDITIONS: readonly CoverageRuleConditionRecord[] = deepFreeze(
+  generatedCoverageRuleConditions
+);
 `;
 }
 

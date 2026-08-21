@@ -20,8 +20,14 @@ It reaches no conclusion the announcement does not state, and picks no drug.
 It used to also carry the 2.6.1–2.6.3 verbatim coverage rules and a prior/current comparison of
 them. That whole surface was removed in 2026-08 at the owner's request — the tab, the two rule
 datasets, their codegens, `rule-text-lookup`, `rule-comparison`, `rule-diff` and
-`rule-drug-identification`. Do not reintroduce any of it without being asked; the history is in git
-if it is ever wanted back.
+`rule-drug-identification`.
+
+**2.6.2 and 2.6.3 came back in 2026-08, asked for, and only half of them.** The risk tab now shows
+the 建議修訂後給付規定 text for ezetimibe alone and for the combination products, because that is
+where the announcement states statin intolerance and the three named lipid disorders — conditions
+the tier table says nothing about. What did **not** come back is the comparison: 原給付規定 is not
+transcribed, not compiled and not rendered, and 2.6.1 is not either (its content is 表一, already
+here). Do not reintroduce the prior/current diff without being asked; the history is in git.
 
 It is a **static site**. No server, no API, no database, no accounts, no patient data. Everything runs
 in the browser from data compiled into the bundle. It deploys to Cloudflare Pages and nothing else.
@@ -107,7 +113,7 @@ publications, and `data/governed/` holds the sources they were generated from.
 | --- | --- |
 | `nhi-drug-items-2026-08-07-r2` | Item master: 607 records, 4,048 price periods |
 | `nhi-lipid-2026-09-01-r1` | The 2026-09-01 announcement: 187 changed items, before/after prices |
-| `nhi-lipid-risk-2026-09-01-r1` | 表一 of the announcement's attachment 2: 6 tiers, 18 criteria, 11 risk factors |
+| `nhi-lipid-risk-2026-09-01-r1` | Attachment 2: 6 tiers, 18 criteria, 11 factors, 6 notes, 2 coverage rules |
 
 `docs/source-register/` records where each source came from and its SHA-256. That is what backs the
 claim that prices are real rather than invented — keep it accurate if datasets change.
@@ -220,12 +226,47 @@ Four things it must keep doing:
    string equality once the source's trailing `。` is dropped, never a similarity judgement; two
    answers that disagree make the fact **unknown** rather than letting one win.
 
-The dataset's own transcription decisions are in
+### What the tier table does not say
+
+表一 gives a tier its threshold, its targets and its prescribing rule. Three things a clinician
+needs are printed elsewhere in the same attachment, and all three are now carried.
+
+`packages/domain/src/assessment-advice.ts` holds the ●各風險等級評估建議 items and the standalone
+non-HDL-C note. The advice reaches a tier because the heading **names** it — `極高風險、非常高風險：`
+split on 、 and matched to `labelZh` by exact string equality — never because of where the group sits.
+That is what keeps the 24-hour blood draw in front of 極高風險 and away from 高風險, and it is why
+`no-factors`, which neither heading names, gets `null` and a screen that says so. The non-HDL-C note
+names no tier at all, so `appliesToTierIds` is `null` and it is shown verbatim beside the secondary
+target rather than filtered or paraphrased into a condition the tool would then be asserting.
+
+`packages/domain/src/coverage-rule.ts` holds 2.6.2 and 2.6.3. Two properties matter:
+
+1. **2.6.3 gets no connective it did not write.** 2.6.2 restricts ezetimibe to three named disorders
+   and then asks for 下列條件之一; 2.6.3 numbers three requirements with no such wording. Its
+   `restrictionRaw` is `null` and the screen prints nothing in its place — an "any one of" would turn
+   three requirements into three alternatives.
+2. **The 健保代碼 tables are read for codes only.** The names beside them are already in the master,
+   and a second spelling could drift. The 14 codes are cross-checked against the two exception CSVs
+   in `nhi-lipid-2026-09-01-r1`, transcribed independently and earlier; `coverage-rule.test.ts`
+   re-runs that comparison every CI run.
+
+The transcription decisions are in
 `data/governed/nhi-lipid-risk-2026-09-01-r1/TRANSCRIPTION.md` — read it before touching the JSONL.
 The load-bearing ones: prescription rules are paired to tiers by the heading the source text carries
 (the 處方規定 column does not line up with the tier rows beside it), rejoining hard-wrapped lines may
-add spaces but never change a character, and the 0-factor row's missing secondary target and missing
-prescribing rule are recorded as `null` rather than borrowed from the row above.
+add spaces but never change a character, the 0-factor row's missing secondary target and missing
+prescribing rule are recorded as `null` rather than borrowed from the row above, and the two-column
+sections are split **geometrically** (`pdftotext -x 0 -W`) rather than by character index — `-layout`
+pads to visual width while JavaScript indexes code points, and CJK is double width, so no fixed
+offset separates the columns. Each crop is proved by moving it 4pt either way and getting identical
+text.
+
+One place the space-restoring join is wrong is named rather than papered over. 表一 prints
+`經起始治療 6~8 週後`; everywhere else the document prints `單一治療3個月未達` with no spaces. 2.6.3
+wraps after `6-8` so the rule would produce `6-8 週`, while 2.6.2 wraps the same sentence one
+character earlier and the hyphen rule already produces `6-8週`. `WRAP_NO_SPACE` names that one
+boundary and the build fails if the entry stops matching. The whitespace-stripped identity assertion
+cannot catch this class of error — it strips exactly the character in dispute.
 
 `packages/domain/src/drug-class.ts` groups master items by the class a rule names. Measured, and
 these numbers belong in tests rather than in prose that can drift: **396** records name a statin,

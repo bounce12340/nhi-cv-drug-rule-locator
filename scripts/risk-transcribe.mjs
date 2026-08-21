@@ -70,8 +70,14 @@ function isLatin(character) {
  * Inserts iff one side is Latin and neither side is full-width punctuation —
  * so "ATP citrate"+"lyase" and "合併"+"ezetimibe" gain a space while
  * "包含："+"ezetimibe" and "同時進"+"行生活型態改變。" do not.
+ *
+ * `exceptions` names boundaries where that rule guesses wrong. It has to exist
+ * because the document spaces numbers against Chinese in 表一 ("經起始治療 6~8 週")
+ * and does not anywhere else ("單一治療3個月未達", printed unwrapped four times),
+ * and a wrap destroys the very evidence of which convention applied. Each entry
+ * records into `fired` so the caller can fail closed on one that never matched.
  */
-function joinWrappedLines(lines) {
+function joinWrappedLines(lines, exceptions = [], fired = null) {
   let joined = "";
   for (const line of lines) {
     if (joined === "") {
@@ -80,15 +86,35 @@ function joinWrappedLines(lines) {
     }
     const left = joined.at(-1);
     const right = line.at(0);
+    const exception = exceptions.findIndex(
+      (candidate) => joined.endsWith(candidate.after) && line.startsWith(candidate.before)
+    );
+    if (exception !== -1 && fired !== null) fired.add(exception);
     // A wrap that falls on a hyphen never takes a space with it, whether the
     // hyphen belongs to the term (non-statin) or was added to break it.
     const hyphenated = left === "-" || right === "-";
     const punctuated =
       FULL_WIDTH_PUNCTUATION.has(left) || FULL_WIDTH_PUNCTUATION.has(right);
-    joined +=
-      !hyphenated && !punctuated && (isLatin(left) || isLatin(right)) ? ` ${line}` : line;
+    const spaced =
+      exception === -1 &&
+      !hyphenated &&
+      !punctuated &&
+      (isLatin(left) || isLatin(right));
+    joined += spaced ? ` ${line}` : line;
   }
   return joined;
+}
+
+/**
+ * 2.6.3 wraps after "6-8" and 2.6.2 wraps one character earlier, after the
+ * hyphen. The hyphen rule already yields "治療6-8週未達" for 2.6.2, so this is the
+ * same sentence resolved two ways; the unspaced one is what the document prints.
+ */
+const WRAP_NO_SPACE = [{ after: "類藥品單一治療6-8", before: "週未達治療目標者" }];
+const wrapExceptionsFired = new Set();
+
+function joinSourceLines(lines) {
+  return joinWrappedLines(lines, WRAP_NO_SPACE, wrapExceptionsFired);
 }
 
 function withoutWhitespace(value) {
@@ -201,24 +227,85 @@ const DEFINITION_TIER_ORDER = [
  */
 const GROUP_HEADING_SUFFIXES = ["合併下列任一臨床狀況：", "，包含："];
 
-function readLayoutText() {
+function assertSourcePdf() {
   if (!existsSync(sourcePdfPath)) fail(`source PDF is missing at ${sourcePdfPath}`);
-  const pdfBytes = readFileSync(sourcePdfPath);
-  const actual = sha256(pdfBytes);
+  const actual = sha256(readFileSync(sourcePdfPath));
   if (actual !== SOURCE_PDF_SHA256) {
     fail(`source PDF SHA-256 is ${actual}, expected ${SOURCE_PDF_SHA256}`);
   }
-  let text;
+}
+
+function pdfToText(pageArguments) {
+  assertSourcePdf();
   try {
-    text = execFileSync(
+    return execFileSync(
       "pdftotext",
-      ["-layout", "-enc", "UTF-8", sourcePdfPath, "-"],
+      [...pageArguments, "-layout", "-enc", "UTF-8", sourcePdfPath, "-"],
       { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 }
     );
   } catch (error) {
     fail(`pdftotext (poppler) is required to re-derive this dataset: ${error.message}`);
   }
+}
+
+function toLines(text) {
   return text.split("\n").map((line) => line.replace(/\f/gu, ""));
+}
+
+function readLayoutText() {
+  return toLines(pdfToText([]));
+}
+
+/**
+ * Everything the announcement prints below 表一 sits in a two-column comparison
+ * layout: 建議修訂後給付規定 on the left, 原給付規定 on the right. Only the left column
+ * is transcribed. The tool states the rule that takes effect on 2026-09-01; the
+ * prior/current comparison surface was removed from the app in 2026-08 and none
+ * of this brings it back.
+ *
+ * The split is geometric rather than by character index, because -layout pads to
+ * visual columns while JavaScript indexes code points and CJK runs are double
+ * width, so no fixed offset separates the two. Each crop is checked by moving it
+ * CROP_STABILITY_MARGIN points either way: a boundary standing in the gutter
+ * yields identical text, one that clips a glyph does not. The widths differ per
+ * page because the table's own rule does — page 11's left cell runs to 416pt with
+ * an empty cell beside it, pages 12 and 13 end at 295pt.
+ */
+const CROP_STABILITY_MARGIN = 4;
+const PAGE_HEIGHT_PTS = 842;
+const ADVICE_CROP = { page: 11, width: 421 };
+const COVERAGE_RULE_CROPS = [
+  { page: 12, width: 300 },
+  { page: 13, width: 300 }
+];
+
+/**
+ * Wording carried only by the 原給付規定 column. The revised rule writes 本類藥品
+ * where the prior one writes 本案藥品, and only the prior one names Ezetrol, so any
+ * of these appearing in a crop means the boundary moved and the two versions of
+ * the rule would be silently interleaved.
+ */
+const PRIOR_RULE_ONLY = ["如 Ezetrol", "本案藥品", "符合全民健康保險降血脂藥物給付"];
+
+function readLeftColumn({ page, width }) {
+  const crop = (at) =>
+    pdfToText([
+      "-f", String(page),
+      "-l", String(page),
+      "-x", "0",
+      "-y", "0",
+      "-W", String(at),
+      "-H", String(PAGE_HEIGHT_PTS)
+    ]);
+  const text = crop(width);
+  for (const delta of [-CROP_STABILITY_MARGIN, CROP_STABILITY_MARGIN]) {
+    if (crop(width + delta) === text) continue;
+    fail(
+      `page ${page}'s column boundary is not ${width}pt: ` +
+        `moving the crop by ${delta}pt changes the text it yields`
+    );
+  }
+  return toLines(text);
 }
 
 function indexOfLine(lines, predicate, from = 0) {
@@ -344,7 +431,11 @@ function foldDefinitionItems(lines) {
   }
   if (pendingSuperscript !== null) fail("a superscript had no line to attach to");
 
-  return items.map((item) => ({ indent: item.indent, text: joinWrappedLines(item.lines) }));
+  return items.map((item) => ({
+    indent: item.indent,
+    lines: item.lines,
+    text: joinSourceLines(item.lines)
+  }));
 }
 
 function stripOrdinal(text) {
@@ -534,6 +625,196 @@ function assertTierCells(lines) {
   }
 }
 
+const SECONDARY_TARGET_MARKER = "●當 LDL-C 達到理想治療目標後";
+const ADVICE_BLOCK_END = "全民健康保險降膽固醇藥物給付規定表";
+
+/** "極高風險、非常高風險" → ["extreme", "very-high"], by exact label match. */
+function tierIdsNamedBy(headingBody) {
+  return headingBody.split("、").map((label) => {
+    const tier = TIER_TRANSCRIPTION.find((candidate) => candidate.labelZh === label);
+    if (tier === undefined) fail(`an advice heading names an unknown tier: ${label}`);
+    return tier.tierId;
+  });
+}
+
+/**
+ * The two bullets printed after the risk-factor definitions: 各風險等級評估建議,
+ * whose two groups name the tiers they apply to, and the standalone non-HDL-C
+ * note, which names none.
+ *
+ * The tiers come from the heading's own words, never from its position, for the
+ * same reason the prescription blocks do: 0 項心血管風險因子 is named by neither
+ * group, and pairing by order would hand it one it does not have.
+ */
+function extractAssessmentAdvice() {
+  const lines = readLeftColumn(ADVICE_CROP);
+  const headingAt = requireLine(
+    lines, (line) => line.trim() === ADVICE_HEADING, 0, ADVICE_HEADING
+  );
+  const noteAt = requireLine(
+    lines,
+    (line) => line.trim().startsWith(SECONDARY_TARGET_MARKER),
+    headingAt,
+    SECONDARY_TARGET_MARKER
+  );
+  const endAt = requireLine(
+    lines,
+    (line) => line.trim().startsWith(ADVICE_BLOCK_END),
+    noteAt,
+    "the table heading that closes the advice block"
+  );
+
+  const records = [];
+  let group = null;
+  for (const item of foldDefinitionItems(lines.slice(headingAt + 1, noteAt))) {
+    const heading = /^([一二三四五六七八九十])、(.+：)$/u.exec(item.text);
+    if (heading !== null) {
+      const order = CHINESE_ORDINALS.indexOf(heading[1]) + 1;
+      group = {
+        groupId: `advice-${order}`,
+        groupHeadingRaw: heading[2],
+        appliesToTierIds: tierIdsNamedBy(heading[2].slice(0, -1)),
+        count: 0
+      };
+      continue;
+    }
+    if (group === null) fail(`an advice item precedes every group heading: ${item.text}`);
+    const ordinal = /^[(（][一二三四五六七八九十][)）]/u.exec(item.text);
+    if (ordinal === null) fail(`an advice item carries no ordinal: ${item.text}`);
+    group.count += 1;
+    records.push({
+      adviceId: `${group.groupId}-${group.count}`,
+      groupId: group.groupId,
+      groupHeadingRaw: group.groupHeadingRaw,
+      appliesToTierIds: group.appliesToTierIds,
+      ordinal: ordinal[0],
+      textRaw: stripOrdinal(item.text),
+      sourceLines: item.lines
+    });
+  }
+  if (records.length === 0) fail("the advice block yielded no items");
+
+  const noteLines = lines
+    .slice(noteAt, endAt)
+    .filter((line) => line.trim() !== "" && !line.includes(PAGE_HEADER_MARKER))
+    .map((line) => line.trim());
+  const noteText = joinSourceLines(noteLines);
+  if (!noteText.startsWith("●")) fail("the non-HDL-C note lost its bullet");
+  records.push({
+    adviceId: "advice-secondary-target",
+    groupId: null,
+    groupHeadingRaw: null,
+    appliesToTierIds: null,
+    ordinal: "●",
+    textRaw: noteText.slice(1),
+    sourceLines: noteLines
+  });
+
+  return records;
+}
+
+const CODE_TABLE_HEADING = "健保代碼";
+const COVERAGE_RULE_IDS = ["2.6.2", "2.6.3"];
+const COVERAGE_RULE_END = "備註：";
+const NHI_CODE_PATTERN = /^[A-Z0-9]{10}$/u;
+
+/**
+ * Splits one 2.6.x rule into its heading, its 限用於 preamble if it has one, its
+ * numbered conditions and the 健保代碼 table its wording points at.
+ *
+ * The preamble is not decoration: 2.6.2 restricts the drug to three named
+ * conditions and then asks for 下列條件之一, while 2.6.3 numbers its requirements
+ * with no such connective. Giving both the same shape would put an "any one of"
+ * over 2.6.3's list that the source does not write, so restrictionRaw is null
+ * there and the screen renders no connective of its own.
+ *
+ * Only the codes are taken from the table. The drug names beside them are already
+ * in the item master, and re-transcribing them would create a second spelling of
+ * the same fact that could drift from the first.
+ */
+function splitCoverageRule(ruleId, regionLines) {
+  const lines = regionLines.filter((line) => !line.includes(PAGE_HEADER_MARKER));
+  const headingEnd = lines.findIndex((line) => line.trim() === "");
+  if (headingEnd < 1) fail(`${ruleId} has no heading`);
+  const headingLines = lines.slice(0, headingEnd).map((line) => line.trim());
+
+  const body = lines.slice(headingEnd);
+  const tableAt = body.findIndex((line) => line.trim().startsWith(CODE_TABLE_HEADING));
+  if (tableAt === -1) fail(`${ruleId} points at 下表 but the crop holds no 健保代碼 table`);
+  let tableEnd = body.findIndex((line, index) => index > tableAt && line.trim() === "");
+  if (tableEnd === -1) tableEnd = body.length;
+  const exceptionNhiCodes = [];
+  for (const line of body.slice(tableAt + 1, tableEnd)) {
+    const [first] = line.trim().split(/\s+/u);
+    if (NHI_CODE_PATTERN.test(first)) exceptionNhiCodes.push(first);
+  }
+  if (exceptionNhiCodes.length === 0) fail(`${ruleId}'s 健保代碼 table yielded no codes`);
+
+  const prose = [...body.slice(0, tableAt), ...body.slice(tableEnd)].filter(
+    (line) => line.trim() !== ""
+  );
+  const items = foldDefinitionItems(prose);
+  if (items.length === 0) fail(`${ruleId} has no body text`);
+
+  const numbered = (text) => /^\d+\./u.test(text);
+  const restriction = numbered(items[0].text) ? null : items[0];
+  const conditions = restriction === null ? items : items.slice(1);
+  for (const condition of conditions) {
+    if (numbered(condition.text)) continue;
+    fail(`${ruleId} holds an unnumbered condition: ${condition.text}`);
+  }
+
+  return {
+    rule: {
+      ruleId,
+      headingRaw: joinSourceLines(headingLines),
+      headingLines,
+      restrictionRaw: restriction === null ? null : restriction.text,
+      restrictionLines: restriction === null ? null : restriction.lines,
+      exceptionNhiCodes
+    },
+    conditions: conditions.map((condition, index) => ({
+      conditionId: `${ruleId}-${index + 1}`,
+      ruleId,
+      ordinal: /^\d+\./u.exec(condition.text)[0],
+      textRaw: stripOrdinal(condition.text),
+      sourceLines: condition.lines
+    }))
+  };
+}
+
+/**
+ * 2.6.2 (ezetimibe alone) and 2.6.3 (the ezetimibe + statin combinations), as
+ * revised. 2.6.1 is the 給付規定表 itself, which 表一 already carries.
+ */
+function extractCoverageRules() {
+  const lines = COVERAGE_RULE_CROPS.flatMap((crop) => readLeftColumn(crop));
+  for (const wording of PRIOR_RULE_ONLY) {
+    if (!lines.some((line) => line.includes(wording))) continue;
+    fail(`the 原給付規定 column leaked into the crop: found ${wording}`);
+  }
+  const starts = COVERAGE_RULE_IDS.map((ruleId) => ({
+    ruleId,
+    at: requireLine(lines, (line) => line.trimStart().startsWith(`${ruleId}.`), 0, ruleId)
+  }));
+  const endAt = requireLine(
+    lines,
+    (line) => line.trimStart().startsWith(COVERAGE_RULE_END),
+    starts.at(-1).at,
+    COVERAGE_RULE_END
+  );
+
+  const rules = [];
+  const conditions = [];
+  starts.forEach((start, index) => {
+    const until = index + 1 < starts.length ? starts[index + 1].at : endAt;
+    const split = splitCoverageRule(start.ruleId, lines.slice(start.at, until));
+    rules.push(split.rule);
+    conditions.push(...split.conditions);
+  });
+  return { rules, conditions };
+}
+
 function toJsonl(records) {
   return `${records.map((record) => JSON.stringify(record)).join("\n")}\n`;
 }
@@ -567,10 +848,19 @@ function build() {
     };
   });
 
+  const advice = extractAssessmentAdvice();
+  const { rules, conditions } = extractCoverageRules();
+  if (wrapExceptionsFired.size !== WRAP_NO_SPACE.length) {
+    fail("a no-space wrap exception matched nothing in the source and is stale");
+  }
+
   return {
     "risk-tiers.jsonl": toJsonl(tiers),
     "tier-criteria.jsonl": toJsonl(criteria),
-    "risk-factors.jsonl": toJsonl(factors)
+    "risk-factors.jsonl": toJsonl(factors),
+    "assessment-advice.jsonl": toJsonl(advice),
+    "coverage-rules.jsonl": toJsonl(rules),
+    "coverage-rule-conditions.jsonl": toJsonl(conditions)
   };
 }
 
@@ -594,7 +884,11 @@ function main(argumentsToParse) {
         `sha256 ${sha256(Buffer.from(contents, "utf8"))}, ${Buffer.byteLength(contents)} bytes\n`
     );
   }
-  if (check) process.stdout.write(`${SCRIPT_NAME}: all three files match the source PDF\n`);
+  if (check) {
+    process.stdout.write(
+      `${SCRIPT_NAME}: all ${Object.keys(files).length} files match the source PDF\n`
+    );
+  }
 }
 
 try {

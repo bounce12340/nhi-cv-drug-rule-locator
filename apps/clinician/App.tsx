@@ -8,8 +8,12 @@ import {
   ITEM_DATASET_VERSION,
   ITEM_WARNING,
   collectDrugDoseFacets,
+  getAssessmentAdvice,
+  getCoverageRules,
   getDrugItemAnnouncementMembership,
   getDrugItemDoses,
+  getSecondaryTargetNote,
+  listCoverageRuleExceptionItems,
   lookupDrugItemMaster,
   matchesDrugDoseFilter,
   matchesDrugItemAnnouncementFilter,
@@ -23,6 +27,7 @@ import {
   type LipidDrugClass,
   type RiskAssessment,
   type RiskQuestion,
+  type RiskTierRecord,
   type DrugDoseFacet,
   type DrugQueryFacet,
   type DrugItemAnnouncementFilter,
@@ -1079,6 +1084,166 @@ export function RiskDrugItems({ asOfDate }: { asOfDate: string }): React.JSX.Ele
   );
 }
 
+/**
+ * The advice the announcement prints for this tier below 表一 — when to draw the
+ * blood, which modifiable risk factors to deal with, when to screen a family.
+ *
+ * The group heading is rendered on its own line rather than folded into a
+ * sentence: it is transcribed text, and quoting it inside copy would reformat it.
+ */
+/**
+ * The tier's own prescribing rule, split on the numbering the announcement itself
+ * wrote. Exported so a test can render it alone: the advice and coverage cards
+ * beside it use the same step markup, and an assertion counting steps across the
+ * whole result would stop being about this rule.
+ */
+export function RiskPrescriptionRule({ tier }: { tier: RiskTierRecord }): React.JSX.Element {
+  const { t } = useUi();
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>{t("riskPrescriptionTitle")}</h2>
+      </div>
+      <div className="card-body">
+        {tier.prescriptionRuleText === null ? (
+          <p className="notice">{t("riskPrescriptionNone")}</p>
+        ) : (
+          <>
+            <p className="hint">{t("riskPrescriptionNote")}</p>
+            <ol className="step-list">
+              {prescriptionSteps(tier.prescriptionRuleText).map((step) => (
+                <li className="step-card" key={step}>
+                  {step}
+                </li>
+              ))}
+            </ol>
+            <Disclosure summary={t("riskPrescriptionVerbatim")}>
+              <p className="verbatim">{tier.prescriptionRuleText}</p>
+            </Disclosure>
+          </>
+        )}
+        <p className="provenance">{t("riskProvenance", { version: RISK_DATASET_VERSION })}</p>
+      </div>
+    </section>
+  );
+}
+
+export function RiskAssessmentAdvice({ tierId }: { tierId: string }): React.JSX.Element {
+  const { t } = useUi();
+  const group = getAssessmentAdvice(tierId);
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>{t("riskAdviceTitle")}</h2>
+      </div>
+      <div className="card-body">
+        {group === null ? (
+          <p className="notice">{t("riskAdviceNone")}</p>
+        ) : (
+          <>
+            <p className="hint">{t("riskAdviceNote")}</p>
+            <p className="verbatim">{group.groupHeadingRaw}</p>
+            <ol className="step-list">
+              {group.items.map((item) => (
+                <li className="step-card" key={item.adviceId}>
+                  {item.ordinal}
+                  {item.textRaw}
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * One 2.6.x rule: its heading, the restriction preamble where the source writes
+ * one, its numbered conditions, and the items its own table names.
+ *
+ * 2.6.3 carries no preamble and no connective over its list, so none is printed.
+ * Supplying one would turn three requirements into any-one-of them.
+ */
+function CoverageRuleBlock({
+  view,
+  asOfDate
+}: {
+  view: ReturnType<typeof getCoverageRules>[number];
+  asOfDate: string;
+}): React.JSX.Element {
+  const { t } = useUi();
+  const listing = useMemo(
+    () => listCoverageRuleExceptionItems({ ruleId: view.rule.ruleId, asOfDate }),
+    [view.rule.ruleId, asOfDate]
+  );
+
+  return (
+    <div className="rule-block">
+      <h3 className="verbatim">{view.rule.headingRaw}</h3>
+      {view.rule.restrictionRaw === null ? null : (
+        <p className="verbatim">{view.rule.restrictionRaw}</p>
+      )}
+      <ol className="step-list">
+        {view.conditions.map((condition) => (
+          <li className="step-card" key={condition.conditionId}>
+            {condition.ordinal}
+            {condition.textRaw}
+          </li>
+        ))}
+      </ol>
+      <Disclosure summary={t("riskCoverageExceptionSummary")}>
+        <p className="hint">
+          {t("riskCoverageExceptionNote", {
+            total: String(view.rule.exceptionNhiCodes.length),
+            count: String(listing.matches.length),
+            date: asOfDate
+          })}
+        </p>
+        {listing.matches.map((match) => (
+          <DrugItemCard key={match.item.nhiCode} lookupAsOfDate={asOfDate} match={match} />
+        ))}
+        {listing.unresolvedNhiCodes.length === 0 ? null : (
+          <p className="hint">
+            {t("riskCoverageUnresolved", {
+              count: String(listing.unresolvedNhiCodes.length),
+              codes: listing.unresolvedNhiCodes.join(", ")
+            })}
+          </p>
+        )}
+      </Disclosure>
+    </div>
+  );
+}
+
+/**
+ * 2.6.2 and 2.6.3, as revised. Not tier-scoped: the announcement states them once
+ * for the drug rather than per risk level, so they show whichever tier came out.
+ *
+ * No provenance line of its own. The prescribing-rule card directly above cites the
+ * same attachment and the same dataset version, and a second identical citation is
+ * the per-card repetition this screen already learned not to do.
+ */
+export function RiskCoverageRules({ asOfDate }: { asOfDate: string }): React.JSX.Element {
+  const { t } = useUi();
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>{t("riskCoverageTitle")}</h2>
+      </div>
+      <div className="card-body">
+        <p className="notice">{t("riskCoverageNote")}</p>
+        {getCoverageRules().map((view) => (
+          <CoverageRuleBlock asOfDate={asOfDate} key={view.rule.ruleId} view={view} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function RiskTierResult({
   assessment,
   ldlC,
@@ -1110,6 +1275,7 @@ export function RiskTierResult({
   }
 
   const { tier, reason } = assessment;
+  const secondaryNote = getSecondaryTargetNote();
   const because =
     reason.kind === "criterion"
       ? reason.prerequisiteLabelZh === null
@@ -1146,33 +1312,22 @@ export function RiskTierResult({
         />
       </dl>
 
-      <section className="card">
-        <div className="card-head">
-          <h2>{t("riskPrescriptionTitle")}</h2>
-        </div>
-        <div className="card-body">
-          {tier.prescriptionRuleText === null ? (
-            <p className="notice">{t("riskPrescriptionNone")}</p>
-          ) : (
-            <>
-              <p className="hint">{t("riskPrescriptionNote")}</p>
-              <ol className="step-list">
-                {prescriptionSteps(tier.prescriptionRuleText).map((step) => (
-                  <li className="step-card" key={step}>
-                    {step}
-                  </li>
-                ))}
-              </ol>
-              <Disclosure summary={t("riskPrescriptionVerbatim")}>
-                <p className="verbatim">{tier.prescriptionRuleText}</p>
-              </Disclosure>
-            </>
-          )}
-          <p className="provenance">
-            {t("riskProvenance", { version: RISK_DATASET_VERSION })}
-          </p>
-        </div>
-      </section>
+      {tier.secondaryTargetRaw === null || secondaryNote === null ? null : (
+        <section className="card">
+          <div className="card-head">
+            <h2>{t("riskSecondaryNoteLabel")}</h2>
+          </div>
+          <div className="card-body">
+            <p className="verbatim">{secondaryNote.textRaw}</p>
+          </div>
+        </section>
+      )}
+
+      <RiskAssessmentAdvice tierId={tier.tierId} />
+
+      <RiskPrescriptionRule tier={tier} />
+
+      <RiskCoverageRules asOfDate={itemsAsOfDate} />
 
       <RiskDrugItems asOfDate={itemsAsOfDate} />
     </>
