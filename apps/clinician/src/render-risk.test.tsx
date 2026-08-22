@@ -1,7 +1,22 @@
-import { LIPID_CLASSES_ABSENT_FROM_MASTER, RISK_TIERS, stratifyRisk } from "@nhi-cv/domain";
+import {
+  LIPID_CLASSES_ABSENT_FROM_MASTER,
+  RISK_TIERS,
+  getAssessmentAdvice,
+  getCoverageRules,
+  getSecondaryTargetNote,
+  stratifyRisk
+} from "@nhi-cv/domain";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import App, { RiskDrugItems, RiskTierMode, RiskTierResult, UiProvider } from "../App";
+import App, {
+  RiskAssessmentAdvice,
+  RiskCoverageRules,
+  RiskDrugItems,
+  RiskPrescriptionRule,
+  RiskTierMode,
+  RiskTierResult,
+  UiProvider
+} from "../App";
 import { UI_COPY } from "./copy";
 
 /**
@@ -50,10 +65,13 @@ describe("the tier result", () => {
 
   it("splits the prescribing rule on the announcement's own numbering, adding nothing", () => {
     const tier = RISK_TIERS[0]!;
-    const steps = markup.split('class="step-card"').length - 1;
+    // Rendered alone: the advice and coverage cards use the same step markup, so
+    // counting steps across the whole result would no longer be about this rule.
+    const rule = render(<RiskPrescriptionRule tier={tier} />);
+    const steps = rule.split('class="step-card"').length - 1;
     expect(steps).toBe(3);
     // Every character of every step has to come back to the source paragraph.
-    const rendered = [...markup.matchAll(/<li class="step-card">([\s\S]*?)<\/li>/gu)].map(
+    const rendered = [...rule.matchAll(/<li class="step-card">([\s\S]*?)<\/li>/gu)].map(
       (match) => match[1]!.replace(/&lt;/gu, "<").replace(/&gt;/gu, ">").replace(/&amp;/gu, "&")
     );
     expect(rendered.join("")).toBe(tier.prescriptionRuleText);
@@ -99,7 +117,7 @@ describe("the 0-factor row", () => {
     expect(noFactors.prescriptionRuleText).toBeNull();
     expect(markup).toContain(UI_COPY.zh.riskPrescriptionNone);
     expect(markup).toContain(UI_COPY.zh.riskStatNone);
-    expect(markup).not.toContain('class="step-card"');
+    expect(render(<RiskPrescriptionRule tier={noFactors} />)).not.toContain('class="step-card"');
   });
 });
 
@@ -167,5 +185,118 @@ describe("switching tabs", () => {
     // Unmounting drops the clinical values on leaving, which is earlier than the
     // "gone on reload" the disclaimer promises — the asymmetry is the point.
     expect(markup).not.toContain(UI_COPY.zh.riskPanelTitle);
+  });
+});
+
+describe("the assessment advice card", () => {
+  it("shows a tier the items the announcement grouped it under, verbatim", () => {
+    const markup = render(<RiskAssessmentAdvice tierId="extreme" />);
+    const group = getAssessmentAdvice("extreme")!;
+    const steps = [...markup.matchAll(/<li class="step-card">([\s\S]*?)<\/li>/gu)].map((match) =>
+      match[1]!.replace(/&lt;/gu, "<").replace(/&gt;/gu, ">").replace(/&amp;/gu, "&")
+    );
+    expect(steps).toHaveLength(2);
+    expect(steps.join("")).toBe(
+      group.items.map((item) => `${item.ordinal}${item.textRaw}`).join("")
+    );
+  });
+
+  it("puts the 24-hour blood draw in front of 極高風險 and not in front of 高風險", () => {
+    expect(render(<RiskAssessmentAdvice tierId="extreme" />)).toContain("24小時內完成血脂檢驗");
+    expect(render(<RiskAssessmentAdvice tierId="high" />)).not.toContain("24小時");
+  });
+
+  it("says the announcement wrote none for the 0-factor row, rather than showing another tier's", () => {
+    const markup = render(<RiskAssessmentAdvice tierId="no-factors" />);
+    expect(markup).toContain(UI_COPY.zh.riskAdviceNone);
+    expect(markup).not.toContain('class="step-card"');
+  });
+});
+
+describe("the non-HDL-C note", () => {
+  it("appears once beside a tier that has a secondary target", () => {
+    const note = getSecondaryTargetNote()!;
+    const markup = render(
+      <RiskTierResult assessment={extreme} itemsAsOfDate="2026-08-12" ldlC={145} />
+    );
+    expect(occurrences(markup, UI_COPY.zh.riskSecondaryNoteLabel)).toBe(1);
+    expect(markup).toContain("高三酸甘油脂、糖尿病、或肥胖的病人");
+    expect(note.textRaw).toContain("非高密度脂蛋白-膽固醇(non-HDL-C)");
+  });
+
+  it("stays away from the row the announcement gave no secondary target", () => {
+    const noFactors = RISK_TIERS.at(-1)!;
+    expect(noFactors.secondaryTargetRaw).toBeNull();
+    const assessment = stratifyRisk({
+      ldlC: 120,
+      prerequisites: { "extreme-1": false, "extreme-2": false, "very-high-1": false, "very-high-2": false },
+      criteria: { "high-1": false, "high-2": false, "high-4": false },
+      factors: {
+        "factor-1": false,
+        "factor-2": false,
+        "factor-3": false,
+        "factor-4": false,
+        "factor-5": false,
+        "factor-6-1": false,
+        "factor-6-2": false,
+        "factor-6-3": false,
+        "factor-6-4": false,
+        "factor-6-5": false
+      }
+    });
+    const markup = render(
+      <RiskTierResult assessment={assessment} itemsAsOfDate="2026-08-12" ldlC={120} />
+    );
+    expect(markup).not.toContain(UI_COPY.zh.riskSecondaryNoteLabel);
+  });
+});
+
+describe("the ezetimibe coverage rules", () => {
+  const markup = render(<RiskCoverageRules asOfDate="2026-08-12" />);
+
+  it("prints both rules' conditions verbatim, nothing reworded", () => {
+    const steps = [...markup.matchAll(/<li class="step-card">([\s\S]*?)<\/li>/gu)].map((match) =>
+      match[1]!.replace(/&lt;/gu, "<").replace(/&gt;/gu, ">").replace(/&amp;/gu, "&")
+    );
+    const source = getCoverageRules().flatMap((view) =>
+      view.conditions.map((condition) => `${condition.ordinal}${condition.textRaw}`)
+    );
+    expect(steps).toEqual(source);
+  });
+
+  it("shows the statin-intolerance condition a clinician came here for", () => {
+    expect(markup).toContain("無法耐受藥物不良反應");
+    expect(markup).toContain("Myositis");
+    expect(markup).toContain("同型接合子性麥脂醇血症");
+  });
+
+  it("prints 2.6.2's 之一 connective and supplies none for 2.6.3", () => {
+    expect(markup).toContain("並符合下列條件之一者：");
+    expect(occurrences(markup, "之一者")).toBe(1);
+  });
+
+  it("cites the announcement once per screen, not once per card", () => {
+    const whole = render(
+      <RiskTierResult assessment={extreme} itemsAsOfDate="2026-08-12" ldlC={145} />
+    );
+    const citation = UI_COPY.zh.riskProvenance.replace(
+      "{version}",
+      "nhi-lipid-risk-2026-09-01-r1"
+    );
+    expect(occurrences(whole, citation)).toBe(1);
+  });
+
+  it("keeps the prior version off the screen entirely", () => {
+    // 2.6.1 to 2.6.3 were removed as a prior/current comparison in 2026-08. Only
+    // the rule that takes effect is back.
+    expect(markup).not.toContain("原給付規定");
+    expect(markup).not.toContain("本案藥品");
+    expect(markup).not.toContain("Ezetrol");
+  });
+
+  it("resolves the rule's own code table to master items behind a disclosure", () => {
+    expect(markup).toContain(UI_COPY.zh.riskCoverageExceptionSummary);
+    expect(markup).toContain("AC60610100");
+    expect(markup).toContain("AC59251100");
   });
 });

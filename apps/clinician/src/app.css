@@ -1169,6 +1169,23 @@ details.flush > .details-body {
   line-height: 1.6;
 }
 
+/*
+ * One 2.6.x coverage rule. Two of them sit in the same card, so each needs a
+ * visible boundary: without it 2.6.3's numbered conditions read as a continuation
+ * of 2.6.2's list, and the two rules govern different products.
+ */
+.rule-block + .rule-block {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.rule-block h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
 @media (max-width: 640px) {
   .tier-name {
     font-size: 25px;

@@ -6,11 +6,17 @@ import { describe, expect, it } from "vitest";
 // @ts-expect-error The zero-dependency Node ESM generator intentionally has no declaration sidecar.
 import { checkStructure, renderModule } from "../../../scripts/risk-codegen.mjs";
 import {
+  ASSESSMENT_ADVICE,
+  COVERAGE_RULES,
+  COVERAGE_RULE_CONDITIONS,
   RISK_DATASET_EFFECTIVE_FROM,
   RISK_DATASET_VERSION,
   RISK_FACTORS,
   RISK_TIERS,
   TIER_CRITERIA,
+  type AssessmentAdviceRecord,
+  type CoverageRuleConditionRecord,
+  type CoverageRuleRecord,
   type RiskFactorRecord,
   type RiskTierRecord,
   type TierCriterionRecord
@@ -61,15 +67,30 @@ function criteriaFixture(): TierCriterionRecord[] {
 function factorsFixture(): RiskFactorRecord[] {
   return RISK_FACTORS.map((factor) => ({ ...factor }));
 }
+function adviceFixture(): AssessmentAdviceRecord[] {
+  return ASSESSMENT_ADVICE.map((item) => ({ ...item }));
+}
+function rulesFixture(): CoverageRuleRecord[] {
+  return COVERAGE_RULES.map((rule) => ({ ...rule }));
+}
+function conditionsFixture(): CoverageRuleConditionRecord[] {
+  return COVERAGE_RULE_CONDITIONS.map((condition) => ({ ...condition }));
+}
 function check(overrides: {
   tiers?: RiskTierRecord[];
   criteria?: TierCriterionRecord[];
   factors?: RiskFactorRecord[];
+  advice?: AssessmentAdviceRecord[];
+  rules?: CoverageRuleRecord[];
+  conditions?: CoverageRuleConditionRecord[];
 }): void {
   checkStructure({
     tiers: overrides.tiers ?? tiersFixture(),
     criteria: overrides.criteria ?? criteriaFixture(),
-    factors: overrides.factors ?? factorsFixture()
+    factors: overrides.factors ?? factorsFixture(),
+    advice: overrides.advice ?? adviceFixture(),
+    rules: overrides.rules ?? rulesFixture(),
+    conditions: overrides.conditions ?? conditionsFixture()
   });
 }
 
@@ -79,7 +100,7 @@ describe("the generated risk module tracks its governed input", () => {
   });
 
   it("matches the SHA-256 and record count the manifest declares for each file", () => {
-    expect(manifest.files).toHaveLength(3);
+    expect(manifest.files).toHaveLength(6);
     for (const declared of manifest.files) {
       const bytes = readFileSync(path.join(governedDirectory, declared.declaredName));
       expect(sha256(bytes)).toBe(declared.sha256);
@@ -251,16 +272,85 @@ describe("transcription fidelity", () => {
     const everything = [
       ...RISK_TIERS.map((tier) => tier.prescriptionRuleText ?? ""),
       ...TIER_CRITERIA.map((criterion) => criterion.textRaw),
-      ...RISK_FACTORS.map((factor) => factor.textRaw)
+      ...RISK_FACTORS.map((factor) => factor.textRaw),
+      ...ASSESSMENT_ADVICE.map((item) => item.textRaw),
+      ...COVERAGE_RULES.map((rule) => `${rule.headingRaw}${rule.restrictionRaw ?? ""}`),
+      ...COVERAGE_RULE_CONDITIONS.map((condition) => condition.textRaw)
     ].join("\n");
     expect(everything).not.toContain("原給付規定");
     expect(everything).not.toContain("建議修訂後給付規定");
+    // Wording carried only by the column the crop is supposed to exclude.
+    expect(everything).not.toContain("如 Ezetrol");
+    expect(everything).not.toContain("本案藥品");
   });
 });
 
 describe("the codegen fails closed", () => {
   it("accepts the governed records as they stand", () => {
     expect(() => check({})).not.toThrow();
+  });
+
+  it("rejects advice whose joined text no longer matches its source lines", () => {
+    const advice = adviceFixture();
+    Object.assign(advice[0]!, { textRaw: `${advice[0]!.textRaw}(補充)` });
+    expect(() => check({ advice })).toThrow(/differs from its source lines/u);
+  });
+
+  it("rejects advice pointed at a tier that does not exist", () => {
+    const advice = adviceFixture();
+    Object.assign(advice[0]!, { appliesToTierIds: ["extremely-high"] });
+    expect(() => check({ advice })).toThrow(/names unknown tier/u);
+  });
+
+  it("rejects a tier-less note that was handed a tier anyway", () => {
+    // The non-HDL-C note is written for everybody. Scoping it to one tier would
+    // hide it from the other four.
+    const advice = adviceFixture();
+    const note = advice.find((item) => item.appliesToTierIds === null)!;
+    Object.assign(note, { appliesToTierIds: ["extreme"] });
+    expect(() => check({ advice })).toThrow(/pairs a group with no tiers/u);
+  });
+
+  it("rejects a tier claimed by both advice groups", () => {
+    const advice = adviceFixture();
+    const second = advice.find((item) => item.groupId === "advice-2")!;
+    Object.assign(second, { appliesToTierIds: ["extreme"] });
+    expect(() => check({ advice })).toThrow(/claimed by advice groups/u);
+  });
+
+  it("rejects a coverage rule carrying a malformed NHI code", () => {
+    const rules = rulesFixture();
+    Object.assign(rules[0]!, { exceptionNhiCodes: ["AC6061010"] });
+    expect(() => check({ rules })).toThrow(/malformed NHI code/u);
+  });
+
+  it("rejects the same item being listed under both coverage rules", () => {
+    const rules = rulesFixture();
+    Object.assign(rules[1]!, { exceptionNhiCodes: [...rules[0]!.exceptionNhiCodes] });
+    expect(() => check({ rules })).toThrow(/listed under two coverage rules/u);
+  });
+
+  it("rejects a restriction that lost its source lines", () => {
+    const rules = rulesFixture();
+    Object.assign(rules[0]!, { restrictionLines: null });
+    expect(() => check({ rules })).toThrow(/pairs a restriction with no source lines/u);
+  });
+
+  it("rejects a coverage condition edited away from its source lines", () => {
+    const conditions = conditionsFixture();
+    Object.assign(conditions[0]!, { textRaw: conditions[0]!.textRaw.replace("者。", "者;") });
+    expect(() => check({ conditions })).toThrow(/differs from its source lines/u);
+  });
+
+  it("rejects a coverage rule left with no conditions at all", () => {
+    const conditions = conditionsFixture().filter((condition) => condition.ruleId !== "2.6.3");
+    expect(() => check({ conditions })).toThrow(/carries no conditions/u);
+  });
+
+  it("rejects a condition pointed at a rule that does not exist", () => {
+    const conditions = conditionsFixture();
+    Object.assign(conditions[0]!, { ruleId: "2.6.1" });
+    expect(() => check({ conditions })).toThrow(/names unknown rule/u);
   });
 
   it("rejects a grouped criterion whose prerequisite was dropped", () => {

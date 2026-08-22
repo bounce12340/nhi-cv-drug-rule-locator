@@ -5,3 +5,5 @@ export * from "./drug-dose";
 export * from "./drug-query";
 export * from "./risk-stratification";
 export * from "./drug-class";
+export * from "./assessment-advice";
+export * from "./coverage-rule";

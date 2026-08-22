@@ -2,8 +2,9 @@
 //
 // Source dataset: nhi-lipid-risk-2026-09-01-r1
 // Transcribed from: attachment-2-rule-revision-table.pdf (6389a5f654e0cb755d006f04ed47eca6ada9f867873f43c5088f79db6bb6c1c2)
-// Dataset digest (SHA-256): a60ee155a9e631d2a4933c06f36297465a613c30de19fa4514877da708cf4082
-// Records: 6 tiers, 18 criteria, 11 factors
+// Dataset digest (SHA-256): 3b17cf467900dcf4dde8c049ff4091f092dada8cbd482bda6ef6731e2614dfcf
+// Records: 6 tiers, 18 criteria, 11 factors,
+//          6 assessment notes, 2 coverage rules (5 conditions)
 // Generator: scripts/risk-codegen.mjs
 
 export interface RiskTierRecord {
@@ -36,6 +37,42 @@ export interface RiskFactorRecord {
   readonly textRaw: string;
   readonly parentFactorId: string | null;
   readonly requiredSubCount: number | null;
+}
+
+/**
+ * A note the announcement prints beneath the tier table. `appliesToTierIds` is
+ * null for the non-HDL-C note, which names no tier at all.
+ */
+export interface AssessmentAdviceRecord {
+  readonly adviceId: string;
+  readonly groupId: string | null;
+  readonly groupHeadingRaw: string | null;
+  readonly appliesToTierIds: readonly string[] | null;
+  readonly ordinal: string;
+  readonly textRaw: string;
+  readonly sourceLines: readonly string[];
+}
+
+/**
+ * 2.6.2 (ezetimibe on its own) and 2.6.3 (the ezetimibe + statin combinations),
+ * as revised on 2026-09-01. `restrictionRaw` is null for 2.6.3, which numbers its
+ * requirements without asking for any one of them.
+ */
+export interface CoverageRuleRecord {
+  readonly ruleId: string;
+  readonly headingRaw: string;
+  readonly headingLines: readonly string[];
+  readonly restrictionRaw: string | null;
+  readonly restrictionLines: readonly string[] | null;
+  readonly exceptionNhiCodes: readonly string[];
+}
+
+export interface CoverageRuleConditionRecord {
+  readonly conditionId: string;
+  readonly ruleId: string;
+  readonly ordinal: string;
+  readonly textRaw: string;
+  readonly sourceLines: readonly string[];
 }
 
 export const RISK_DATASET_VERSION = "nhi-lipid-risk-2026-09-01-r1" as const;
@@ -367,6 +404,120 @@ const generatedRiskFactors: RiskFactorRecord[] = [
   }
 ];
 
+const generatedAssessmentAdvice: AssessmentAdviceRecord[] = [
+  {
+    adviceId: "advice-1-1",
+    groupId: "advice-1",
+    groupHeadingRaw: "極高風險、非常高風險：",
+    appliesToTierIds: ["extreme","very-high"],
+    ordinal: "(一)",
+    textRaw: "初始評估應檢測完整血脂指標，並應於急性病人入院後24小時內完成血脂檢驗。",
+    sourceLines: ["(一)初始評估應檢測完整血脂指標，並應於急性病人入院後24小時內完成血脂","檢驗。"]
+  },
+  {
+    adviceId: "advice-1-2",
+    groupId: "advice-1",
+    groupHeadingRaw: "極高風險、非常高風險：",
+    appliesToTierIds: ["extreme","very-high"],
+    ordinal: "(二)",
+    textRaw: "處置各項可改善心血管風險因子，包含：血壓、HbA1c、肥胖、抽菸、酒精攝取、生活型態。",
+    sourceLines: ["(二)處置各項可改善心血管風險因子，包含：血壓、HbA1c、肥胖、抽菸、酒精","攝取、生活型態。"]
+  },
+  {
+    adviceId: "advice-2-1",
+    groupId: "advice-2",
+    groupHeadingRaw: "高風險、中風險、低風險：",
+    appliesToTierIds: ["high","moderate","low"],
+    ordinal: "(一)",
+    textRaw: "給予完整血脂指標檢測，辨識各項可改善心血管風險因子，包含：血壓、HbA1c、肥胖、抽菸、酒精攝取、生活型態。",
+    sourceLines: ["(一)給予完整血脂指標檢測，辨識各項可改善心血管風險因子，包含：血壓、","HbA1c、肥胖、抽菸、酒精攝取、生活型態。"]
+  },
+  {
+    adviceId: "advice-2-2",
+    groupId: "advice-2",
+    groupHeadingRaw: "高風險、中風險、低風險：",
+    appliesToTierIds: ["high","moderate","low"],
+    ordinal: "(二)",
+    textRaw: "ASCVD 風險分級為高風險，當有嚴重高膽固醇血症、肌腱黃色瘤、早發心血管疾病或家族病史時，應依照台灣家族性高膽固醇血症診斷標準進行家族性膽固醇血症篩檢。",
+    sourceLines: ["(二)ASCVD 風險分級為高風險，當有嚴重高膽固醇血症、肌腱黃色瘤、早發心","血管疾病或家族病史時，應依照台灣家族性高膽固醇血症診斷標準進行家","族性膽固醇血症篩檢。"]
+  },
+  {
+    adviceId: "advice-2-3",
+    groupId: "advice-2",
+    groupHeadingRaw: "高風險、中風險、低風險：",
+    appliesToTierIds: ["high","moderate","low"],
+    ordinal: "(三)",
+    textRaw: "若未符合上述高風險條件，應以列在低至中風險欄位的心血管風險因子數量作為風險評估。",
+    sourceLines: ["(三)若未符合上述高風險條件，應以列在低至中風險欄位的心血管風險因子數","量作為風險評估。"]
+  },
+  {
+    adviceId: "advice-secondary-target",
+    groupId: null,
+    groupHeadingRaw: null,
+    appliesToTierIds: null,
+    ordinal: "●",
+    textRaw: "當 LDL-C 達到理想治療目標後，非高密度脂蛋白-膽固醇(non-HDL-C)可作為血脂治療次要標的，其計算方式為總膽固醇數值減掉 HDL-C 數值，尤其適用於合併有高三酸甘油脂、糖尿病、或肥胖的病人以做進一步的心血管風險評估。",
+    sourceLines: ["●當 LDL-C 達到理想治療目標後，非高密度脂蛋白-膽固醇(non-HDL-C)可作為血","脂治療次要標的，其計算方式為總膽固醇數值減掉 HDL-C 數值，尤其適用於合","併有高三酸甘油脂、糖尿病、或肥胖的病人以做進一步的心血管風險評估。"]
+  }
+];
+
+const generatedCoverageRules: CoverageRuleRecord[] = [
+  {
+    ruleId: "2.6.2",
+    headingRaw: "2.6.2.Ezetimibe：(94/6/1、115/9/1)",
+    headingLines: ["2.6.2.Ezetimibe：(94/6/1、","115/9/1)"],
+    restrictionRaw: "限用於原發性高膽固醇血症、同型接合子家族性高膽固醇血症、同型接合子性麥脂醇血症(植物脂醇血症)患者，並符合下列條件之一者：",
+    restrictionLines: ["限用於原發性高膽固醇血症、同型接","合子家族性高膽固醇血症、同型接合","子性麥脂醇血症(植物脂醇血症)患","者，並符合下列條件之一者："],
+    exceptionNhiCodes: ["AC60610100","BC27311100","BC28252100","BC26552100"]
+  },
+  {
+    ruleId: "2.6.3",
+    headingRaw: "2.6.3.含 ezetimibe 及 statin 類之複方製劑：(95/12/1、106/8/1、111/11/1、112/12/1、115/9/1)：",
+    headingLines: ["2.6.3.含 ezetimibe 及 statin 類之複","方製劑：(95/12/1、106/8/1、","111/11/1、112/12/1、115/9/1)："],
+    restrictionRaw: null,
+    restrictionLines: null,
+    exceptionNhiCodes: ["AC59251100","AC60402100","BC28502100","AC62052100","AC62053100","AC62140100","AC62139100","BC28181100","BC28182100","BC28884100"]
+  }
+];
+
+const generatedCoverageRuleConditions: CoverageRuleConditionRecord[] = [
+  {
+    conditionId: "2.6.2-1",
+    ruleId: "2.6.2",
+    ordinal: "1.",
+    textRaw: "對 statins 類藥品發生無法耐受藥物不良反應（如 Severe myalgia、Myositis）者。(94/6/1、115/9/1)",
+    sourceLines: ["1.對 statins 類藥品發生無法耐受藥","物不良反應（如 Severe","myalgia、Myositis）者。","(94/6/1、115/9/1)"]
+  },
+  {
+    conditionId: "2.6.2-2",
+    ruleId: "2.6.2",
+    ordinal: "2.",
+    textRaw: "經使用 statins 類藥品單一治療6-8週未達治療目標者，得合併使用本類藥品與 statins 類藥品。但下表所列項目，需經使用 statins 類藥品單一治療3個月未達治療目標者，始得與 statins 類藥品併用。(115/9/1)",
+    sourceLines: ["2.經使用 statins 類藥品單一治療6-","8週未達治療目標者，得合併使用","本類藥品與 statins 類藥品。但下","表所列項目，需經使用 statins 類","藥品單一治療3個月未達治療目標","者，始得與 statins 類藥品併用。","(115/9/1)"]
+  },
+  {
+    conditionId: "2.6.3-1",
+    ruleId: "2.6.3",
+    ordinal: "1.",
+    textRaw: "限用於原發性高膽固醇血症、同型接合子家族性高膽固醇血症(HOFH)病患。(106/8/1、115/9/1)",
+    sourceLines: ["1.限用於原發性高膽固醇血症、同型","接合子家族性高膽固醇血症(HOFH)","病患。(106/8/1、115/9/1)"]
+  },
+  {
+    conditionId: "2.6.3-2",
+    ruleId: "2.6.3",
+    ordinal: "2.",
+    textRaw: "經使用 statin 類藥品單一治療6-8週未達治療目標者，得使用本類藥品。但下表所列項目，需經使用 statin 類藥品單一治療3個月未達治療目標者，始得使用。(115/9/1)",
+    sourceLines: ["2.經使用 statin 類藥品單一治療6-8","週未達治療目標者，得使用本類藥","品。但下表所列項目，需經使用","statin 類藥品單一治療3個月未達","治療目標者，始得使用。","(115/9/1)"]
+  },
+  {
+    conditionId: "2.6.3-3",
+    ruleId: "2.6.3",
+    ordinal: "3.",
+    textRaw: "本品不得與 gemfibrozil 併用。(106/8/1)",
+    sourceLines: ["3.本品不得與 gemfibrozil 併用。","(106/8/1)"]
+  }
+];
+
 function deepFreeze<T>(value: T): T {
   if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
     for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
@@ -378,3 +529,9 @@ function deepFreeze<T>(value: T): T {
 export const RISK_TIERS: readonly RiskTierRecord[] = deepFreeze(generatedRiskTiers);
 export const TIER_CRITERIA: readonly TierCriterionRecord[] = deepFreeze(generatedTierCriteria);
 export const RISK_FACTORS: readonly RiskFactorRecord[] = deepFreeze(generatedRiskFactors);
+export const ASSESSMENT_ADVICE: readonly AssessmentAdviceRecord[] =
+  deepFreeze(generatedAssessmentAdvice);
+export const COVERAGE_RULES: readonly CoverageRuleRecord[] = deepFreeze(generatedCoverageRules);
+export const COVERAGE_RULE_CONDITIONS: readonly CoverageRuleConditionRecord[] = deepFreeze(
+  generatedCoverageRuleConditions
+);
