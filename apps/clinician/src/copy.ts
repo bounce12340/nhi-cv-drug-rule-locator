@@ -6,6 +6,9 @@
  */
 export const UI_COPY = Object.freeze({
   zh: Object.freeze({
+    skipToContent: "跳到主要內容",
+    htmlLang: "zh-Hant",
+    documentTitle: "健保降血脂藥品查詢｜風險分級",
     themeLightButton: "主題：明亮（切換至暗黑）",
     themeDarkButton: "主題：暗黑（切換至明亮）",
     languageControlLabel: "介面語言",
@@ -20,6 +23,10 @@ export const UI_COPY = Object.freeze({
     queryPanelTitle: "查詢條件",
     resultsEmptyTitle: "等待查詢",
     resultsEmptyBody: "輸入健保代碼、中文品名、英文品名或成分,下方會列出品項、該日期適用的支付價,以及是否受 2026-09-01 公告影響。",
+    drugResultAnnouncement: "查詢完成。{date} 命中 {count} 個品項,其中 {changed} 個本次調價。結果列在下方。",
+    riskAnnouncementDetermined: "已判定為{tier}。該等級的給付門檻、治療目標值與處方規定列在下方。",
+    riskAnnouncementUndetermined: "尚無法判定,還有 {count} 題未回答。",
+    beyondSnapshotNotice: "查詢日期 {date} 在藥品主檔快照日 {snapshot} 之後。主檔最後一段價格期間是開放式的,所以這個日期仍會回傳快照當時的最後一個價格——那是主檔記到的最後一筆,不是對該日期的保證。快照日之後公告的異動不在主檔中。",
     statMatched: "命中品項",
     statPriceChanged: "本次調價",
     statPriceUnchanged: "本次未調價",
@@ -162,6 +169,9 @@ export const UI_COPY = Object.freeze({
     footerCredit: "本系統之計畫、開發與製作:天義企業 Josh Tsai。"
   }),
   en: Object.freeze({
+    skipToContent: "Skip to main content",
+    htmlLang: "en",
+    documentTitle: "NHI lipid-lowering drug lookup | Risk tier",
     themeLightButton: "Theme: Light (switch to Dark)",
     themeDarkButton: "Theme: Dark (switch to Light)",
     languageControlLabel: "Interface language",
@@ -178,6 +188,10 @@ export const UI_COPY = Object.freeze({
     resultsEmptyTitle: "Waiting for a query",
     resultsEmptyBody:
       "Enter an NHI code, Chinese or English drug name, or ingredient. Results list each item, the payment price for the date you chose, and whether the 2026-09-01 announcement affected it.",
+    drugResultAnnouncement: "Search complete. {count} items match on {date}; {changed} of them were repriced. The results follow below.",
+    riskAnnouncementDetermined: "Tier determined: {tier}. Its payment threshold, treatment targets and prescribing rule follow below.",
+    riskAnnouncementUndetermined: "Not determined yet. {count} questions are still unanswered.",
+    beyondSnapshotNotice: "The lookup date {date} is later than the master snapshot dated {snapshot}. The master\u2019s final price period is open-ended, so this date still returns the last price the snapshot recorded — that is the last entry it holds, not a statement about this date. Anything published after the snapshot is not in it.",
     statMatched: "Items matched",
     statPriceChanged: "Price changed",
     statPriceUnchanged: "Price not changed",

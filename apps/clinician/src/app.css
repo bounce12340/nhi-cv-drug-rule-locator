@@ -952,6 +952,32 @@ details.flush > .details-body {
   white-space: nowrap;
 }
 
+/*
+ * Off screen until it takes focus, then it lands over the header. It is the
+ * first thing in the tab order, so it must not occupy space when unfocused.
+ */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 10;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 120ms ease;
+}
+
+/* :focus, not :focus-visible — a skip link has to appear for any focus that
+   reaches it, including one moved by script or by assistive technology. */
+.skip-link:focus {
+  top: 12px;
+}
+
 /* ------------------------------------------------------------ risk tiering */
 
 .tabs {

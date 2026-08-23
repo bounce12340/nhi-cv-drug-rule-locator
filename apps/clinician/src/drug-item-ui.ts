@@ -73,6 +73,24 @@ export function resolveAnnouncementPriceComparison(
   return Object.freeze({ priceBefore, priceAfter, effectiveDate, coverageRule });
 }
 
+/**
+ * Whether the requested date is one the master cannot actually speak to.
+ *
+ * The master's last price period is open-ended — it runs to 9999-12-31 — so a
+ * date years out returns a price instead of nothing. That price is the last one
+ * the snapshot recorded, not a statement about that date, and anything NHI
+ * published after the snapshot is not in it. The dataset's own date range cannot
+ * express this, which is why it is asked here rather than fixed by narrowing
+ * DRUG_ITEMS_DATASET_EFFECTIVE_TO: shortening that would make the lookup fail
+ * closed on today's date, and today's price is exactly what the snapshot does
+ * know.
+ */
+export function isAfterMasterSnapshot(asOfDate: string): boolean {
+  return (
+    /^\d{4}-\d{2}-\d{2}$/.test(asOfDate) && asOfDate > DRUG_ITEM_MASTER_SNAPSHOT_DATE
+  );
+}
+
 export function shouldShowMasterSnapshotNotice(asOfDate: string, nhiCode: string): boolean {
   return (
     /^\d{4}-\d{2}-\d{2}$/.test(asOfDate) &&
