@@ -92,6 +92,35 @@ Dose facets are likewise computed from the whole filtered set, so paging can nev
 option. Paging resets whenever the query, date or either filter changes, by comparing a derived key
 during render rather than by remembering to reset it in each handler.
 
+### What the screen owes a reader who cannot see it
+
+The interaction is: type, press a button, and results appear in the other column.
+Nothing about that is announced on its own, so each results column carries one
+polite `role="status"` region stating the outcome — the match counts for a drug
+lookup, the tier or the number of questions still open for a risk assessment. It
+carries the counts rather than a bare "done", because the count is the answer.
+Silence after pressing the button is the failure these prevent.
+
+The rest is structural and pinned by `render.test.tsx`: every `<input>` has an id
+and a `<label for>` pointing at it (`Field` takes a render prop and hands down a
+`useId`, because a field's children also hold preset chips and hints and a
+wrapping label would make clicking those focus the input); the page has a `<main>`
+landmark and a skip link ahead of the header, off screen until focused — on
+`:focus`, not `:focus-visible`, so it also appears for focus moved by script or
+assistive technology. Switching the interface language sets
+`document.documentElement.lang` and `document.title` from the dictionary, or a
+screen reader reads English content in a Chinese voice.
+
+### The date the master cannot answer for
+
+The item master's final price period is open-ended — it runs to `9999-12-31` — so
+a lookup for 2030 returns a price rather than nothing. That price is the last one
+the snapshot recorded, not a statement about 2030. `isAfterMasterSnapshot` asks
+whether the requested date is past `2026-08-06`, and the results column says so
+once per screen. Narrowing `DRUG_ITEMS_DATASET_EFFECTIVE_TO` instead would make
+the lookup fail closed on today's date, and today's price is exactly what the
+snapshot does know.
+
 ### Testing the UI
 
 App tests render with `renderToStaticMarkup` and assert on the markup. There is no jsdom and no
@@ -112,7 +141,7 @@ publications, and `data/governed/` holds the sources they were generated from.
 | Dataset | Contents |
 | --- | --- |
 | `nhi-drug-items-2026-08-07-r2` | Item master: 607 records, 4,048 price periods |
-| `nhi-lipid-2026-09-01-r1` | The 2026-09-01 announcement: 187 changed items, before/after prices |
+| `nhi-lipid-2026-09-01-r1` | The 2026-09-01 announcement: 187 items, 57 of them with before/after prices |
 | `nhi-lipid-risk-2026-09-01-r1` | Attachment 2: 6 tiers, 18 criteria, 11 factors, 6 notes, 2 coverage rules |
 
 `docs/source-register/` records where each source came from and its SHA-256. That is what backs the

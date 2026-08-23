@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   ANNOUNCEMENT_ITEM_NOT_FOUND_TEXT,
   CLINICIAN_DESKTOP_BREAKPOINT,
+  DRUG_ITEM_MASTER_SNAPSHOT_DATE,
   getClinicianLayoutMode,
+  isAfterMasterSnapshot,
   resolveAnnouncementItemSource
 } from "./drug-item-ui";
 
@@ -38,5 +40,28 @@ describe("clinician drug-item integration helpers", () => {
       status: "NOT_FOUND",
       message: ANNOUNCEMENT_ITEM_NOT_FOUND_TEXT
     });
+  });
+});
+
+describe("dates the master snapshot cannot speak to", () => {
+  it("says nothing for the snapshot date itself or anything before it", () => {
+    expect(isAfterMasterSnapshot(DRUG_ITEM_MASTER_SNAPSHOT_DATE)).toBe(false);
+    expect(isAfterMasterSnapshot("2026-08-05")).toBe(false);
+    expect(isAfterMasterSnapshot("2024-04-01")).toBe(false);
+  });
+
+  it("flags every date after it, including ones the lookup still answers", () => {
+    // The master's last price period runs to 9999-12-31, so these all return a
+    // price. The point is that the price is the snapshot's last entry, not a
+    // statement about the date asked for.
+    for (const date of ["2026-08-07", "2026-09-01", "2030-01-01", "9999-12-31"]) {
+      expect(isAfterMasterSnapshot(date), date).toBe(true);
+    }
+  });
+
+  it("does not flag a malformed date, which fails closed elsewhere", () => {
+    for (const date of ["", "not-a-date", "2026-8-7", "9999/12/31"]) {
+      expect(isAfterMasterSnapshot(date), date).toBe(false);
+    }
   });
 });

@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   DRUG_DOSE_UNSPECIFIED_KEY,
   DRUG_ITEMS_DATASET_EFFECTIVE_FROM,
@@ -41,6 +41,7 @@ import {
   DRUG_ITEM_MASTER_SNAPSHOT_DATE,
   resolveAnnouncementItemSource,
   resolveAnnouncementPriceComparison,
+  isAfterMasterSnapshot,
   shouldShowMasterSnapshotNotice,
   type AnnouncementPriceComparison
 } from "./src/drug-item-ui";
@@ -118,17 +119,25 @@ export function UiProvider({
 
 /* ------------------------------------------------------------- primitives -- */
 
+/**
+ * A labelled control. The label is bound to its input by id rather than by
+ * sitting next to it, so a screen reader announces the field instead of an
+ * unnamed edit box. It cannot wrap the input instead: a field's children also
+ * hold preset chips and hints, and a wrapping label would make clicking those
+ * focus the input.
+ */
 function Field({
   label,
   children
 }: {
   label: string;
-  children: React.ReactNode;
+  children: (inputId: string) => React.ReactNode;
 }): React.JSX.Element {
+  const inputId = useId();
   return (
     <div className="field">
-      <label>{label}</label>
-      {children}
+      <label htmlFor={inputId}>{label}</label>
+      {children(inputId)}
     </div>
   );
 }
@@ -248,26 +257,31 @@ function AsOfDateField({
 
   return (
     <Field label={label}>
-      <input
-        type="date"
-        value={value}
-        min={DRUG_ITEMS_DATASET_EFFECTIVE_FROM}
-        max={DRUG_ITEMS_DATASET_EFFECTIVE_TO}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      <div className="chip-row">
-        {presets.map((preset) => (
-          <Chip
-            key={preset.key}
-            small
-            selected={value === preset.value}
-            onClick={() => onChange(preset.value)}
-          >
-            {t(presetKeys[preset.key] ?? "asOfDatePresetToday", { value: preset.value })}
-          </Chip>
-        ))}
-      </div>
-      <p className="hint">{t("asOfDatePickerHint")}</p>
+      {(inputId) => (
+        <>
+          <input
+            id={inputId}
+            type="date"
+            value={value}
+            min={DRUG_ITEMS_DATASET_EFFECTIVE_FROM}
+            max={DRUG_ITEMS_DATASET_EFFECTIVE_TO}
+            onChange={(event) => onChange(event.target.value)}
+          />
+          <div className="chip-row">
+            {presets.map((preset) => (
+              <Chip
+                key={preset.key}
+                small
+                selected={value === preset.value}
+                onClick={() => onChange(preset.value)}
+              >
+                {t(presetKeys[preset.key] ?? "asOfDatePresetToday", { value: preset.value })}
+              </Chip>
+            ))}
+          </div>
+          <p className="hint">{t("asOfDatePickerHint")}</p>
+        </>
+      )}
     </Field>
   );
 }
@@ -689,19 +703,24 @@ function DrugLookupMode(): React.JSX.Element {
           </div>
           <div className="card-body">
             <Field label={t("drugSearchLabel")}>
-              <input
-                autoFocus
-                autoCapitalize="characters"
-                autoCorrect="off"
-                onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") performLookup();
-                }}
-                placeholder={t("drugSearchPlaceholder")}
-                type="text"
-                value={query}
-              />
-              <p className="hint">{t("smartQueryHint")}</p>
+              {(inputId) => (
+                <>
+                  <input
+                    autoFocus
+                    autoCapitalize="characters"
+                    autoCorrect="off"
+                    id={inputId}
+                    onChange={(event) => setQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") performLookup();
+                    }}
+                    placeholder={t("drugSearchPlaceholder")}
+                    type="text"
+                    value={query}
+                  />
+                  <p className="hint">{t("smartQueryHint")}</p>
+                </>
+              )}
             </Field>
 
             <AsOfDateField label={t("drugDateLabel")} onChange={setAsOfDate} value={asOfDate} />
@@ -741,14 +760,17 @@ function DrugLookupMode(): React.JSX.Element {
 
             <Disclosure className="flush" summary={t("advancedTitle")}>
               <Field label={t("drugDatasetLabel")}>
-                <input
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  onChange={(event) => setDatasetVersion(event.target.value)}
-                  placeholder={t("datasetPlaceholder")}
-                  type="text"
-                  value={datasetVersion}
-                />
+                {(inputId) => (
+                  <input
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    id={inputId}
+                    onChange={(event) => setDatasetVersion(event.target.value)}
+                    placeholder={t("datasetPlaceholder")}
+                    type="text"
+                    value={datasetVersion}
+                  />
+                )}
               </Field>
             </Disclosure>
           </div>
@@ -756,6 +778,23 @@ function DrugLookupMode(): React.JSX.Element {
       </div>
 
       <div className="results">
+        {/*
+          The screen's whole interaction is type, press, and results appear in
+          another column. Without this a screen-reader user gets silence: focus
+          stays on the button and nothing announces that anything happened. It
+          carries the counts rather than a bare "done", because the count is the
+          answer. Polite, so it waits for the user to stop typing.
+        */}
+        <p aria-live="polite" className="visually-hidden" role="status">
+          {!hasResult
+            ? ""
+            : t("drugResultAnnouncement", {
+                count: String(visibleMatches.length),
+                changed: String(changedCount),
+                date: asOfDate
+              })}
+        </p>
+
         {!hasResult ? (
           <section className="card">
             <div className="placeholder">
@@ -780,6 +819,19 @@ function DrugLookupMode(): React.JSX.Element {
                 status: t(lookupStatusKeys[result?.status ?? "NOT_IN_VALIDATED_DATASET"])
               })}
             </p>
+
+            {/*
+              Once per screen, not once per card, and only when the chosen date
+              is past what the snapshot can answer for.
+            */}
+            {isAfterMasterSnapshot(asOfDate) ? (
+              <p className="notice">
+                {t("beyondSnapshotNotice", {
+                  date: asOfDate,
+                  snapshot: DRUG_ITEM_MASTER_SNAPSHOT_DATE
+                })}
+              </p>
+            ) : null}
 
             {reviewPresentation?.kind === "multipleCandidates" ? (
               <p className="notice">
@@ -1392,13 +1444,16 @@ export function RiskTierMode(): React.JSX.Element {
           </div>
           <div className="card-body">
             <Field label={t("riskLdlLabel")}>
-              <input
-                inputMode="decimal"
-                onChange={(event) => setLdlCText(event.target.value)}
-                placeholder={t("riskLdlPlaceholder")}
-                type="text"
-                value={ldlCText}
-              />
+              {(inputId) => (
+                <input
+                  id={inputId}
+                  inputMode="decimal"
+                  onChange={(event) => setLdlCText(event.target.value)}
+                  placeholder={t("riskLdlPlaceholder")}
+                  type="text"
+                  value={ldlCText}
+                />
+              )}
             </Field>
             {ldlCValid ? null : <p className="notice">{t("riskLdlInvalid")}</p>}
             {needsLdlC ? <p className="notice">{t("riskNeedLdl")}</p> : null}
@@ -1448,6 +1503,21 @@ export function RiskTierMode(): React.JSX.Element {
       </div>
 
       <div className="results">
+        {/*
+          Answering a question re-renders the whole result column, and a tier can
+          appear after any one of them. Announcing the outcome is the only way a
+          screen-reader user learns that the last answer settled it.
+        */}
+        <p aria-live="polite" className="visually-hidden" role="status">
+          {answered.length === 0 && ldlC === null
+            ? ""
+            : assessment.status === "determined"
+              ? t("riskAnnouncementDetermined", { tier: assessment.tier.labelZh })
+              : t("riskAnnouncementUndetermined", {
+                  count: String(assessment.missing.length)
+                })}
+        </p>
+
         {answered.length === 0 && ldlC === null ? (
           <section className="card">
             <div className="card-head">
@@ -1523,9 +1593,28 @@ export default function App(): React.JSX.Element {
     saveInterfaceLanguage(preferenceStorage, next);
   }
 
+  /*
+   * The document's own language and title are outside this tree, so switching
+   * the interface language has to reach out and set them. Left alone, a screen
+   * reader keeps reading English content with a Chinese voice, and the browser
+   * tab keeps a Chinese title next to an English page.
+   */
+  useEffect(() => {
+    document.documentElement.lang = t("htmlLang");
+    document.title = t("documentTitle");
+  }, [t]);
+
   return (
     <UiContext.Provider value={uiContextValue}>
       <div className="app" data-theme={theme}>
+        {/*
+          First thing in the tab order and invisible until it has focus. Without
+          it a keyboard user steps through the theme, language and tab controls
+          on every visit before reaching the search box.
+        */}
+        <a className="skip-link" href="#main-content">
+          {t("skipToContent")}
+        </a>
         <header className="hero">
           <div className="shell">
             <div className="hero-bar">
@@ -1562,7 +1651,7 @@ export default function App(): React.JSX.Element {
           </div>
         </header>
 
-        <div className="shell">
+        <main className="shell" id="main-content">
           {/* One disclaimer for the whole screen, not one per result card. */}
           <p className="disclaimer">{t("disclaimer")}</p>
 
@@ -1619,7 +1708,7 @@ export default function App(): React.JSX.Element {
             {/* Who built it, set apart from the data-source and privacy notices. */}
             <p className="footer-credit">{t("footerCredit")}</p>
           </footer>
-        </div>
+        </main>
       </div>
     </UiContext.Provider>
   );

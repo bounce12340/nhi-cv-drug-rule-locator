@@ -146,3 +146,38 @@ describe("the tab list", () => {
     expect(unselected).toContain('tabindex="-1"');
   });
 });
+
+describe("what a screen reader gets", () => {
+  const markup = renderToStaticMarkup(<App />);
+
+  it("binds every input to its visible label instead of leaving it unnamed", () => {
+    const inputIds = [...markup.matchAll(/<input[^>]*\bid="([^"]+)"/gu)].map((m) => m[1]!);
+    const labelFor = new Set(
+      [...markup.matchAll(/<label[^>]*\bfor="([^"]+)"/gu)].map((m) => m[1]!)
+    );
+    expect(inputIds.length).toBeGreaterThan(0);
+    for (const id of inputIds) expect(labelFor.has(id), id).toBe(true);
+    // And no input is left without an id to be bound by.
+    const inputs = markup.match(/<input\b/gu) ?? [];
+    expect(inputs).toHaveLength(inputIds.length);
+  });
+
+  it("carries a main landmark and a skip link ahead of the header", () => {
+    expect(markup).toContain('id="main-content"');
+    expect(markup).toContain("<main");
+    expect(markup.indexOf("skip-link")).toBeLessThan(markup.indexOf("<header"));
+    expect(markup).toContain(UI_COPY.zh.skipToContent);
+  });
+
+  it("holds a polite status region in each results column", () => {
+    // Silence after pressing the search button is the failure this prevents.
+    expect(occurrences(markup, 'aria-live="polite"')).toBeGreaterThanOrEqual(1);
+    expect(markup).toContain('role="status"');
+  });
+
+  it("keeps the document language and title in the dictionary, in both languages", () => {
+    expect(UI_COPY.zh.htmlLang).toBe("zh-Hant");
+    expect(UI_COPY.en.htmlLang).toBe("en");
+    expect(UI_COPY.zh.documentTitle).not.toBe(UI_COPY.en.documentTitle);
+  });
+});
