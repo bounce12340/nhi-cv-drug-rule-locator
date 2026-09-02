@@ -782,15 +782,21 @@ function DrugLookupMode(): React.JSX.Element {
           The screen's whole interaction is type, press, and results appear in
           another column. Without this a screen-reader user gets silence: focus
           stays on the button and nothing announces that anything happened. It
-          carries the counts rather than a bare "done", because the count is the
-          answer. Polite, so it waits for the user to stop typing.
+          carries the match count rather than a bare "done", because the count is
+          the answer. Polite, so it waits for the user to stop typing.
+
+          It reports the match count alone. The repriced and not-repriced tiles
+          beside it are facet counts over the whole search result, not a
+          breakdown of what the filters left, so a sentence putting them together
+          would read "3 items matched, 13 of them repriced" — a subset claim that
+          is not true. The tiles stay where they are; the sentence stops making
+          the claim.
         */}
         <p aria-live="polite" className="visually-hidden" role="status">
           {!hasResult
             ? ""
             : t("drugResultAnnouncement", {
                 count: String(visibleMatches.length),
-                changed: String(changedCount),
                 date: asOfDate
               })}
         </p>

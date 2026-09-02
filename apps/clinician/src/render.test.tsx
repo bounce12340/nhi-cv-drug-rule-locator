@@ -169,6 +169,18 @@ describe("what a screen reader gets", () => {
     expect(markup).toContain(UI_COPY.zh.skipToContent);
   });
 
+  it("announces a count it can actually stand behind", () => {
+    // The repriced tile counts the whole search result while the match tile
+    // counts what the filters left, so a sentence holding both once announced
+    // "3 items matched, 13 of them repriced". The announcement now names one
+    // number, and that number is the one the reader is looking at.
+    for (const language of ["zh", "en"] as const) {
+      expect(UI_COPY[language].drugResultAnnouncement).toContain("{count}");
+      expect(UI_COPY[language].drugResultAnnouncement).not.toContain("{changed}");
+    }
+    expect(UI_COPY.zh.drugResultAnnouncement).not.toContain("其中");
+  });
+
   it("holds a polite status region in each results column", () => {
     // Silence after pressing the search button is the failure this prevents.
     expect(occurrences(markup, 'aria-live="polite"')).toBeGreaterThanOrEqual(1);
