@@ -151,3 +151,17 @@ node scripts/risk-transcribe.mjs --check  # 只驗證,不寫檔
 ---
 
 改動查詢行為前請看 [CLAUDE.md](CLAUDE.md) 的「Rules that protect correctness」——那幾條的存在理由是:違反了就會讓醫師看到錯的藥品資訊。另見 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+## 授權
+
+程式碼與資料的授權**不同**,分開看:
+
+| | 授權 | 說明 |
+| --- | --- | --- |
+| 本專案的程式碼 | [Apache License 2.0](LICENSE) | 可自由使用、修改、商用,含閉源;需保留著作權聲明、標示修改過的檔案 |
+| 編譯進來的健保資料 | 政府資料開放授權條款第 1 版 | 來源:衛生福利部中央健康保險署「健保用藥品項查詢項目檔」(政府資料開放平臺) |
+| 公告轉錄的條文 | 公告原文,著作權歸原發布機關 | 逐字轉錄,未改寫;出處與雜湊記於 [`docs/source-register/`](docs/source-register/) |
+
+Copyright 2026 Universal Integrated Corp. (Josh Tsai)
+
+拿去改沒問題,但請注意一件事:這個工具的價值在於**它只講健保署資料說過的話**。改動查詢或分級邏輯前,先讀 [CLAUDE.md](CLAUDE.md) 的「Rules that protect correctness」。

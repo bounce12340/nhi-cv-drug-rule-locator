@@ -1,6 +1,7 @@
 {
   "name": "nhi-cv-drug-rule-locator",
   "version": "0.1.0",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "description": "NHI lipid-lowering medication and coverage-rule lookup for clinicians. Static site on Cloudflare Pages.",
