@@ -1,167 +1,265 @@
-# 健保降血脂藥品查詢
+# NHI lipid-lowering drug lookup
 
-醫師診間用的健保降血脂藥品查詢工具。線上位置:<https://nhi.uic-ai.com/>
+> **中文:** [README.zh-TW.md](README.zh-TW.md) ｜ This is the English version.
 
-一個靜態網站,掛在 Cloudflare Pages。沒有伺服器、沒有 API、沒有資料庫、沒有帳號。所有資料編譯進前端,運算全部在瀏覽器裡完成——輸入的內容不會送到任何地方,也不會被記錄。介面有中英雙語與明亮／暗黑主題,兩個分頁(**藥品查詢**、**風險分級**),桌機是左輸入右結果的兩欄版面,手機自動收成單欄。
+A chairside lookup tool for Taiwan's National Health Insurance (健保) lipid-lowering
+drugs, for clinicians. Live at <https://nhi.uic-ai.com/>.
 
-免責與資料來源警語**整頁只出現一次**(頁首一則、結果區底部一個可展開的來源區塊),不會每張結果卡重印一次。
+It is a static site on Cloudflare Pages. No server, no API, no database, no accounts.
+Every dataset is compiled into the bundle and all of it runs in the browser — what you
+type goes nowhere and is not recorded. The interface is bilingual (Chinese/English) with
+light and dark themes, and has two tabs: **drug lookup** and **risk tier**. Desktop puts
+the query on the left and results on the right; phones collapse to one column.
 
-## 藥品查詢:回答三件事
+The disclaimer and the data-source notice appear **once per screen** — one at the top, one
+in a disclosure at the foot of the results — never reprinted on every result card.
 
-**一、2026-09-01 公告調整了哪些藥品的價格,哪些沒有**
+## Drug lookup: three questions
 
-主檔 607 筆品項中,該次公告調價的有 **57 筆**,其餘 **550 筆**未調價。查詢結果可用「全部／本次調價／本次未調價」切換。
+**1. Which drugs did the 2026-09-01 announcement reprice, and which did it not?**
 
-**二、每個品項的價格是多少**
+Of the 607 items in the master file, that announcement repriced **57**; the other **550**
+were not repriced. Results filter by 全部 / 本次調價 / 本次未調價 (all / repriced /
+not repriced).
 
-調價品項顯示公告所載的**原支付價 → 初核價格**對照;所有品項都可展開完整價格沿革(全主檔共 4,048 個價格區間)。
+**2. What is each item's price?**
 
-查詢日期**預設為當天**,可用日期選擇器改成任一日期,另有「今天」與「新制生效日(2026-09-01)」兩個一鍵選項。價格依所選日期適用的區間顯示,**不會回退到最近期**;日期無效或超出資料集範圍就查無,不會替你猜。
+Repriced items show the announcement's own **原支付價 → 初核價格** (price before → price
+after) comparison. Every item can expand its full price history — 4,048 price periods
+across the master file.
 
-查詢框**一行就能把條件打完**:`atorvastatin 40mg 這次調價的`、`pravastatin 20mg 未調價`、`rosuvastatin 10mg 115/9/1` 都可以。劑量、要不要調價、日期會自動拆到對應的篩選器,畫面會把**辨識結果連同來源字串**顯示出來讓你確認,下面的篩選鈕隨時可以推翻它。認不得的字一律當成品名或成分繼續搜尋,不會被丟掉;「請」「幫我」「的」這類問句用字會標成「略過」,也看得到。
+The lookup date **defaults to today** and can be set to any date with a picker, plus
+one-tap presets for today and for the announcement's effective date (2026-09-01). The
+price shown is the one for the period covering that date. It **does not fall back** to the
+nearest period: an invalid or out-of-range date returns nothing rather than a guess.
 
-結果可再**依劑量篩選**——一個劑量就是一個用藥族群,例如查 atorvastatin 得到 5 / 10 / 20 / 40 mg 各自的品項數,點一下只看該劑量。劑量選項是從當下的查詢結果算出來的,所以每個選項都一定有品項。詳見下節。
+**One typed line can set every control**: `atorvastatin 40mg 這次調價的`,
+`pravastatin 20mg 未調價`, `rosuvastatin 10mg 115/9/1` all work. Dose, the repriced
+filter and the date are routed to the controls that already exist, and the screen prints
+back **what it read and the exact substring it read it from**, so you can check it; the
+chips below override any reading. A word the parser does not recognise is searched for as
+a name or ingredient rather than dropped. Filler words (請, 幫我, 的) are marked as set
+aside, visibly.
 
-注意:主檔是 2026-08-06 的快照,**尚未收錄 9/1 生效的新價**。把日期選到 9/1 之後,主檔顯示的仍是快照當時的價格,畫面會另外標明這件事,新價請看公告的「原支付價 → 初核價格」對照。
+Results can be **filtered by strength** — each strength is its own prescribing group, so
+searching atorvastatin gives you the item counts for 5 / 10 / 20 / 40 mg separately. The
+options are computed from the current result set, so no option can return nothing. See
+below for where strengths come from.
 
-**三、價格是健保署的資料,不是自己編的**
+Note: the master file is a 2026-08-06 snapshot and **does not yet carry the prices that
+took effect on 9/1**. Choosing a date on or after then still shows the snapshot's price;
+the screen says so, and the new price is where it actually lives — in the announcement's
+before/after comparison.
 
-見下節。每份來源的出處與 SHA-256 都有記錄。
+**3. The prices are the NHIA's data, not invented.**
 
-## 風險分級:照公告的判定條件算,算不出來就說算不出來
+See [Data sources](#data-sources). Every source file's provenance and SHA-256 is recorded.
 
-第二個分頁把 2026-09-01 公告附件二**表一**的判定條件搬上畫面,一次問一題:醫師逐題回答,工具算出 ASCVD 風險等級,並列出該等級的**給付起始門檻**、**主要／次要治療目標值**、**公告原文的處方規定**,以及主檔中對應的品項與價格。
+## Risk tier: the announcement's own criteria, and it says so when it cannot decide
 
-表一之外,公告在同一份附件裡還寫了三件表格沒說的事,畫面一併照原文列出:該等級的**評估建議**(含急性病人入院後 24 小時內完成血脂檢驗)、**non-HDL-C 何時可作為次要標的**,以及 **2.6.2／2.6.3 修訂後的 ezetimibe 給付規定**——statin 不耐受、三種罕見血症,以及條文自己點名的 14 項需先單一治療 3 個月的品項。只取「建議修訂後」那一欄,不重建新舊對照。
+The second tab puts 表一 (Table 1) of the 2026-09-01 announcement's attachment 2 on
+screen and asks its criteria one at a time. The clinician answers; the tool reports the
+ASCVD risk tier, that tier's **payment threshold**, **primary and secondary treatment
+targets**, the **announcement's own prescribing rule** verbatim, and the master items
+behind the drug classes that rule names.
 
-問題與選項**全是公告原文**,連分組標題(「(一)冠狀動脈疾病合併下列任一臨床狀況:」)都照列。處方規定依原文自己的「一、二、三」切成三張卡,**一個字都沒有改寫**,整段原文另有收合區塊可核對。
+Three things the same attachment states outside 表一 are carried too, verbatim: that
+tier's **assessment advice** (including completing the lipid panel within 24 hours of an
+acute patient's admission), **when non-HDL-C may serve as the secondary target**, and the
+revised **coverage rules 2.6.2 / 2.6.3 for ezetimibe** — statin intolerance, three named
+lipid disorders, and the 14 items the rules' own tables single out as needing three
+months of monotherapy rather than six to eight weeks. Only the 建議修訂後給付規定
+(post-revision) column is transcribed; the prior/current comparison is not rebuilt.
 
-### 三件它不做的事
+Questions and options are **the announcement's own text**, group headings included
+(「(一)冠狀動脈疾病合併下列任一臨床狀況:」). The prescribing rule is split on the
+numbering the source itself wrote (一、二、三) into three cards, **not one word
+reworded**, with the whole unsplit paragraph behind a disclosure.
 
-- **不接 AI。** 沒有 API 金鑰、沒有伺服器,規則來自受管資料集而不是寫死的 if/else。整站仍然只是 Cloudflare Pages 上的靜態檔
-- **不選藥。** 公告只寫到「中至高強度 statin」,主檔沒有強度欄位;把品項對應到強度就是工具在替醫師開藥。畫面只依成分分類,並明講這件事
-- **不猜。** 沒回答的題目一律是**未知**,不是**否**。當成否會低估等級——把病人壓到門檻更高的等級去
+### Three things it does not do
 
-### 「未知不等於否」是這個分頁的核心
+- **No AI.** No API key, no server. The rules come from governed datasets, not from
+  hard-coded if/else. The whole site is still static files on Cloudflare Pages.
+- **No drug selection.** The announcement says 中至高強度 statin (moderate-to-high
+  intensity); the master file has no intensity column. Mapping items onto an intensity
+  would be the tool prescribing. The screen groups by ingredient and says so plainly.
+- **No guessing.** An unanswered question is **unknown**, never **no**. Treating it as no
+  under-rates the patient — into a tier with a higher payment threshold than they qualify
+  for.
 
-沒答完就不給等級,而是列出**還缺哪幾項**與**目前可能落在哪幾級**。幾個直接的後果:
+### "Unknown is not no" is the point of this tab
 
-- 只勾「一年內曾經歷心肌梗塞」而沒確認冠狀動脈疾病,**不算**極高風險——公告寫的是「合併」
-- 勾了糖尿病但極高／非常高風險還沒問,結果是「可能是這三級之一」,不是高風險
-- **LDL-C 沒填就無法排除高風險**,因為 LDL-C≧190mg/dL 本身就是高風險的判定條件之一
+Until the answers settle it, no tier is named. Instead the screen lists **what is still
+missing** and **which tiers are still possible**. Direct consequences:
 
-反過來,已經不影響結果的題目不會再問:符合極高風險的病人,風險因子那幾題根本不會被查。
+- Ticking 一年內曾經歷心肌梗塞 (MI within a year) without confirming 冠狀動脈疾病
+  (coronary artery disease) does **not** make it 極高風險 — the announcement says 合併
+  ("together with")
+- Ticking diabetes while the two higher tiers are unanswered gives "one of these three
+  tiers", not 高風險
+- **A blank LDL-C cannot rule out 高風險**, because LDL-C≧190mg/dL is itself one of that
+  tier's criteria
 
-### 對應的品項
+Conversely, questions that can no longer change the answer are not asked: a patient who
+meets 極高風險 is never asked about risk factors at all.
 
-主檔 607 筆裡,成分含 statin 的有 **396** 筆、含 ezetimibe 的 **27** 筆(其中 **19** 筆是兩者複方),兩者皆無的 **203** 筆是 fibrate、probucol、cholestyramine 這些。396 筆全部是七個真 statin(atorva／rosuva／simva／prava／lova／pitava／fluva),不會誤收 nystatin 之類的成分。
+### The matching items
 
-公告的處方規定另外提到 PCSK9 單株抗體、siRNA、ATP citrate lyase 抑制劑——**主檔一筆都沒有**,所以畫面明講清單只涵蓋其中一部分,不會讓人誤以為那就是全部。
+Of the 607 master records, **396** name a statin in their ingredient, **27** name
+ezetimibe (**19** of those are combinations of both), and the remaining **203** — fibrates,
+probucol, cholestyramine — name neither. All 396 statin hits are the seven real statins
+(atorva / rosuva / simva / prava / lova / pitava / fluva); nothing like nystatin is swept
+in.
 
-## 資料來源
+The prescribing rules also name PCSK9 monoclonals, siRNA and ATP citrate lyase inhibitors.
+The master holds **none of them**, so the screen says plainly that the list covers only
+part of what the rule mentions rather than letting it read as the complete set.
 
-| 資料集 | 來源 |
+## Data sources
+
+| Dataset | Source |
 | --- | --- |
-| `nhi-drug-items-2026-08-07-r2` | 衛福部中央健保署「健保用藥品項查詢項目檔」(政府資料開放平臺),607 筆品項、4,048 個價格區間 |
-| `nhi-lipid-2026-09-01-r1` | 2026-09-01 公告「藥品已收載品目異動明細表」,187 筆 |
-| `nhi-lipid-risk-2026-09-01-r1` | 2026-09-01 公告附件二,6 個風險等級、18 條判定條件、11 項風險因子、6 段評估建議、2 條給付規定 |
+| `nhi-drug-items-2026-08-07-r2` | NHIA 健保用藥品項查詢項目檔 (Taiwan open-data platform): 607 items, 4,048 price periods |
+| `nhi-lipid-2026-09-01-r1` | The 2026-09-01 announcement's 藥品已收載品目異動明細表: 187 items |
+| `nhi-lipid-risk-2026-09-01-r1` | The 2026-09-01 announcement's attachment 2: 6 tiers, 18 criteria, 11 risk factors, 6 assessment notes, 2 coverage rules |
 
-價格全部取自健保署公開資料,不是自行產生的。每份來源的出處與 SHA-256 記在 [`docs/source-register/`](docs/source-register/)。
+Every price comes from the NHIA's published data; none is generated. Each source file's
+provenance and SHA-256 is recorded in [`docs/source-register/`](docs/source-register/).
 
-### 劑量從哪裡來
+### Where strengths come from
 
-主檔的**規格欄位不能用**:607 筆裡有 595 筆的 `規格量`／`規格單位` 是空的,剩下 12 筆放的是包裝量而不是含量。劑量實際上取自另外兩欄,兩者**聯集**:
+**The master's specification columns are unusable**: 595 of the 607 records have empty
+`規格量` / `規格單位`, and the 12 that are populated hold pack sizes, not strengths.
+Strengths are read from two other columns and **unioned**:
 
-| 欄位 | 例 |
+| Column | Example |
 | --- | --- |
-| 成分 | `ATORVASTATIN (CALCIUM) 10 MG` |
-| 英文品名 | `Atotin F.C. Tablets 10mg` |
+| ingredient | `ATORVASTATIN (CALCIUM) 10 MG` |
+| English name | `Atotin F.C. Tablets 10mg` |
 
-實測 524 筆兩欄都有、83 筆只有成分欄、0 筆只有品名,**607 筆全部都取得到**,不需要猜。要聯集是因為有 21 筆兩欄不一致,全是鹽類或複方:`FLUVASTATIN SODIUM 21.06 MG` 只有品名寫著醫師會打的 20mg;`EZETIMIBE 10 MG+SIMVASTATIN 20 MG` 只有成分欄留著 ezetimibe 的 10mg。只取一欄就會漏掉其中一種。
+Measured: 524 records state a strength in both, 83 in the ingredient only, 0 in the name
+only — **all 607 yield at least one**, so nothing is guessed. The union is what makes it
+correct on the 21 records where the two disagree, all salt forms or combinations:
+`FLUVASTATIN SODIUM 21.06 MG` — only the name carries the 20mg a clinician types;
+`EZETIMIBE 10 MG+SIMVASTATIN 20 MG` — only the ingredient keeps ezetimibe's 10mg. Taking
+either column alone drops one of those.
 
-三件事不會做:
+Three things this must keep doing:
 
-- **不把鹽重換算成標示含量**。Caduet 的 10.85 mg 與 10 mg 兩個都列,因為主檔兩個都寫了;換算就是自己造數字
-- **濃度保留分母**。`CHOLESTYRAMINE 444.4 MG/GM` 是 `444.4 mg/g`,不是 444.4 mg 的錠劑,篩 444.4 mg 不會撈到它
-- **單位算在比對鍵裡**,`4 g` 不會被 `4 mg` 篩到
+- **Never reconcile a salt weight into a label strength.** Caduet's 10.85 mg and 10 mg are
+  both offered, because the master states both. Converting one into the other invents a
+  number.
+- **Keep a concentration's denominator.** `CHOLESTYRAMINE 444.4 MG/GM` is `444.4 mg/g`,
+  not a 444.4 mg tablet, and a 444.4 mg filter must not reach it.
+- **Units are part of the filter key**, so `4 g` is never matched by `4 mg`.
 
-### 支付價為 0.00 的品項
+### Items priced 0.00
 
-主檔 607 筆裡有 370 筆目前支付價為 `0.00`。每一筆都是該品項**最後一段、無結束日**的價格區間,而且之前都有過真實價格——主檔是完整的歷史品項檔,不是「現行有給付」清單。
+370 of the 607 master records currently show a payment price of `0.00`. In every case that
+is the item's **final, open-ended** price period following a real earlier price — the
+master is a full historical item file, not a list of currently reimbursed items.
 
-**藥品查詢不列出這些品項**,並會標明排除了幾筆(例如查 pravastatin 顯示 19 筆、排除 32 筆)。這樣打了正確代碼卻沒有結果時,畫面會說明原因,而不是看起來像打錯字。
+**Drug lookups leave these out** and report how many were excluded (searching pravastatin
+shows 19 items, 32 excluded). So an exact code that returns nothing says why, instead of
+looking like a typo.
 
-排除是**以查詢日期判定**,所以今天價格為 0 的品項,查詢它還有價格的日期時仍會出現。價格欄位若不是數字則保留不排除(主檔有 11 個區間的價格是 `-`)。
+The exclusion is **per requested date**, so an item priced 0.00 today still resolves for a
+date when it had a price. A price that does not parse as a number is kept rather than
+treated as zero — the master holds 11 periods whose price is literally `-`.
 
-## 這不是什麼
+## What this is not
 
-不是健保署系統。查詢結果不可作為申報依據,實際品項、價格與給付規定以健保署公告為準。工具不判斷任何病人是否符合給付,風險分級依公告附件二的判定條件計算,不構成診斷。
+Not an NHIA system. Results are not a basis for claims; the NHIA's own announcements
+govern the actual items, prices and coverage rules. The tool decides no patient's coverage,
+and the risk tier is computed from the announcement's criteria — it is not a diagnosis.
 
-**不接受可識別病人資料**——姓名、病歷號一概不要輸入。風險分級需要的臨床數值(LDL-C、各項是／否)只留在瀏覽器記憶體,不寫 localStorage、不送出、重新整理即消失。
+**No identifying patient data** — do not enter names or record numbers. The clinical values
+the risk tab needs (LDL-C, the yes/no answers) live in React state only: never written to
+`localStorage`, never sent anywhere, gone on reload.
 
-也不再提供給付規定條文查詢。2.6.1–2.6.3 的逐字條文與新舊制對照曾經在這裡,已於 2026-08 移除;需要條文請看健保署公告原文。
+It also no longer offers verbatim coverage-rule lookup. The 2.6.1–2.6.3 rule text and the
+prior/current comparison were here once and were removed in 2026-08; for the rule text,
+read the NHIA's announcement.
 
-## 開發
+## Development
 
-Node >= 22,pnpm workspace,ESM。
+Node >= 22, pnpm workspace, ESM throughout.
 
 ```bash
 pnpm install
-pnpm typecheck                       # tsc,兩個 workspace 專案
+pnpm typecheck                       # tsc across both workspace projects
 pnpm test                            # vitest
 pnpm export:web                      # vite build → apps/clinician/dist
-pnpm --filter @nhi-cv/clinician dev  # 本機開發
+pnpm --filter @nhi-cv/clinician dev  # local dev server
 ```
 
-- `packages/domain` — 查詢邏輯與編譯後的資料集。純函式、frozen 資料、無 I/O
-- `apps/clinician` — 介面(Vite + React,純 DOM 與純 CSS,零網路呼叫)
-  - `App.tsx` 只負責版面,不含任何文案;所有字串在 `src/copy.ts`(中英各一份)
-  - `src/app.css` 是全部樣式;顏色以 CSS 變數宣告一次,由 `[data-theme]` 切換
-- `data/governed` — 資料集的原始來源檔
-- `scripts/*-codegen.mjs` — 從 `data/governed/` 重新產生 `packages/domain/src/generated/`
+- `packages/domain` — all lookup logic and the compiled datasets. Pure functions, frozen
+  data, no I/O
+- `apps/clinician` — the interface (Vite + React, plain DOM and plain CSS, zero network
+  calls)
+  - `App.tsx` is layout only and holds no prose; every string lives in `src/copy.ts`
+    (one Chinese, one English)
+  - `src/app.css` is the whole stylesheet; colours are declared once as custom properties
+    and swapped by `[data-theme]`
+- `data/governed` — the source files each dataset was generated from
+- `scripts/*-codegen.mjs` — regenerate `packages/domain/src/generated/` from
+  `data/governed/`
 
-CI 跑 typecheck、test、build。合併到 `main` 會自動部署到 Cloudflare Pages。
+CI runs typecheck, test and build. Merging to `main` deploys to Cloudflare Pages.
 
-### 健保署更新資料時
+### When the NHIA publishes new data
 
-1. 新的來源檔放進 `data/governed/<資料集版本>/`
-2. 更新該目錄的 `storage-manifest.json`(檔案雜湊、位元組數)
-3. **更新 codegen 腳本頂端寫死的常數**——`DATASET_VERSION`、`EXPECTED_FILE_SHA256`、`EXPECTED_RECORD_COUNT` 等。這些是刻意寫死的:資料換了而數字沒跟著換,codegen 會以離開碼 1 中止,而不是默默產生錯的東西
-4. 跑對應的 codegen
+1. Put the new source files in `data/governed/<dataset version>/`
+2. Update that directory's `storage-manifest.json` (file hashes, byte counts)
+3. **Update the constants pinned at the top of the codegen script** — `DATASET_VERSION`,
+   `EXPECTED_FILE_SHA256`, `EXPECTED_RECORD_COUNT` and so on. These are pinned on purpose:
+   if the data changes and the numbers do not, the codegen exits 1 instead of quietly
+   producing something wrong
+4. Run the matching codegen
 
 ```bash
-node scripts/drug-items-codegen.mjs    # 藥品主檔
-node scripts/items-codegen.mjs         # 公告異動明細
-node scripts/risk-codegen.mjs          # 風險分級（先跑 risk-transcribe）
+node scripts/drug-items-codegen.mjs    # item master
+node scripts/items-codegen.mjs         # announcement change detail
+node scripts/risk-codegen.mjs          # risk tiers (run risk-transcribe first)
 ```
 
-風險分級的資料是從公告 PDF **轉錄**來的,不是健保署直接提供的表格。要重新產生:
+The risk dataset is **transcribed** from the announcement PDF rather than supplied as a
+table. To re-derive it:
 
 ```bash
-node scripts/risk-transcribe.mjs          # PDF → 三個 jsonl（需要 poppler 的 pdftotext）
-node scripts/risk-transcribe.mjs --check  # 只驗證,不寫檔
+node scripts/risk-transcribe.mjs          # PDF → the JSONL files (needs poppler's pdftotext)
+node scripts/risk-transcribe.mjs --check  # verify only, write nothing
 ```
 
-轉錄時的判斷與取捨——處方規定為何依原文標題配對而不是行序、折行接合為何只補空格、哪一欄刻意不轉錄——記在 [`data/governed/nhi-lipid-risk-2026-09-01-r1/TRANSCRIPTION.md`](data/governed/nhi-lipid-risk-2026-09-01-r1/TRANSCRIPTION.md)。改那三個 jsonl 之前請先看。
+The transcription decisions — why prescribing rules are paired to tiers by the heading the
+text carries rather than by row order, why rejoining wrapped lines only ever adds spaces,
+which column is deliberately not transcribed — are in
+[`data/governed/nhi-lipid-risk-2026-09-01-r1/TRANSCRIPTION.md`](data/governed/nhi-lipid-risk-2026-09-01-r1/TRANSCRIPTION.md).
+Read it before touching those JSONL files.
 
-5. 更新 [`docs/source-register/`](docs/source-register/) 的出處記錄,以及 [CLAUDE.md](CLAUDE.md) 與本檔中的筆數
+5. Update the provenance records in [`docs/source-register/`](docs/source-register/), and
+   the record counts in [CLAUDE.md](CLAUDE.md) and in this file
 
-**`packages/domain/src/generated/` 一律用產生的,不要手改。**
+**Never hand-edit `packages/domain/src/generated/` — always regenerate.**
 
 ---
 
-改動查詢行為前請看 [CLAUDE.md](CLAUDE.md) 的「Rules that protect correctness」——那幾條的存在理由是:違反了就會讓醫師看到錯的藥品資訊。另見 [CONTRIBUTING.md](CONTRIBUTING.md)。
+Before changing lookup behaviour, read "Rules that protect correctness" in
+[CLAUDE.md](CLAUDE.md). Those rules exist because breaking them shows a clinician wrong
+drug information. See also [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## 授權
+## Licence
 
-程式碼與資料的授權**不同**,分開看:
+The code and the data are licensed **differently**:
 
-| | 授權 | 說明 |
+| | Licence | Notes |
 | --- | --- | --- |
-| 本專案的程式碼 | [Apache License 2.0](LICENSE) | 可自由使用、修改、商用,含閉源;需保留著作權聲明、標示修改過的檔案 |
-| 編譯進來的健保資料 | 政府資料開放授權條款第 1 版 | 來源:衛生福利部中央健康保險署「健保用藥品項查詢項目檔」(政府資料開放平臺) |
-| 公告轉錄的條文 | 公告原文,著作權歸原發布機關 | 逐字轉錄,未改寫;出處與雜湊記於 [`docs/source-register/`](docs/source-register/) |
+| This project's code | [Apache License 2.0](LICENSE) | Free to use, modify and sell, closed-source included; keep the copyright notice and mark modified files |
+| The NHI data compiled in | 政府資料開放授權條款第 1 版 (Open Government Data License) | Source: NHIA 健保用藥品項查詢項目檔, Taiwan open-data platform |
+| The transcribed announcement text | The announcement's own text; copyright remains with the issuing agency | Transcribed verbatim, unreworded; provenance and hashes in [`docs/source-register/`](docs/source-register/) |
 
 Copyright 2026 Universal Integrated Corp. (Josh Tsai)
 
-拿去改沒問題,但請注意一件事:這個工具的價值在於**它只講健保署資料說過的話**。改動查詢或分級邏輯前,先讀 [CLAUDE.md](CLAUDE.md) 的「Rules that protect correctness」。
+Fork it and change it freely, but note one thing: this tool's value is that **it says only
+what the NHIA's data says**. Before changing the lookup or tiering logic, read "Rules that
+protect correctness" in [CLAUDE.md](CLAUDE.md).

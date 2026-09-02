@@ -1,22 +1,51 @@
-# Source register(來源登錄,runbook Stage 1)
+# Source register
 
-每一個收件檔案一筆登錄紀錄;欄位定義見 `docs/phase1-intake-runbook.md` §3。本目錄僅存 metadata(雜湊、出處宣告、複驗結果),永不存放收件 payload。
+> **中文說明在下半部。**
 
-宣告來源:專案負責人(RA)於 2026-08-02 會期中口頭宣告;RA 對載有本目錄的 PR 之 `PASS <sha7>` 即為登錄簽記。宣告中的公告參照與生效日一律以 `docs/spec-source-status.md` 收件紀錄為準,不在本目錄重複載明。
+One record per source file the project took in. This directory holds **metadata only** —
+where a file came from, its SHA-256, and how it was verified. It never holds the source
+payload itself.
 
-| 檔案 | 狀態 |
+This is what backs the project's central claim: **every price and every rule sentence comes
+from the NHIA's published data, and can be traced back to a file whose hash is written
+down**. If a dataset changes, the record here changes with it, or the codegen fails closed.
+
+The chain for each dataset runs: source file (hash pinned here) → codegen script (which
+re-checks that hash) → frozen TypeScript in `packages/domain/src/generated/` → the bundle.
+Nothing enters the app by any other route.
+
+| Entry | What it is |
 | --- | --- |
-| master-project-prompt-v3.2 | PROVENANCE_DECLARED / AUTHENTICITY_CONFIRMED(RA 2026-08-02 裁示此版即權威版本) |
-| ezetimibe_3month_exception | PROVENANCE_DECLARED(待 Stage 3 驗證) |
-| ezetimibe_statin_combo_3month_exception | PROVENANCE_DECLARED(待 Stage 3 驗證) |
-| price_change_seed_20260901 | PROVENANCE_DECLARED(待 Stage 3 驗證) |
-| statin_table2_only_list | PROVENANCE_DECLARED(待 Stage 3 驗證) |
-| companion-spec-readme | PROVENANCE_DECLARED(專案自撰文件,性質已釐清) |
-| attachment-1-price-change-detail(附件1 PDF) | PROVENANCE_DECLARED(2026-08-02 收件;Stage 3 比對基準) |
-| attachment-2-rule-revision-table(附件2 PDF) | PROVENANCE_DECLARED(2026-08-02 收件;Stage 3 比對基準) |
-| announcement-webpage-capture(公告本文擷取) | PROVENANCE_DECLARED(2026-08-02 收件;缺件 #4 結案) |
-| rule-2.6.1-prior-version-full-text(舊版 2.6.1 全文 PDF) | PROVENANCE_DECLARED(2026-08-03 收件;舊版表二缺口結案;方向 B 基準) |
-| rule-2.6.2-prior-version-full-text(舊版 2.6.2 全文 PDF) | PROVENANCE_DECLARED(2026-08-03 收件;2A 補件,Stage 3 補充基準) |
-| rule-2.6.3-prior-version-full-text(舊版 2.6.3 全文 PDF) | PROVENANCE_DECLARED(2026-08-03 收件;2A 補件,Stage 3 補充基準) |
-| nhi-drug-item-master-20260806(健保用藥品項查詢項目檔) | PROVENANCE_DECLARED(2026-08-06 收件;政府資料開放平臺 23715,開放授權,RA 授權由 session 直接取得;範圍子集待 Stage 3 派工驗證) |
-| rules-structured-jsonl(結構化規則轉錄 JSONL) | DERIVED_VERIFIED(2026-08-04 內部推導;T3 FIDELITY_VERIFIED;RDL-015 入庫) |
+| [`nhi-drug-item-master-20260806`](nhi-drug-item-master-20260806.md) | The NHIA item master (健保用藥品項查詢項目檔), Taiwan open-data platform dataset 23715. 607 items, 4,048 price periods |
+| [`attachment-1-price-change-detail`](attachment-1-price-change-detail.md) | The 2026-09-01 announcement's attachment 1 (PDF): the price-change detail table |
+| [`attachment-2-rule-revision-table`](attachment-2-rule-revision-table.md) | The 2026-09-01 announcement's attachment 2 (PDF): the coverage-rule revision table, and the source of the whole risk dataset |
+| [`announcement-webpage-capture`](announcement-webpage-capture.md) | The announcement's own web page, captured |
+| [`price_change_seed_20260901`](price_change_seed_20260901.md) | The 57 items the announcement repriced, with before and after prices |
+| [`statin_table2_only_list`](statin_table2_only_list.md) | The 116 items the announcement names for classification reasons, without a price change |
+| [`ezetimibe_3month_exception`](ezetimibe_3month_exception.md) | The 4 ezetimibe items rule 2.6.2's own table singles out |
+| [`ezetimibe_statin_combo_3month_exception`](ezetimibe_statin_combo_3month_exception.md) | The 10 combination items rule 2.6.3's own table singles out |
+| [`nhi-lipid-risk-2026-09-01-r1`](nhi-lipid-risk-2026-09-01-r1.md) | The risk dataset transcribed from attachment 2 — derived from a governed source, not a separate intake |
+| [`master-project-prompt-v3.2`](master-project-prompt-v3.2.md) | The project's own authoritative specification document |
+| [`companion-spec-readme`](companion-spec-readme.md) | A companion specification document written by the project |
+
+The 14 codes in the two ezetimibe exception entries are transcribed twice, independently:
+once as those CSVs, and again out of the PDF's own 健保代碼 tables by
+`scripts/risk-transcribe.mjs`. `packages/domain/src/coverage-rule.test.ts` compares the two
+on every CI run, so a mis-transcription on either side fails the build.
+
+---
+
+# 來源登錄
+
+每一個收件檔案一筆登錄紀錄。本目錄**只存 metadata** —— 出處、SHA-256、複驗結果 —— 永不存放
+收件檔案本身。
+
+這是整個專案核心主張的憑據:**每一個價格、每一句條文都來自健保署公開資料,而且都能追回一份
+雜湊值有記錄在案的檔案**。資料集若有變動,這裡的紀錄要跟著改,否則 codegen 會 fail closed。
+
+每個資料集的鏈是:來源檔(雜湊寫死在這裡)→ codegen 腳本(重新核對該雜湊)→
+`packages/domain/src/generated/` 的凍結 TypeScript → bundle。沒有別的路徑可以把資料放進 app。
+
+登錄清單見上方英文表格。兩份 ezetimibe 例外清單中的 14 個健保代碼是**獨立轉錄兩次**的:一次
+是那兩個 CSV,另一次由 `scripts/risk-transcribe.mjs` 從 PDF 自己的健保代碼表讀出。
+`packages/domain/src/coverage-rule.test.ts` 每次 CI 都重跑這個比對,任一邊轉錯就會讓建置失敗。
